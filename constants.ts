@@ -1,10 +1,11 @@
-import { LeagueOption } from './types';
+import { LeagueOption } from "./types";
 
 // ----------------------------------------------------------------------
 // OPTIONAL: PASTE YOUR API KEY BELOW TO SKIP THE INPUT SCREEN
 // Example: export const HARDCODED_API_KEY = "abc123456...";
 // ----------------------------------------------------------------------
-export const HARDCODED_API_KEY: string = "86eaa67f9b50dfa1495ab1decf7f8c04"; 
+export const HARDCODED_API_KEY: string =
+  import.meta.env.VITE_ODDS_API_KEY || "";
 
 export const LEAGUES: LeagueOption[] = [
   { key: "soccer_epl", name: "Premier League" },
@@ -23,10 +24,10 @@ export const LEAGUES: LeagueOption[] = [
 ];
 
 export const EXCHANGES = [
-  { key: 'smarkets', name: 'Smarkets', commission: 0.02 },
-  { key: 'betfair_ex_uk', name: 'Betfair', commission: 0.05 },
-  { key: 'matchbook', name: 'Matchbook', commission: 0.015 },
+  { key: "smarkets", name: "Smarkets", commission: 0.02 },
+  { key: "betfair_ex_uk", name: "Betfair", commission: 0.05 },
+  { key: "matchbook", name: "Matchbook", commission: 0.015 },
 ];
 
-export const BOOKMAKERS = `pinnacle,${EXCHANGES.map(e => e.key).join(',')}`;
+export const BOOKMAKERS = `pinnacle,${EXCHANGES.map((e) => e.key).join(",")}`;
 export const MIN_EDGE = 0; // Configurable minimum edge

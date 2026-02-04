@@ -1,6 +1,7 @@
 export interface Outcome {
   name: string;
   price: number;
+  point?: number;
 }
 
 export interface Market {
@@ -49,12 +50,12 @@ export interface BetEdge {
   kickoff: Date;
   selection: string;
   market: string;
-  
+
   // Best Exchange Info (for sorting/tracking)
   exchangeKey: string;
   exchangeName: string;
   exchangePrice: number;
-  
+
   // All offers for this selection
   offers: ExchangeOffer[];
 
@@ -72,10 +73,13 @@ export interface TrackedBet extends BetEdge {
   closingRawPrice?: number; // Pinnacle raw price at kickoff
   closingFairPrice?: number; // Pinnacle no-vig price at kickoff
   clvPercent?: number; // (MyOdds / ClosingFairPrice - 1) * 100
-  status: 'open' | 'closed';
-  
+  status: "open" | "closed";
+  result?: "won" | "lost" | "push";
+  homeScore?: number;
+  awayScore?: number;
+
   // Legacy fields for migration
-  smarketsPrice?: number; 
+  smarketsPrice?: number;
 }
 
 export interface LeagueOption {
@@ -83,4 +87,4 @@ export interface LeagueOption {
   name: string;
 }
 
-export type FetchStatus = 'idle' | 'loading' | 'success' | 'error' | 'no-key';
+export type FetchStatus = "idle" | "loading" | "success" | "error" | "no-key";
