@@ -1,0 +1,315 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { ApiKeyInput } from './components/ApiKeyInput';
+import { BetCard } from './components/BetCard';
+import { LeagueSelector } from './components/LeagueSelector';
+import { BetTracker } from './components/BetTracker';
+import { fetchOddsData, calculateEdges } from './services/edgeFinder';
+import { BetEdge, FetchStatus, TrackedBet, MatchResponse } from './types';
+import { LEAGUES, HARDCODED_API_KEY } from './constants';
+import { RefreshCw, AlertTriangle, Trophy, Activity, LayoutGrid, Sliders, Key } from 'lucide-react';
+
+const STORAGE_KEY = 'ods_api_key';
+const BETS_STORAGE_KEY = 'tracked_bets';
+
+const App: React.FC = () => {
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [isChangingKey, setIsChangingKey] = useState(false);
+  const [status, setStatus] = useState<FetchStatus>('no-key');
+  
+  // Data State
+  const [rawMatches, setRawMatches] = useState<MatchResponse[]>([]);
+  const [trackedBets, setTrackedBets] = useState<TrackedBet[]>([]);
+  const [remainingRequests, setRemainingRequests] = useState<number | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  // UI State
+  const [selectedLeagues, setSelectedLeagues] = useState<string[]>(LEAGUES.map(l => l.key));
+  const [minEdgePct, setMinEdgePct] = useState<number>(0); 
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [view, setView] = useState<'scanner' | 'tracker'>('scanner');
+  const [showFilters, setShowFilters] = useState(false);
+
+  useEffect(() => {
+    const storedKey = localStorage.getItem(STORAGE_KEY);
+    const storedBets = localStorage.getItem(BETS_STORAGE_KEY);
+    
+    // Priority: 1. LocalStorage, 2. Hardcoded Key
+    if (storedKey) {
+      setApiKey(storedKey);
+      setStatus('idle');
+    } else if (HARDCODED_API_KEY && HARDCODED_API_KEY.length > 5) {
+      setApiKey(HARDCODED_API_KEY);
+      setStatus('idle');
+    }
+    
+    if (storedBets) {
+        try {
+            // Revive date strings to Date objects AND Migrate legacy data
+            const parsed = JSON.parse(storedBets);
+            const revived = parsed.map((b: any) => ({
+                ...b,
+                kickoff: new Date(b.kickoff),
+                // Migration: If legacy smarketsPrice exists but exchangePrice doesn't
+                exchangeName: b.exchangeName || 'Smarkets',
+                exchangeKey: b.exchangeKey || 'smarkets',
+                exchangePrice: b.exchangePrice || b.smarketsPrice || 0
+            }));
+            setTrackedBets(revived);
+        } catch (e) {
+            console.error("Failed to load tracked bets", e);
+        }
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(BETS_STORAGE_KEY, JSON.stringify(trackedBets));
+  }, [trackedBets]);
+
+  const handleSaveKey = (key: string) => {
+    localStorage.setItem(STORAGE_KEY, key);
+    setApiKey(key);
+    setIsChangingKey(false);
+    setStatus('idle');
+  };
+
+  const handleChangeKeyRequest = () => {
+      setIsChangingKey(true);
+  };
+
+  const handleCancelChangeKey = () => {
+      setIsChangingKey(false);
+  };
+
+  const handleTrackBet = (bet: BetEdge) => {
+      const newTrackedBet: TrackedBet = {
+          ...bet,
+          placedAt: Date.now(),
+          fairPriceAtBet: bet.fairPrice, // Snapshot of the fair price at the time of tracking
+          status: 'open'
+      };
+      setTrackedBets(prev => [...prev, newTrackedBet]);
+  };
+
+  const handleUpdateTrackedBet = (updatedBet: TrackedBet) => {
+      setTrackedBets(prev => prev.map(b => b.id === updatedBet.id ? updatedBet : b));
+  };
+
+  const handleDeleteTrackedBet = (id: string) => {
+      if(window.confirm("Delete this record?")) {
+        setTrackedBets(prev => prev.filter(b => b.id !== id));
+      }
+  }
+
+  // --- Core Logic ---
+
+  // 1. Fetching Data
+  const runScan = useCallback(async () => {
+    if (!apiKey) return;
+    
+    setStatus('loading');
+    setErrorMessage('');
+    
+    try {
+      const { matches, remainingRequests: remaining } = await fetchOddsData(apiKey, selectedLeagues);
+      setRawMatches(matches);
+      setRemainingRequests(remaining);
+      setLastUpdated(new Date());
+      setStatus('success');
+    } catch (err) {
+      if ((err as Error).message === "AUTH_ERROR") {
+        setErrorMessage("Invalid API Key. Please update it.");
+        setStatus('error');
+      } else {
+        setErrorMessage("Network error. Check console for details.");
+        setStatus('error');
+      }
+    }
+  }, [apiKey, selectedLeagues]);
+
+  // 2. Processing Data (Memoized to run when matches or filter changes)
+  const bets = useMemo(() => {
+    if (rawMatches.length === 0) return [];
+    return calculateEdges(rawMatches, minEdgePct);
+  }, [rawMatches, minEdgePct]);
+
+  // Initial scan when key is ready
+  useEffect(() => {
+    if (status === 'idle' && apiKey) {
+      runScan();
+    }
+  }, [status, apiKey, runScan]);
+
+  // View: API Key Input (Initial or Changing)
+  if (!apiKey || isChangingKey) {
+    return (
+        <ApiKeyInput 
+            onSave={handleSaveKey} 
+            onCancel={apiKey ? handleCancelChangeKey : undefined} 
+        />
+    );
+  }
+
+  // View: Main App
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 font-sans">
+      <div className="max-w-6xl mx-auto">
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 flex items-center gap-3">
+              <Trophy className="text-blue-500" />
+              Matchday Edge Finder
+            </h1>
+            <p className="text-slate-500 text-sm mt-1 ml-1">
+              Smart Money vs Public Money
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-3">
+             <button 
+              type="button"
+              onClick={handleChangeKeyRequest}
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2"
+            >
+              <Key className="w-4 h-4" /> <span className="hidden sm:inline">Change Key</span>
+            </button>
+          </div>
+        </div>
+
+        {/* View Switcher */}
+        <div className="flex mb-6 bg-slate-900 border border-slate-800 p-1 rounded-lg w-fit">
+            <button 
+                onClick={() => setView('scanner')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm font-semibold ${view === 'scanner' ? 'bg-slate-800 text-white shadow-sm ring-1 ring-slate-700' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+                <LayoutGrid className="w-4 h-4" /> Scanner
+            </button>
+            <button 
+                onClick={() => setView('tracker')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm font-semibold ${view === 'tracker' ? 'bg-slate-800 text-white shadow-sm ring-1 ring-slate-700' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+                <Activity className="w-4 h-4" /> My Bets <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full ml-1">{trackedBets.length}</span>
+            </button>
+        </div>
+
+        {view === 'scanner' ? (
+            <>
+                {/* Controls */}
+                <div className="mb-6 space-y-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <LeagueSelector 
+                            selected={selectedLeagues} 
+                            onChange={setSelectedLeagues} 
+                            disabled={status === 'loading'}
+                        />
+                         <button 
+                            onClick={runScan}
+                            disabled={status === 'loading'}
+                            className="px-6 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold rounded-lg shadow-lg shadow-blue-900/20 transition-all flex items-center gap-2 w-full sm:w-auto justify-center"
+                            >
+                            <RefreshCw className={`w-4 h-4 ${status === 'loading' ? 'animate-spin' : ''}`} />
+                            {status === 'loading' ? 'Scanning...' : 'Refresh Odds'}
+                        </button>
+                    </div>
+
+                    {/* Filters Toggle */}
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={`text-sm flex items-center gap-1 transition-colors px-3 py-1.5 rounded-full border ${showFilters ? 'bg-slate-800 text-white border-slate-600' : 'text-slate-400 border-transparent hover:bg-slate-900'}`}
+                        >
+                            <Sliders className="w-3 h-3" /> Filters
+                        </button>
+                        {lastUpdated && (
+                          <span className="text-xs text-slate-500 ml-auto">
+                            Updated: {lastUpdated.toLocaleTimeString()}
+                          </span>
+                        )}
+                    </div>
+
+                    {/* Extended Filters */}
+                    {showFilters && (
+                        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="flex flex-col gap-2 w-full max-w-xs">
+                                <label className="text-xs text-slate-300 font-medium flex justify-between">
+                                    <span>Min Edge %</span>
+                                    <span className="text-blue-400 font-bold">{minEdgePct}%</span>
+                                </label>
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max="10" 
+                                    step="0.5" 
+                                    value={minEdgePct} 
+                                    onChange={(e) => setMinEdgePct(parseFloat(e.target.value))}
+                                    className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                />
+                                <span className="text-[10px] text-slate-500">
+                                  Use this slider to filter results instantly without re-fetching data.
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Main Content Area */}
+                {status === 'error' && (
+                <div className="bg-red-500/10 border border-red-500/50 text-red-200 p-4 rounded-xl flex items-center gap-3 mb-6">
+                    <AlertTriangle className="w-5 h-5 text-red-500" />
+                    {errorMessage}
+                </div>
+                )}
+
+                {status === 'success' && bets.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
+                    <div className="text-5xl mb-4">😐</div>
+                    <h3 className="text-xl font-semibold text-slate-300">No edges found</h3>
+                    <p className="text-slate-500 mt-2 max-w-md text-center">
+                        {minEdgePct > 0 
+                            ? `Try lowering the minimum edge filter (currently >${minEdgePct}%).`
+                            : "The market is efficient right now. Try refreshing later."}
+                    </p>
+                </div>
+                )}
+
+                {bets.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {bets.map((bet) => (
+                    <BetCard 
+                        key={bet.id} 
+                        bet={bet} 
+                        onTrack={handleTrackBet}
+                        isTracked={trackedBets.some(tb => tb.id === bet.id)}
+                    />
+                    ))}
+                </div>
+                )}
+            </>
+        ) : (
+            <BetTracker 
+                bets={trackedBets} 
+                apiKey={apiKey} 
+                onUpdateBet={handleUpdateTrackedBet}
+                onDeleteBet={handleDeleteTrackedBet}
+            />
+        )}
+
+        {/* Footer info */}
+        <div className="mt-12 text-center text-slate-600 text-sm pb-8">
+          {remainingRequests !== null && (
+            <div className="mb-3 inline-flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-full border border-slate-800 text-xs text-slate-400">
+               <div className={`w-2 h-2 rounded-full ${remainingRequests < 50 ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
+               API Quota: <span className={remainingRequests < 50 ? "text-red-400 font-bold" : "text-slate-300"}>{remainingRequests}</span> requests remaining
+            </div>
+          )}
+          <p>Odds data provided by The-Odds-API. Updates may be delayed by a few minutes.</p>
+          <p className="mt-1">Kelly Criterion stakes are suggestions only. Gamble responsibly.</p>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+export default App;

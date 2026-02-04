@@ -1,0 +1,5 @@
+{
+  "name": "Matchday Edge Finder",
+  "description": "A real-time sports betting utility that finds value bets by comparing Smarkets odds against Pinnacle's sharp lines after removing the vigorish.",
+  "requestFramePermissions": []
+}
