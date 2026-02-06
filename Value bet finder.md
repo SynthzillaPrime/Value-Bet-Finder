@@ -1,283 +1,193 @@
-# MATCHDAY EDGE FINDER - PROJECT HANDOFF DOCUMENT
-
----
-
-## WHAT THIS PROJECT IS
-
-A value betting tool that finds mathematical edges on betting exchanges by comparing their odds to Pinnacle's sharp line (the "true" odds). The user tracks bets, measures Closing Line Value (CLV), and builds data to prove profitability over time.
-
-**Core Concept:** Pinnacle is the sharpest bookmaker - they accept professional bettors, so their odds are highly accurate. When an exchange (Smarkets, Betfair, Matchbook) offers higher odds than Pinnacle's no-vig price, that's a value bet.
-
-**User's Goal:** Find edges on exchanges (not traditional bookies) to avoid getting "gubbed" (account limited). Treat betting as a data-driven hobby, not gambling.
-
----
-
-## THE METHODOLOGY
-
-### Value Calculation
-```
-1. Get Pinnacle odds for all outcomes (Home/Draw/Away)
-2. Strip the vig (margin) to get "True Odds"
-   - Sum implied probabilities: (1/home_odds) + (1/draw_odds) + (1/away_odds) = ~103%
-   - Normalize to 100%
-   - Convert back to odds
-3. Compare exchange odds to True Odds
-4. Raw Edge = (Exchange Odds / True Odds - 1) × 100
-5. Account for exchange commission (Smarkets 2%, Betfair 5%, Matchbook 1.5%)
-   - Effective Odds = 1 + (Decimal Odds - 1) × (1 - Commission)
-6. Net Edge = (Effective Odds / True Odds - 1) × 100
-7. If Net Edge > 0, it's a value bet
-```
-
-### Closing Line Value (CLV)
-The real measure of success. Compares the odds you got vs the closing odds (at kickoff).
-```
-CLV = (My Odds / Closing True Odds - 1) × 100
-```
-If you consistently beat the closing line (+2% avg CLV), you're a winning bettor regardless of individual results.
-
-### Why This Works
-- Exchanges are slightly less efficient than Pinnacle
-- Less liquidity on outsiders = more mispricings
-- User doesn't get gubbed because exchanges welcome all bettors
-- Law of large numbers: small edges compound over hundreds of bets
-
----
-
-## CURRENT STATE (Phase 1 Complete)
-
-### Working Features
-- ✅ Edge scanner across multiple exchanges (Smarkets, Betfair, Matchbook)
-- ✅ Shows best exchange per bet after commission
-- ✅ Multiple sports: Football (EPL, Championship, La Liga, Bundesliga, Serie A, Ligue 1, CL, EL), NFL, NBA, MLB, NHL, UFC
-- ✅ Markets: Match Result (h2h) and Over/Under (totals)
-- ✅ Filters out in-play matches (only pre-match)
-- ✅ Raw edge + Net edge display
-- ✅ Proper date display (Sat 01 Feb, 15:00)
-- ✅ Bet tracking (saves to localStorage)
-- ✅ Basic tracker table
-
-### Not Yet Working
-- ❌ CLV calculation (needs paid API - $25/month)
-- ❌ Result fetching (Won/Lost)
-- ❌ Analytics dashboard with charts
-- ❌ PWA (installable app)
-
-### Known Limitations
-- Most edges are on outsiders (5.0+ odds) because favorites are heavily traded
-- Some weeks have few/no edges - market is efficient
-- BTTS market not available via this API endpoint
-- Europa League sometimes fails to fetch (no upcoming matches)
-
----
-
-## TECH STACK
-
-| Component | Technology |
-|-----------|------------|
-| Frontend | React + TypeScript |
-| Styling | Tailwind CSS |
-| Build | Vite |
-| Hosting | Vercel (free tier) |
-| Data | The Odds API |
-| Charts (planned) | Recharts |
-
-### Key Files
-- `constants.ts` - Exchanges, sports, API key
-- `services/edgeFinder.ts` - Core logic for fetching odds and calculating edges
-- `components/BetCard.tsx` - Display card for each value bet
-- `components/BetTracker.tsx` - Tracked bets table
-- `App.tsx` - Main app logic
-
-### API Details
-- **Provider:** The Odds API (https://the-odds-api.com)
-- **Current Plan:** Free (500 requests/month)
-- **Needed Plan:** $25/month (20,000 requests + historical odds for CLV)
-- **Key Endpoints:**
-  - `/v4/sports/{sport}/odds` - Live odds
-  - `/v4/sports/{sport}/scores` - Results (free)
-  - `/v4/sports/{sport}/odds-history` - Historical/closing odds (paid only)
-
-### API Key
-```
-86eaa67f9b50dfa1495ab1decf7f8c04
-```
-(Hardcoded in constants.ts)
-
----
-
-## EXCHANGES & COMMISSION
-
-| Exchange | API Key | Commission | Notes |
-|----------|---------|------------|-------|
-| Smarkets | `smarkets` | 2.0% | UK-focused, good liquidity |
-| Betfair | `betfair_ex_uk` | 5.0% | Highest liquidity, high commission |
-| Matchbook | `matchbook` | 1.5% | Lowest commission, less liquidity |
-| Pinnacle | `pinnacle` | N/A | Sharp benchmark only (can't bet from UK) |
-
----
-
-## SPORTS CONFIGURED
-
-```typescript
-export const SPORTS = [
-  { key: "soccer_epl", name: "Premier League" },
-  { key: "soccer_efl_champ", name: "Championship" },
-  { key: "soccer_spain_la_liga", name: "La Liga" },
-  { key: "soccer_germany_bundesliga", name: "Bundesliga" },
-  { key: "soccer_italy_serie_a", name: "Serie A" },
-  { key: "soccer_france_ligue_one", name: "Ligue 1" },
-  { key: "soccer_uefa_champs_league", name: "Champions League" },
-  { key: "soccer_uefa_europa_league", name: "Europa League" },
-  { key: "americanfootball_nfl", name: "NFL" },
-  { key: "basketball_nba", name: "NBA" },
-  { key: "baseball_mlb", name: "MLB" },
-  { key: "icehockey_nhl", name: "NHL" },
-  { key: "mma_mixed_martial_arts", name: "UFC/MMA" },
-];
-```
-
----
+VALUE BET FINDER — UPDATED PROJECT BRIEF
+Generated from Claude conversation — February 2026
+
+PROJECT OVERVIEW
+A value betting tool that finds mathematical edges on betting exchanges by comparing their odds to Pinnacle's sharp line. The user tracks bets, measures Closing Line Value (CLV), and builds data to prove the methodology works.
+User's motivation: Entertainment + skin in the game, not get-rich-quick. Previously bet casually on hunches, now wants a data-driven approach with value as an added bonus.
+
+PROOF OF CONCEPT PLAN
+Duration: 3 months (until end of Premier League season)
+Approach: Paper trading — track bets at £1 stake without placing real money. Build data to validate the methodology before risking capital.
+Success metric: Having 3 months of solid data. If ROI is negative, tweak parameters (fewer longshots, different markets, etc.) and continue.
+
+LOCKED PARAMETERS
+ParameterDecisionMinimum net edge2% (after commission)Odds range1.50 to 10.00SportsFootball only (for proof of concept)LeaguesSee full list below
+
+LEAGUES TO INCLUDE
+Top Leagues (Currently in app)
+
+Premier League (soccer_epl)
+Championship (soccer_efl_champ)
+La Liga (soccer_spain_la_liga)
+Bundesliga (soccer_germany_bundesliga)
+Serie A (soccer_italy_serie_a)
+Ligue 1 (soccer_france_ligue_one)
+Champions League (soccer_uefa_champs_league)
+Europa League (soccer_uefa_europa_league)
+
+Adding
 
-## IMPLEMENTATION ROADMAP
-
-### Phase 1: Core Upgrade ✅ COMPLETE
-- [x] Add Betfair + Matchbook exchanges
-- [x] Multi-exchange comparison display
-- [x] Add more sports (NFL, NBA, NHL, MLB, UFC)
-- [x] Fix sorting (by date)
-- [x] Proper date display on cards
-
-### Phase 2: Tracking & Results (NEXT)
-- [ ] Result fetching via scores endpoint (free)
-- [ ] Won/Lost status display
-- [ ] Manual stake input
-- [ ] P/L calculation
-- [ ] Upgrade to paid API ($25/month)
-- [ ] CLV calculation via historical odds endpoint
+FA Cup (soccer_fa_cup)
+EFL Cup (soccer_england_efl_cup)
+League One (soccer_england_league1)
+League Two (soccer_england_league2)
+La Liga 2 (soccer_spain_segunda_division)
+Bundesliga 2 (soccer_germany_bundesliga2)
+Serie B (soccer_italy_serie_b)
+Ligue 2 (soccer_france_ligue_two)
+Primeira Liga (soccer_portugal_primeira_liga)
+Eredivisie (soccer_netherlands_eredivisie)
+Scottish Premiership (soccer_spl)
+Conference League (soccer_uefa_europa_conference_league)
 
-### Phase 3: Analytics Dashboard
-- [ ] Summary cards (Total bets, Win rate, Avg CLV, ROI)
-- [ ] CLV over time chart
-- [ ] Profit over time chart
-- [ ] Performance by sport
-- [ ] Performance by exchange
-- [ ] Performance by timing (days before kickoff)
-- [ ] Edge distribution histogram
-- [ ] Odds range analysis
+Removing
 
-### Phase 4: PWA & Polish
-- [ ] manifest.json for PWA
-- [ ] Service worker
-- [ ] App icons (192px, 512px)
-- [ ] Install prompt banner
-- [ ] Mobile UI optimization
-- [ ] Loading states
-- [ ] Better error handling
+NFL, NBA, MLB, NHL, UFC (US sports — excluded from proof of concept)
 
-### Phase 5: Future Ideas
-- [ ] Push notifications for new edges
-- [ ] Cloud sync (Supabase/Firebase)
-- [ ] Bankroll management
-- [ ] Kelly criterion stake suggestions
-- [ ] CSV export
+Total: 20 football leagues
 
----
+API QUOTA NOTES
+How requests work:
 
-## EARLY RESULTS
+Each league costs 1 request per market per region when you refresh
+20 leagues × 3 markets = ~60 requests per refresh
+Historical odds (for CLV) = 1 request per bet you check
 
-User tracked 9 bets as a test:
-- 2 wins at odds 5.3 and 4.4
-- 7 losses
-- £1 stake each
-- **Return: £9.70 on £9 staked = +7.8% ROI**
+Starter plan ($25/month):
 
-Small sample but validates the methodology works.
+10,000 requests = ~330/day
+At 60 per refresh, that's ~5 full refreshes per day
+Should be enough if you're selective
 
----
+Saving quota:
 
-## KEY LEARNINGS FROM CONVERSATION
+Use the league filter — only refresh leagues with games that day
+Don't spam refresh constantly
+Only fetch CLV after matches finish
+| Markets | Match Result (h2h), Over/Under (totals), Handicap/Spreads |
+| Exchanges | All 3 — Smarkets (2%), Betfair (5%), Matchbook (1.5%) |
+| Sharp benchmark | Pinnacle no-vig odds |
+| Tracking approach | Manual — user clicks "Track" on bets they'd actually take |
+| Stake tracking | Both flat £1 AND 30% fractional Kelly |
+| Simulated bankroll | Starting at £100 |
+| API plan | Paid ($25/month) for CLV via historical odds endpoint |
 
-1. **Exchange-only value betting has thin edges** - typically 2-5%, mostly on outsiders
 
-2. **BTTS not supported** - The Odds API doesn't offer this market on the standard endpoint
+MARKETS EXPLANATION
+MarketDescriptionAvailable?h2h (Match Result)Home / Draw / Away✅ Yestotals (Over/Under)Over/Under goals (e.g., Over 2.5)✅ Yesspreads (Handicap)e.g., Arsenal -1.5✅ To addBTTSBoth Teams to Score❌ Not available in The Odds API
 
-3. **API efficiency matters** - Bundle markets in one call (`&markets=h2h,totals`) not separate calls
+TIMING BUCKETS
+For analysing when bets are placed relative to kickoff:
+BucketRange48hr+More than 48 hours before kickoff24-48hr24 to 48 hours before12-24hr12 to 24 hours before<12hrLess than 12 hours before
 
-4. **Must filter in-play** - Otherwise get false 1000%+ edges from stale pre-match vs live odds
+BET TRACKER — DATA TO CAPTURE
+At time of tracking (when user clicks "Track")
+FieldDescriptionMatchTeams, league, kickoff timeSelectionWhat you're betting on (Arsenal Win, Over 2.5, etc.)MarketMatch Result, Over/Under, or HandicapExchangeWhich exchange has best priceYour oddsThe price you're "taking"Pinnacle true oddsThe no-vig benchmarkRaw edge %Before commissionNet edge %After commissionKelly stake %What full Kelly suggestsFractional Kelly stake30% of Kelly (actual recommended stake)Fractional Kelly £ amountBased on current bankrollTime trackedTimestampHours before kickoffCalculatedTiming bucket48hr+, 24-48hr, 12-24hr, or <12hrNotesOptional, few words only
+After the match (when user fetches results/CLV)
+FieldDescriptionResultWon / Lost / PushClosing odds (Pinnacle)Pinnacle's raw price at kickoffClosing true oddsPinnacle no-vig at closeCLV %(Your odds ÷ Closing true odds - 1) × 100P/L (flat £1)+£X if won, -£1 if lostP/L (Kelly)Based on fractional Kelly stake at time of bet
 
-5. **CLV is the real metric** - Individual wins/losses are noise; beating the close proves edge
+BANKROLL SIMULATION
 
-6. **Commission kills short-priced edges** - At 2% commission, need 2%+ raw edge to profit
+Starting bankroll: £100
+Track running total after each settled bet
+Calculate both flat stake and Kelly stake results
+Show bankroll growth/decline over time
 
-7. **PWA is better than native app** - Same functionality, no app store, easier to build
 
----
+SUMMARY STATS TO DISPLAY
 
-## USER PREFERENCES
+Total bets tracked
+Total settled (with results)
+Win rate %
+Average CLV %
+Beat-the-close rate % (how often CLV > 0)
+ROI (flat £1 staking)
+ROI (Kelly staking)
+Current simulated bankroll (flat)
+Current simulated bankroll (Kelly)
 
-- Wants this as a **hobby**, not a job
-- Prefers **data and tracking** - loves seeing patterns emerge
-- Doesn't want to use **soft bookies** (will get gubbed)
-- Happy to pay **$25/month** for the API
-- Wants it to work on **Android phone** (hence PWA plan)
-- Aesthetic preference: **dark theme**, clean cards, the UI Gemini built
 
----
+ANALYSIS DIMENSIONS
+After 3 months, slice data by:
 
-## BUGS FIXED ALONG THE WAY
+League — which leagues are most profitable?
+Odds band — 1.50-3.00 vs 3.00-6.00 vs 6.00-10.00
+Market — Match Result vs Over/Under vs Handicap
+Exchange — Smarkets vs Matchbook vs Betfair
+Timing — bets placed 48hr+ out vs day of match
+Edge band — 2-3% edge vs 5%+ edge
 
-1. **BTTS error** - Removed `btts` from markets param (not supported)
-2. **In-play false edges** - Added filter: `commence_time > now`
-3. **Missing dates** - Fixed to show "Sat 01 Feb, 15:00" not just "Sat 15:00"
-4. **API quota burn** - Bundled markets in single call per league
-5. **CLV 401 error** - Historical odds requires paid plan (not fixed, needs upgrade)
 
----
+KELLY CRITERION EXPLANATION
+Formula: Kelly % = Edge % ÷ (Odds - 1)
+Example:
 
-## FULL PRODUCT SPEC
+5% edge at odds 3.00
+Kelly = 5% ÷ 2.00 = 2.5% of bankroll
 
-A comprehensive spec document was created covering:
-- All exchanges and commission rates
-- All sports to include
-- Data structures (TypeScript interfaces)
-- UI/UX requirements
-- Analytics dashboard charts
-- PWA requirements
-- Success metrics
+Fractional Kelly (30%):
 
-The user has this as `PRODUCT_SPEC_v2.md`
+Reduces volatility
+Actual stake = Kelly suggestion × 0.30
+So 2.5% becomes 0.75% of bankroll
 
----
 
-## HOW TO CONTINUE
+WHAT'S NOT BEING BUILT (FOR NOW)
 
-1. **Get the codebase** - User can provide current code via GitHub or zip file
+BTTS market (not available in API)
+US sports (excluded from proof of concept)
+Outlier validator (user will eyeball when one exchange is off)
+Final score display (just won/lost is enough)
+Betfair back/lay midpoint calculation (would need direct Betfair API)
+"Change Key" button (not needed — key is set via environment variable)
 
-2. **Upgrade API** - User needs to upgrade to $25/month plan for CLV to work
 
-3. **Implement Phase 2** - Result fetching, CLV calculation, stake tracking
+FUTURE CONSIDERATIONS (POST PROOF OF CONCEPT)
 
-4. **Implement Phase 3** - Analytics dashboard with Recharts
+Add US sports with Circa as benchmark instead of Pinnacle
+Add horse racing (would need Betfair API, different project)
+Add BTTS if alternative data source found
+Implement outlier warnings for suspicious edges
+Consensus true odds (average Pinnacle + Betfair)
 
-5. **Implement Phase 4** - PWA setup
 
----
+TECHNICAL NOTES
+Environment Variables
 
-## USEFUL CONTEXT
+VITE_ODDS_API_KEY — stored in Vercel (production) and .env.local (local)
+.env.local is in .gitignore — never committed
 
-- User is building this with **Gemini** (Google AI) doing the coding
-- They're "**vibe coding**" - describing what they want, AI implements
-- Deployed on **Vercel** via **GitHub**
-- User is **not a developer** but understands concepts well
-- Based in **UK** (hence UK exchanges, GBP)
+API Endpoints Used
 
----
+/v4/sports/{sport}/odds — live odds (h2h, totals, spreads)
+/v4/sports/{sport}/scores — results (free)
+/v4/sports/{sport}/odds-history — historical/closing odds (paid only, needed for CLV)
 
-## SUMMARY
+Exchanges in API
 
-This is a value betting edge finder that compares exchange odds to Pinnacle's sharp line. Phase 1 (multi-exchange, multi-sport scanning) is complete. Next is Phase 2 (results tracking, CLV calculation - requires paid API), then Phase 3 (analytics dashboard with charts), then Phase 4 (PWA for mobile).
+smarkets — 2% commission
+betfair_ex_uk — 5% commission
+matchbook — 1.5% commission
+pinnacle — benchmark only (can't bet from UK)
 
-The methodology is sound - early 9-bet test showed +7.8% ROI. Main limitation is edges are mostly on outsiders (5.0+ odds) because favorite markets are too efficient.
 
-User wants to validate the system works via CLV tracking over 100+ bets before scaling up stakes.
+BUILD CHECKLIST
+
+ Upgrade to paid Odds API plan ($25/month)
+ Add spreads/handicap market to scanner
+ Add new European leagues (FA Cup, EFL Cup, League One, League Two, La Liga 2, Bundesliga 2, Serie B, Ligue 2, Primeira Liga, Eredivisie, Scottish Prem, Conference League)
+ Remove US sports from interface (NFL, NBA, MLB, NHL, UFC)
+ Remove "Change Key" button (not needed)
+ Add "hours before kickoff" calculation
+ Add timing bucket field (48hr+, 24-48hr, 12-24hr, <12hr)
+ Add notes field (short text)
+ Add flat £1 P/L column
+ Add Kelly P/L column
+ Add simulated bankroll tracker (starting £100)
+ Add summary stats dashboard
+ Improve error handling (distinguish quota exceeded vs invalid key)
+ Test CLV calculation with paid API
+ Verify quota tracker works correctly with paid plan (check it counts both odds and historical endpoints)
+
+
+Document created as reference for ongoing development with Gemini/Claude
