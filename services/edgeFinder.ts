@@ -184,8 +184,13 @@ export const calculateEdges = (matches: MatchResponse[]): BetEdge[] => {
 
         const bestOffer = offers[0];
 
-        // If best offer exists and meets criteria (Minimum 2% net edge)
-        if (bestOffer && bestOffer.netEdgePercent >= 2) {
+        // If best offer exists and meets criteria (Min 2% net edge + Odds range 1.5-10.0)
+        if (
+          bestOffer &&
+          bestOffer.netEdgePercent >= 2 &&
+          bestOffer.price >= 1.5 &&
+          bestOffer.price <= 10.0
+        ) {
           // Calculate raw edge for the best offer
           const rawEdge = (bestOffer.price / fairPrice - 1) * 100;
 

@@ -37,9 +37,6 @@ export const BetCard: React.FC<Props> = ({ bet, onTrack, isTracked }) => {
       minute: "2-digit",
     });
 
-  // Calculate Fractional Kelly (30% of Full Kelly)
-  const fractionalKelly = bet.kellyPercent * 0.3;
-
   return (
     <div
       className={`${bgGradient} border ${borderColor} rounded-xl p-5 shadow-lg hover:shadow-xl hover:border-slate-600 transition-all duration-200 relative overflow-hidden group flex flex-col`}
@@ -201,15 +198,6 @@ export const BetCard: React.FC<Props> = ({ bet, onTrack, isTracked }) => {
         )}
 
         <div className="flex items-center gap-3">
-          <div className="flex flex-col items-start min-w-[65px]">
-            <span className="text-[10px] text-slate-500 uppercase tracking-wide flex items-center gap-1">
-              Stake
-            </span>
-            <span className="text-base font-bold text-indigo-400">
-              {fractionalKelly.toFixed(1)}%
-            </span>
-          </div>
-
           {!isTracked && step === "initial" ? (
             <button
               onClick={() => setStep("exchange")}
