@@ -12,7 +12,6 @@ import {
   Trophy,
   Activity,
   LayoutGrid,
-  Sliders,
 } from "lucide-react";
 
 const STORAGE_KEY = "ods_api_key";
@@ -39,7 +38,6 @@ const App: React.FC = () => {
   );
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [view, setView] = useState<"scanner" | "tracker">("scanner");
-  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     const storedKey = localStorage.getItem(STORAGE_KEY);
@@ -266,31 +264,13 @@ const App: React.FC = () => {
                 </button>
               </div>
 
-              {/* Filters Toggle */}
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`text-sm flex items-center gap-1 transition-colors px-3 py-1.5 rounded-full border ${showFilters ? "bg-slate-800 text-white border-slate-600" : "text-slate-400 border-transparent hover:bg-slate-900"}`}
-                >
-                  <Sliders className="w-3 h-3" /> Filters
-                </button>
                 {lastUpdated && (
                   <span className="text-xs text-slate-500 ml-auto">
                     Updated: {lastUpdated.toLocaleTimeString()}
                   </span>
                 )}
               </div>
-
-              {/* Extended Filters */}
-              {showFilters && (
-                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <p className="text-xs text-slate-400">
-                    Minimum net edge is fixed at{" "}
-                    <span className="text-blue-400 font-bold">2.0%</span> per
-                    project brief.
-                  </p>
-                </div>
-              )}
             </div>
 
             {/* Main Content Area */}
