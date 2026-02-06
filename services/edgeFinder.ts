@@ -104,11 +104,13 @@ export const fetchOddsData = async (
 export const calculateEdges = (matches: MatchResponse[]): BetEdge[] => {
   const allBets: BetEdge[] = [];
 
-  // Filter out matches that have already started
+  // Filter out matches that have already started or are more than 72 hours away
   const now = new Date();
-  const upcomingMatches = matches.filter(
-    (m) => new Date(m.commence_time) > now,
-  );
+  const maxKickoff = new Date(now.getTime() + 72 * 60 * 60 * 1000);
+  const upcomingMatches = matches.filter((m) => {
+    const kickoff = new Date(m.commence_time);
+    return kickoff > now && kickoff <= maxKickoff;
+  });
 
   for (const match of upcomingMatches) {
     const pinnacle = match.bookmakers.find((b) => b.key === "pinnacle");

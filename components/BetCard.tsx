@@ -14,15 +14,9 @@ export const BetCard: React.FC<Props> = ({ bet, onTrack, isTracked }) => {
     (typeof bet.offers)[0] | null
   >(null);
   const [notes, setNotes] = useState("");
-  const isHighValue = bet.netEdgePercent >= 3;
+  const borderColor = "border-slate-800";
 
-  const borderColor = isHighValue
-    ? "border-emerald-500/30"
-    : "border-slate-800";
-
-  const bgGradient = isHighValue
-    ? "bg-gradient-to-br from-slate-900 to-emerald-950/20"
-    : "bg-slate-900";
+  const bgGradient = "bg-slate-900";
 
   // Format date: "Sat 01 Feb, 15:00"
   const formattedDate =
@@ -113,11 +107,6 @@ export const BetCard: React.FC<Props> = ({ bet, onTrack, isTracked }) => {
                       {offer.netEdgePercent > 0 ? "+" : ""}
                       {offer.netEdgePercent.toFixed(1)}%
                     </span>
-                    {isBest && (
-                      <span className="text-[9px] bg-emerald-900/30 text-emerald-500 px-1 rounded uppercase hidden sm:inline">
-                        Best
-                      </span>
-                    )}
                   </div>
                 </div>
               );
