@@ -19,6 +19,7 @@ import {
 interface Props {
   bets: TrackedBet[];
   apiKey: string;
+  bankroll: number;
   onUpdateBet: (bet: TrackedBet) => void;
   onDeleteBet: (id: string) => void;
 }
@@ -26,6 +27,7 @@ interface Props {
 export const BetTracker: React.FC<Props> = ({
   bets,
   apiKey,
+  bankroll,
   onUpdateBet,
   onDeleteBet,
 }) => {
@@ -119,11 +121,24 @@ export const BetTracker: React.FC<Props> = ({
       }
     }
 
+    let flatPL = 0;
+    let kellyPL = 0;
+
+    if (result === "won") {
+      flatPL = bet.exchangePrice - 1;
+      kellyPL = bet.kellyStake * (bet.exchangePrice - 1);
+    } else if (result === "lost") {
+      flatPL = -1;
+      kellyPL = -bet.kellyStake;
+    }
+
     onUpdateBet({
       ...bet,
       result,
       homeScore,
       awayScore,
+      flatPL,
+      kellyPL,
       status: "closed",
     });
   };
@@ -173,9 +188,10 @@ export const BetTracker: React.FC<Props> = ({
               <tr className="text-slate-400 border-b border-slate-700 text-xs uppercase tracking-wider">
                 <th className="p-4 font-medium">Event</th>
                 <th className="p-4 font-medium">Selection</th>
-                <th className="p-4 font-medium text-right">Timing</th>
+                <th className="p-4 font-medium text-right">Bucket</th>
                 <th className="p-4 font-medium text-right">My Odds</th>
-                <th className="p-4 font-medium text-right">Score</th>
+                <th className="p-4 font-medium text-right">Flat P/L</th>
+                <th className="p-4 font-medium text-right">Kelly P/L</th>
                 <th className="p-4 font-medium text-right">CLV %</th>
                 <th className="p-4 font-medium text-right">Result</th>
                 <th className="p-4 font-medium text-right">Action</th>
@@ -208,6 +224,11 @@ export const BetTracker: React.FC<Props> = ({
                           minute: "2-digit",
                         })}
                       </div>
+                      {bet.notes && (
+                        <div className="text-[10px] text-blue-400 mt-1 italic max-w-[150px] truncate">
+                          "{bet.notes}"
+                        </div>
+                      )}
                     </td>
                     <td className="p-4 text-slate-300">
                       <span className="bg-slate-700/50 px-2 py-1 rounded text-slate-200">
@@ -218,11 +239,11 @@ export const BetTracker: React.FC<Props> = ({
                       </div>
                     </td>
                     <td className="p-4 text-right">
-                      <div
-                        className="flex items-center justify-end gap-1 text-slate-400"
-                        title={new Date(bet.placedAt).toLocaleString()}
-                      >
-                        <Clock className="w-3 h-3" />
+                      <div className="text-xs font-medium text-slate-400 bg-slate-700/30 px-1.5 py-0.5 rounded inline-block">
+                        {bet.timingBucket}
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-1 flex items-center justify-end gap-1">
+                        <Clock className="w-2.5 h-2.5" />
                         {formatTimePlaced(bet)}
                       </div>
                     </td>
@@ -235,23 +256,24 @@ export const BetTracker: React.FC<Props> = ({
                       </div>
                     </td>
                     <td className="p-4 text-right">
-                      {bet.homeScore !== undefined ? (
-                        <div className="flex flex-col items-end">
-                          <span className="font-mono text-slate-200 font-bold text-base">
-                            {bet.homeScore} - {bet.awayScore}
-                          </span>
-                          <span className="text-[10px] text-slate-500 uppercase">
-                            Final
-                          </span>
+                      {bet.flatPL !== undefined ? (
+                        <div
+                          className={`font-mono font-bold ${bet.flatPL >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                        >
+                          {bet.flatPL > 0 ? "+" : ""}
+                          {bet.flatPL.toFixed(2)}
                         </div>
-                      ) : bet.closingFairPrice ? (
-                        <div className="flex flex-col items-end">
-                          <span className="font-mono text-slate-300 font-medium">
-                            {bet.closingFairPrice.toFixed(2)}
-                          </span>
-                          <span className="text-[10px] text-slate-500">
-                            True Odds
-                          </span>
+                      ) : (
+                        <span className="text-slate-600">-</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-right">
+                      {bet.kellyPL !== undefined ? (
+                        <div
+                          className={`font-mono font-bold ${bet.kellyPL >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                        >
+                          {bet.kellyPL > 0 ? "£+" : "£"}
+                          {bet.kellyPL.toFixed(2)}
                         </div>
                       ) : (
                         <span className="text-slate-600">-</span>
@@ -290,7 +312,11 @@ export const BetTracker: React.FC<Props> = ({
                           <MinusCircle className="w-4 h-4" /> PUSH
                         </div>
                       )}
-                      {!bet.result && <span className="text-slate-600">-</span>}
+                      {!bet.result && (
+                        <span className="text-slate-500 text-xs italic">
+                          Pending
+                        </span>
+                      )}
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">

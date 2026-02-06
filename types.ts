@@ -78,6 +78,14 @@ export interface TrackedBet extends BetEdge {
   homeScore?: number;
   awayScore?: number;
 
+  hoursBeforeKickoff: number;
+  timingBucket: "48hr+" | "24-48hr" | "12-24hr" | "<12hr";
+  notes?: string;
+  flatStake: number;
+  flatPL?: number;
+  kellyStake: number;
+  kellyPL?: number;
+
   // Legacy fields for migration
   smarketsPrice?: number;
 }

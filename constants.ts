@@ -16,11 +16,18 @@ export const LEAGUES: LeagueOption[] = [
   { key: "soccer_france_ligue_one", name: "Ligue 1" },
   { key: "soccer_uefa_champs_league", name: "Champions League" },
   { key: "soccer_uefa_europa_league", name: "Europa League" },
-  { key: "americanfootball_nfl", name: "NFL" },
-  { key: "basketball_nba", name: "NBA" },
-  { key: "baseball_mlb", name: "MLB" },
-  { key: "icehockey_nhl", name: "NHL" },
-  { key: "mma_mixed_martial_arts", name: "UFC/MMA" },
+  { key: "soccer_fa_cup", name: "FA Cup" },
+  { key: "soccer_england_efl_cup", name: "EFL Cup" },
+  { key: "soccer_england_league1", name: "League One" },
+  { key: "soccer_england_league2", name: "League Two" },
+  { key: "soccer_spain_segunda_division", name: "La Liga 2" },
+  { key: "soccer_germany_bundesliga2", name: "Bundesliga 2" },
+  { key: "soccer_italy_serie_b", name: "Serie B" },
+  { key: "soccer_france_ligue_two", name: "Ligue 2" },
+  { key: "soccer_portugal_primeira_liga", name: "Primeira Liga" },
+  { key: "soccer_netherlands_eredivisie", name: "Eredivisie" },
+  { key: "soccer_spl", name: "Scottish Premiership" },
+  { key: "soccer_uefa_europa_conference_league", name: "Conference League" },
 ];
 
 export const EXCHANGES = [
