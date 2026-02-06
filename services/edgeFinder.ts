@@ -101,10 +101,7 @@ export const fetchOddsData = async (
 /**
  * Step 2: Process local data to find edges
  */
-export const calculateEdges = (
-  matches: MatchResponse[],
-  minEdge: number = 0,
-): BetEdge[] => {
+export const calculateEdges = (matches: MatchResponse[]): BetEdge[] => {
   const allBets: BetEdge[] = [];
 
   // Filter out matches that have already started
@@ -187,35 +184,33 @@ export const calculateEdges = (
 
         const bestOffer = offers[0];
 
-        // If best offer exists and meets criteria
-        if (bestOffer && bestOffer.netEdgePercent > 0) {
+        // If best offer exists and meets criteria (Minimum 2% net edge)
+        if (bestOffer && bestOffer.netEdgePercent >= 2) {
           // Calculate raw edge for the best offer
           const rawEdge = (bestOffer.price / fairPrice - 1) * 100;
 
-          if (rawEdge >= minEdge) {
-            allBets.push({
-              id: `${match.id}-${pinnMarket.key}-${selection}`,
-              match: `${match.home_team} vs ${match.away_team}`,
-              homeTeam: match.home_team,
-              awayTeam: match.away_team,
-              sport: match.sport_title,
-              sportKey: match.sport_key,
-              kickoff: matchDate,
-              selection: selection,
-              market: marketName,
+          allBets.push({
+            id: `${match.id}-${pinnMarket.key}-${selection}`,
+            match: `${match.home_team} vs ${match.away_team}`,
+            homeTeam: match.home_team,
+            awayTeam: match.away_team,
+            sport: match.sport_title,
+            sportKey: match.sport_key,
+            kickoff: matchDate,
+            selection: selection,
+            market: marketName,
 
-              exchangeKey: bestOffer.exchangeKey,
-              exchangeName: bestOffer.exchangeName,
-              exchangePrice: bestOffer.price,
+            exchangeKey: bestOffer.exchangeKey,
+            exchangeName: bestOffer.exchangeName,
+            exchangePrice: bestOffer.price,
 
-              offers: offers, // Store all offers for display
+            offers: offers, // Store all offers for display
 
-              fairPrice: fairPrice,
-              edgePercent: rawEdge,
-              netEdgePercent: bestOffer.netEdgePercent,
-              kellyPercent: bestOffer.kellyPercent,
-            });
-          }
+            fairPrice: fairPrice,
+            edgePercent: rawEdge,
+            netEdgePercent: bestOffer.netEdgePercent,
+            kellyPercent: bestOffer.kellyPercent,
+          });
         }
       }
     }
@@ -231,13 +226,12 @@ export const calculateEdges = (
 export const scanForEdges = async (
   apiKey: string,
   selectedLeagues: string[],
-  minEdge: number = 0,
 ): Promise<{ bets: BetEdge[]; remainingRequests: number | null }> => {
   const { matches, remainingRequests } = await fetchOddsData(
     apiKey,
     selectedLeagues,
   );
-  const bets = calculateEdges(matches, minEdge);
+  const bets = calculateEdges(matches);
   return { bets, remainingRequests };
 };
 

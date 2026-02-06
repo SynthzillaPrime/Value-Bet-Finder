@@ -37,7 +37,6 @@ const App: React.FC = () => {
   const [selectedLeagues, setSelectedLeagues] = useState<string[]>(
     LEAGUES.map((l) => l.key),
   );
-  const [minEdgePct, setMinEdgePct] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [view, setView] = useState<"scanner" | "tracker">("scanner");
   const [showFilters, setShowFilters] = useState(false);
@@ -185,8 +184,8 @@ const App: React.FC = () => {
   // 2. Processing Data (Memoized to run when matches or filter changes)
   const bets = useMemo(() => {
     if (rawMatches.length === 0) return [];
-    return calculateEdges(rawMatches, minEdgePct);
-  }, [rawMatches, minEdgePct]);
+    return calculateEdges(rawMatches);
+  }, [rawMatches]);
 
   // Initial scan when key is ready
   useEffect(() => {
@@ -283,29 +282,11 @@ const App: React.FC = () => {
               {/* Extended Filters */}
               {showFilters && (
                 <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="flex flex-col gap-2 w-full max-w-xs">
-                    <label className="text-xs text-slate-300 font-medium flex justify-between">
-                      <span>Min Edge %</span>
-                      <span className="text-blue-400 font-bold">
-                        {minEdgePct}%
-                      </span>
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="10"
-                      step="0.5"
-                      value={minEdgePct}
-                      onChange={(e) =>
-                        setMinEdgePct(parseFloat(e.target.value))
-                      }
-                      className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                    />
-                    <span className="text-[10px] text-slate-500">
-                      Use this slider to filter results instantly without
-                      re-fetching data.
-                    </span>
-                  </div>
+                  <p className="text-xs text-slate-400">
+                    Minimum net edge is fixed at{" "}
+                    <span className="text-blue-400 font-bold">2.0%</span> per
+                    project brief.
+                  </p>
                 </div>
               )}
             </div>
@@ -325,9 +306,8 @@ const App: React.FC = () => {
                   No edges found
                 </h3>
                 <p className="text-slate-500 mt-2 max-w-md text-center">
-                  {minEdgePct > 0
-                    ? `Try lowering the minimum edge filter (currently >${minEdgePct}%).`
-                    : "The market is efficient right now. Try refreshing later."}
+                  The market is efficient right now (no edges {">"}= 2.0%). Try
+                  refreshing later.
                 </p>
               </div>
             )}
