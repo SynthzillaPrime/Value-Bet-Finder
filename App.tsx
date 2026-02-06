@@ -327,7 +327,6 @@ const App: React.FC = () => {
           <BetTracker
             bets={trackedBets}
             apiKey={apiKey}
-            bankroll={bankroll}
             onUpdateBet={handleUpdateTrackedBet}
             onDeleteBet={handleDeleteTrackedBet}
           />

@@ -6,7 +6,7 @@ import { Trash2, Trophy } from "lucide-react";
 interface Props {
   bets: TrackedBet[];
   apiKey: string;
-  bankroll: number;
+
   onUpdateBet: (bet: TrackedBet) => void;
   onDeleteBet: (id: string) => void;
 }
@@ -14,7 +14,7 @@ interface Props {
 export const BetTracker: React.FC<Props> = ({
   bets,
   apiKey,
-  bankroll,
+
   onUpdateBet,
   onDeleteBet,
 }) => {
