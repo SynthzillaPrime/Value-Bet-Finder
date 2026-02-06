@@ -280,10 +280,7 @@ const App: React.FC = () => {
             onClick={() => setView("tracker")}
             className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm font-semibold ${view === "tracker" ? "bg-slate-800 text-white shadow-sm ring-1 ring-slate-700" : "text-slate-400 hover:text-slate-200"}`}
           >
-            <Activity className="w-4 h-4" /> Recent Bets{" "}
-            <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full ml-1">
-              {trackedBets.length}
-            </span>
+            <Activity className="w-4 h-4" /> Recent Bets
           </button>
           <button
             onClick={() => setView("analysis")}
