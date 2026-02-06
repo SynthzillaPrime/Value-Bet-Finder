@@ -30,7 +30,6 @@ import {
   Trophy,
   Trash2,
   ChevronDown,
-  Wallet,
 } from "lucide-react";
 
 import { ExchangeBankroll, BankrollTransaction } from "../types";
@@ -41,7 +40,6 @@ interface Props {
   bankroll: number;
   exchangeBankrolls: ExchangeBankroll;
   transactions: BankrollTransaction[];
-  onAddTransaction: (t: BankrollTransaction) => void;
   onUpdateBet: (bet: TrackedBet) => void;
   onDeleteBet: (id: string) => void;
 }
@@ -62,23 +60,10 @@ export const AnalysisView: React.FC<Props> = ({
   bankroll,
   exchangeBankrolls,
   transactions,
-  onAddTransaction,
   onUpdateBet,
   onDeleteBet,
 }) => {
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [newTx, setNewTx] = useState<{
-    exchange: "smarkets" | "betfair" | "matchbook";
-    type: "deposit" | "withdrawal" | "adjustment";
-    amount: string;
-    note: string;
-  }>({
-    exchange: "smarkets",
-    type: "deposit",
-    amount: "",
-    note: "",
-  });
 
   const [selectedAnalysis, setSelectedAnalysis] =
     useState<AnalysisOption>("By Competition");
@@ -280,12 +265,6 @@ export const AnalysisView: React.FC<Props> = ({
         <h2 className="text-2xl font-bold text-white">Performance Analysis</h2>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowSettings(!showSettings)}
-            className={`flex items-center gap-2 px-3 py-1.5 border rounded-lg text-xs font-semibold transition-colors ${showSettings ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700"}`}
-          >
-            <Wallet className="w-3.5 h-3.5" /> Bankroll Settings
-          </button>
-          <button
             onClick={() => alert("Import CSV coming soon")}
             className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors"
           >
@@ -298,151 +277,6 @@ export const AnalysisView: React.FC<Props> = ({
             <Download className="w-3.5 h-3.5" /> Export
           </button>
         </div>
-
-        {showSettings && (
-          <div className="bg-slate-900/80 border border-slate-700 p-6 rounded-2xl animate-in slide-in-from-top-4 duration-300 space-y-8">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <Wallet className="w-4 h-4" /> Bankroll Management
-              </h3>
-              <div className="text-right">
-                <span className="text-[10px] uppercase font-bold text-slate-500 block">
-                  Total Balance
-                </span>
-                <span className="text-xl font-bold text-emerald-400">
-                  £{bankroll.toFixed(2)}
-                </span>
-              </div>
-            </div>
-
-            {/* Quick Balances */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {(["smarkets", "matchbook", "betfair"] as const).map((ex) => (
-                <div
-                  key={ex}
-                  className="bg-slate-800/50 p-3 rounded-lg border border-slate-700"
-                >
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
-                    {ex}
-                  </span>
-                  <span className="text-lg font-mono font-bold text-slate-200">
-                    £{exchangeBankrolls[ex].toFixed(2)}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* New Transaction Form */}
-            <div className="bg-slate-800/30 p-4 rounded-xl border border-slate-700/50">
-              <h4 className="text-xs font-bold text-slate-400 uppercase mb-4">
-                Add Transaction
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                <div className="space-y-1">
-                  <label className="text-[10px] text-slate-500 uppercase font-bold">
-                    Exchange
-                  </label>
-                  <select
-                    value={newTx.exchange}
-                    onChange={(e) =>
-                      setNewTx({ ...newTx, exchange: e.target.value as any })
-                    }
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
-                  >
-                    <option value="smarkets">Smarkets</option>
-                    <option value="matchbook">Matchbook</option>
-                    <option value="betfair">Betfair</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] text-slate-500 uppercase font-bold">
-                    Type
-                  </label>
-                  <select
-                    value={newTx.type}
-                    onChange={(e) =>
-                      setNewTx({ ...newTx, type: e.target.value as any })
-                    }
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
-                  >
-                    <option value="deposit">Deposit</option>
-                    <option value="withdrawal">Withdrawal</option>
-                    <option value="adjustment">Adjustment</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] text-slate-500 uppercase font-bold">
-                    Amount (£)
-                  </label>
-                  <input
-                    type="number"
-                    value={newTx.amount}
-                    placeholder="0.00"
-                    onChange={(e) =>
-                      setNewTx({ ...newTx, amount: e.target.value })
-                    }
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono"
-                  />
-                </div>
-                <button
-                  onClick={() => {
-                    const amount = parseFloat(newTx.amount);
-                    if (isNaN(amount) || amount === 0) return;
-                    onAddTransaction({
-                      id: `tx-${Date.now()}`,
-                      timestamp: Date.now(),
-                      exchange: newTx.exchange,
-                      type: newTx.type as any,
-                      amount:
-                        newTx.type === "withdrawal"
-                          ? -Math.abs(amount)
-                          : amount,
-                      note: newTx.note,
-                    });
-                    setNewTx({ ...newTx, amount: "", note: "" });
-                  }}
-                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg text-sm transition-colors"
-                >
-                  Apply
-                </button>
-              </div>
-            </div>
-
-            {/* Recent History */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold text-slate-400 uppercase">
-                Recent Transactions
-              </h4>
-              <div className="max-h-48 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
-                {[...transactions]
-                  .sort((a, b) => b.timestamp - a.timestamp)
-                  .slice(0, 10)
-                  .map((t) => (
-                    <div
-                      key={t.id}
-                      className="flex justify-between items-center text-xs py-2 border-b border-slate-800"
-                    >
-                      <div className="flex flex-col">
-                        <span className="font-bold text-slate-300 capitalize">
-                          {t.type.replace("_", " ")}
-                        </span>
-                        <span className="text-[10px] text-slate-500">
-                          {new Date(t.timestamp).toLocaleString()} •{" "}
-                          {t.exchange}
-                        </span>
-                      </div>
-                      <span
-                        className={`font-mono font-bold ${t.amount >= 0 ? "text-emerald-400" : "text-red-400"}`}
-                      >
-                        {t.amount >= 0 ? "+" : ""}£
-                        {Math.abs(t.amount).toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       <SummaryStats bets={bets} currentKellyBankroll={bankroll} />

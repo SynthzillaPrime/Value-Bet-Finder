@@ -4,6 +4,7 @@ import { BetCard } from "./components/BetCard";
 import { LeagueSelector } from "./components/LeagueSelector";
 import { BetTracker } from "./components/BetTracker";
 import { AnalysisView } from "./components/AnalysisView";
+import { BankrollView } from "./components/bankroll/BankrollView";
 import { fetchOddsData, calculateEdges } from "./services/edgeFinder";
 import {
   BetEdge,
@@ -21,6 +22,7 @@ import {
   Activity,
   Search,
   BarChart3,
+  Wallet,
 } from "lucide-react";
 
 const STORAGE_KEY = "ods_api_key";
@@ -63,9 +65,9 @@ const App: React.FC = () => {
     LEAGUES.map((l) => l.key),
   );
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const [view, setView] = useState<"scanner" | "tracker" | "analysis">(
-    "scanner",
-  );
+  const [view, setView] = useState<
+    "scanner" | "tracker" | "analysis" | "bankroll"
+  >("scanner");
 
   useEffect(() => {
     const storedKey = localStorage.getItem(STORAGE_KEY);
@@ -289,6 +291,12 @@ const App: React.FC = () => {
           >
             <BarChart3 className="w-4 h-4" /> Analysis
           </button>
+          <button
+            onClick={() => setView("bankroll")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm font-semibold ${view === "bankroll" ? "bg-slate-800 text-white shadow-sm ring-1 ring-slate-700" : "text-slate-400 hover:text-slate-200"}`}
+          >
+            <Wallet className="w-4 h-4" /> Bankroll
+          </button>
         </div>
 
         {view === "scanner" ? (
@@ -378,16 +386,21 @@ const App: React.FC = () => {
             onUpdateBet={handleUpdateTrackedBet}
             onDeleteBet={handleDeleteTrackedBet}
           />
-        ) : (
+        ) : view === "analysis" ? (
           <AnalysisView
             bets={trackedBets}
             apiKey={apiKey}
             bankroll={bankroll}
             exchangeBankrolls={exchangeBankrolls}
             transactions={transactions}
-            onAddTransaction={(t) => setTransactions((prev) => [...prev, t])}
             onUpdateBet={handleUpdateTrackedBet}
             onDeleteBet={handleDeleteTrackedBet}
+          />
+        ) : (
+          <BankrollView
+            transactions={transactions}
+            exchangeBankrolls={exchangeBankrolls}
+            onAddTransaction={(t) => setTransactions((prev) => [...prev, t])}
           />
         )}
 
