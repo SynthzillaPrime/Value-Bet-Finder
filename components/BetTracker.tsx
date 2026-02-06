@@ -5,6 +5,7 @@ import {
   fetchMatchResult,
 } from "../services/edgeFinder";
 import { AnalysisDashboard } from "./AnalysisDashboard";
+import { SummaryStats } from "./stats/SummaryStats";
 import {
   RefreshCw,
   Trash2,
@@ -189,6 +190,7 @@ export const BetTracker: React.FC<Props> = ({
   return (
     <div className="space-y-8">
       {/* 1. Analytics Section */}
+      <SummaryStats bets={bets} currentKellyBankroll={bankroll} />
       <AnalysisDashboard bets={bets} />
 
       {/* 2. Table Section */}
