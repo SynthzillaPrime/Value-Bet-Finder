@@ -49,8 +49,6 @@ export const SummaryStats: React.FC<Props> = ({
   const kellyROI =
     totalKellyStakes > 0 ? (totalKellyPL / totalKellyStakes) * 100 : 0;
 
-  const flatBankroll = 100 + totalFlatPL;
-
   const stats = [
     {
       label: "Total Bets",
@@ -79,7 +77,7 @@ export const SummaryStats: React.FC<Props> = ({
     {
       label: "Flat ROI",
       value: `${flatROI > 0 ? "+" : ""}${flatROI.toFixed(1)}%`,
-      subValue: `£${flatBankroll.toFixed(2)} Bank`,
+      subValue: `${totalFlatPL >= 0 ? "+" : ""}£${totalFlatPL.toFixed(2)} total P/L`,
       icon: <Percent className="w-4 h-4" />,
       color: flatROI >= 0 ? "text-blue-400" : "text-red-400",
       bgColor: "bg-slate-800",
@@ -87,7 +85,10 @@ export const SummaryStats: React.FC<Props> = ({
     {
       label: "Kelly ROI",
       value: `${kellyROI > 0 ? "+" : ""}${kellyROI.toFixed(1)}%`,
-      subValue: `£${currentKellyBankroll.toFixed(2)} Bank`,
+      subValue:
+        currentKellyBankroll === 0
+          ? "No bankroll"
+          : `£${currentKellyBankroll.toFixed(2)} Bank`,
       icon: <Wallet className="w-4 h-4" />,
       color: kellyROI >= 0 ? "text-indigo-400" : "text-red-400",
       bgColor: "bg-slate-800",
