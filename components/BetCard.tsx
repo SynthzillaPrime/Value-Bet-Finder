@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { BetEdge } from "../types";
-import { Clock, Scale, Wallet, Check, MessageSquare } from "lucide-react";
+import { Clock, Check, MessageSquare } from "lucide-react";
 
 interface Props {
   bet: BetEdge;

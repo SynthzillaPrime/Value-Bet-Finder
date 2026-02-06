@@ -1,14 +1,6 @@
 import React from "react";
 import { TrackedBet } from "../../types";
-import {
-  Trophy,
-  Target,
-  TrendingUp,
-  Clock,
-  Wallet,
-  Percent,
-  Activity,
-} from "lucide-react";
+import { Trophy, TrendingUp, Wallet, Percent, Activity } from "lucide-react";
 
 interface Props {
   bets: TrackedBet[];
@@ -32,7 +24,8 @@ export const SummaryStats: React.FC<Props> = ({
   // CLV Stats
   const avgClv =
     clvBets.length > 0
-      ? clvBets.reduce((acc, b) => acc + (b.clvPercent || 0), 0) / clvBets.length
+      ? clvBets.reduce((acc, b) => acc + (b.clvPercent || 0), 0) /
+        clvBets.length
       : 0;
 
   const beatCloseCount = clvBets.filter((b) => (b.clvPercent || 0) > 0).length;
@@ -45,8 +38,14 @@ export const SummaryStats: React.FC<Props> = ({
   const flatROI =
     totalFlatStakes > 0 ? (totalFlatPL / totalFlatStakes) * 100 : 0;
 
-  const totalKellyPL = settledBets.reduce((acc, b) => acc + (b.kellyPL || 0), 0);
-  const totalKellyStakes = settledBets.reduce((acc, b) => acc + b.kellyStake, 0);
+  const totalKellyPL = settledBets.reduce(
+    (acc, b) => acc + (b.kellyPL || 0),
+    0,
+  );
+  const totalKellyStakes = settledBets.reduce(
+    (acc, b) => acc + b.kellyStake,
+    0,
+  );
   const kellyROI =
     totalKellyStakes > 0 ? (totalKellyPL / totalKellyStakes) * 100 : 0;
 

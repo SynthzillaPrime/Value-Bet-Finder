@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { LEAGUES } from "../constants";
-import { ChevronDown, Check, Square, CheckSquare } from "lucide-react";
+import { ChevronDown, Square, CheckSquare } from "lucide-react";
 
 interface Props {
   selected: string[];
@@ -31,7 +31,6 @@ export const LeagueSelector: React.FC<Props> = ({
 
   const toggleLeague = (key: string) => {
     if (selected.includes(key)) {
-      if (selected.length === 1) return; // Prevent unselecting all
       onChange(selected.filter((k) => k !== key));
     } else {
       onChange([...selected, key]);
@@ -39,7 +38,7 @@ export const LeagueSelector: React.FC<Props> = ({
   };
 
   const selectAll = () => onChange(LEAGUES.map((l) => l.key));
-  const clearAll = () => onChange(["soccer_epl"]); // Keep EPL as default minimum
+  const clearAll = () => onChange([]);
 
   return (
     <div className="relative inline-block text-left" ref={dropdownRef}>
@@ -93,9 +92,6 @@ export const LeagueSelector: React.FC<Props> = ({
                     <Square className="w-4 h-4 text-slate-600" />
                   )}
                   <span className="truncate">{league.name}</span>
-                  {isSelected && (
-                    <Check className="w-3 h-3 ml-auto text-blue-500" />
-                  )}
                 </button>
               );
             })}

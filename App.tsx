@@ -254,7 +254,9 @@ const App: React.FC = () => {
                 />
                 <button
                   onClick={runScan}
-                  disabled={status === "loading"}
+                  disabled={
+                    status === "loading" || selectedLeagues.length === 0
+                  }
                   className="px-6 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold rounded-lg shadow-lg shadow-blue-900/20 transition-all flex items-center gap-2 w-full sm:w-auto justify-center"
                 >
                   <RefreshCw
