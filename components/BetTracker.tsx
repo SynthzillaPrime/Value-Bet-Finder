@@ -15,6 +15,7 @@ import {
   Trophy,
   XCircle,
   MinusCircle,
+  Download,
 } from "lucide-react";
 
 interface Props {
@@ -162,6 +163,69 @@ export const BetTracker: React.FC<Props> = ({
     });
   };
 
+  const exportToCSV = () => {
+    const headers = [
+      "Match",
+      "League",
+      "Selection",
+      "Market",
+      "Exchange",
+      "Your Odds",
+      "Pinnacle True Odds",
+      "Net Edge %",
+      "Timing Bucket",
+      "Notes",
+      "Result",
+      "Closing True Odds",
+      "CLV %",
+      "Flat Stake",
+      "Flat P/L",
+      "Kelly Stake",
+      "Kelly P/L",
+      "Kickoff",
+      "Tracked At",
+    ];
+
+    const rows = bets.map((bet) => [
+      `"${bet.homeTeam} vs ${bet.awayTeam}"`,
+      `"${bet.sport}"`,
+      `"${bet.selection}"`,
+      `"${bet.market}"`,
+      `"${bet.exchangeName}"`,
+      bet.exchangePrice,
+      bet.fairPrice,
+      bet.netEdgePercent,
+      bet.timingBucket,
+      `"${bet.notes || ""}"`,
+      bet.result || "open",
+      bet.closingFairPrice || "",
+      bet.clvPercent || "",
+      bet.flatStake,
+      bet.flatPL !== undefined ? bet.flatPL : "",
+      bet.kellyStake,
+      bet.kellyPL !== undefined ? bet.kellyPL : "",
+      `"${new Date(bet.kickoff).toLocaleString()}"`,
+      `"${new Date(bet.placedAt).toLocaleString()}"`,
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const today = new Date().toISOString().split("T")[0];
+
+    link.setAttribute("href", url);
+    link.setAttribute("download", `value-bets-export-${today}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const sortedBets = [...bets].sort(
     (a, b) => b.kickoff.getTime() - a.kickoff.getTime(),
   );
@@ -195,12 +259,20 @@ export const BetTracker: React.FC<Props> = ({
 
       {/* 2. Table Section */}
       <div>
-        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-          Bet History
-          <span className="text-xs font-normal text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">
-            {bets.length}
-          </span>
-        </h3>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            Bet History
+            <span className="text-xs font-normal text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">
+              {bets.length}
+            </span>
+          </h3>
+          <button
+            onClick={exportToCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-sm text-slate-300 transition-colors"
+          >
+            <Download className="w-4 h-4" /> Export to CSV
+          </button>
+        </div>
 
         <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50">
           <table className="w-full text-left border-collapse">
