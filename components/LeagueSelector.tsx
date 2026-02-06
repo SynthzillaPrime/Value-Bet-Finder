@@ -70,7 +70,7 @@ export const LeagueSelector: React.FC<Props> = ({
               onClick={clearAll}
               className="flex-1 px-2 py-1 text-[10px] uppercase font-bold text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors"
             >
-              Clear
+              Clear All
             </button>
           </div>
           <div className="max-h-[300px] overflow-y-auto p-1 custom-scrollbar">

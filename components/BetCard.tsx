@@ -9,7 +9,10 @@ interface Props {
 }
 
 export const BetCard: React.FC<Props> = ({ bet, onTrack, isTracked }) => {
-  const [showNotes, setShowNotes] = useState(false);
+  const [step, setStep] = useState<"initial" | "exchange" | "notes">("initial");
+  const [selectedOffer, setSelectedOffer] = useState<
+    (typeof bet.offers)[0] | null
+  >(null);
   const [notes, setNotes] = useState("");
   const isHighValue = bet.netEdgePercent >= 3;
 
@@ -145,68 +148,117 @@ export const BetCard: React.FC<Props> = ({ bet, onTrack, isTracked }) => {
         </div>
       </div>
 
-      {/* Notes Input (Conditional) */}
-      {showNotes && !isTracked && (
-        <div className="mb-4 animate-in fade-in slide-in-from-top-2 duration-200 px-1">
-          <div className="relative">
-            <MessageSquare className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Add a note (optional)..."
-              maxLength={50}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 pl-9 pr-3 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-slate-600"
-              autoFocus
-            />
-          </div>
-        </div>
-      )}
-
       {/* Footer Action */}
-      <div className="mt-auto flex items-center gap-3">
-        <div className="flex flex-col items-start min-w-[65px]">
-          <span className="text-[10px] text-slate-500 uppercase tracking-wide flex items-center gap-1">
-            Stake
-          </span>
-          <span className="text-base font-bold text-indigo-400">
-            {fractionalKelly.toFixed(1)}%
-          </span>
-        </div>
-
-        {!isTracked && !showNotes ? (
-          <button
-            onClick={() => setShowNotes(true)}
-            className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all"
-          >
-            Track Best
-          </button>
-        ) : !isTracked && showNotes ? (
-          <div className="flex-1 flex gap-2">
-            <button
-              onClick={() => {
-                setShowNotes(false);
-                setNotes("");
-              }}
-              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-semibold transition-all"
-            >
-              Back
-            </button>
-            <button
-              onClick={() => {
-                onTrack(bet, notes);
-                setShowNotes(false);
-              }}
-              className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold shadow-lg shadow-emerald-900/20 active:scale-[0.98] transition-all"
-            >
-              Confirm
-            </button>
-          </div>
-        ) : (
-          <div className="flex-1 py-2 bg-slate-800 text-slate-500 rounded-lg text-sm font-semibold border border-slate-700 text-center">
-            Tracked
+      <div className="mt-auto space-y-4">
+        {step === "exchange" && !isTracked && (
+          <div className="bg-slate-950 border border-slate-700 rounded-lg overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="px-3 py-2 bg-slate-800/50 border-b border-slate-700 text-[10px] uppercase font-bold text-slate-400">
+              Select Exchange
+            </div>
+            <div className="p-1 flex flex-col gap-1">
+              {(bet.offers || []).map((offer) => (
+                <button
+                  key={offer.exchangeKey}
+                  onClick={() => {
+                    setSelectedOffer(offer);
+                    setStep("notes");
+                  }}
+                  className="w-full flex justify-between items-center px-3 py-2 rounded hover:bg-slate-800 transition-colors group/item"
+                >
+                  <span className="text-xs text-slate-300 group-hover/item:text-white">
+                    {offer.exchangeName}
+                  </span>
+                  <span className="text-sm font-mono font-bold text-blue-400">
+                    {offer.price.toFixed(2)}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
+
+        {step === "notes" && !isTracked && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-200 space-y-3">
+            <div className="px-1 flex justify-between items-center">
+              <span className="text-[10px] uppercase font-bold text-slate-500">
+                Tracking: {selectedOffer?.exchangeName} @{" "}
+                {selectedOffer?.price.toFixed(2)}
+              </span>
+            </div>
+            <div className="relative px-1">
+              <MessageSquare className="absolute left-3.5 top-2.5 w-4 h-4 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Add a note (optional)..."
+                maxLength={50}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 pl-9 pr-3 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-slate-600"
+                autoFocus
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col items-start min-w-[65px]">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wide flex items-center gap-1">
+              Stake
+            </span>
+            <span className="text-base font-bold text-indigo-400">
+              {fractionalKelly.toFixed(1)}%
+            </span>
+          </div>
+
+          {!isTracked && step === "initial" ? (
+            <button
+              onClick={() => setStep("exchange")}
+              className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all"
+            >
+              Track Bet
+            </button>
+          ) : !isTracked && step !== "initial" ? (
+            <div className="flex-1 flex gap-2">
+              <button
+                onClick={() => {
+                  if (step === "notes") {
+                    setStep("exchange");
+                  } else {
+                    setStep("initial");
+                  }
+                }}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-semibold transition-all"
+              >
+                Back
+              </button>
+              {step === "notes" && (
+                <button
+                  onClick={() => {
+                    if (selectedOffer) {
+                      const modifiedBet = {
+                        ...bet,
+                        exchangeKey: selectedOffer.exchangeKey,
+                        exchangeName: selectedOffer.exchangeName,
+                        exchangePrice: selectedOffer.price,
+                        netEdgePercent: selectedOffer.netEdgePercent,
+                        kellyPercent: selectedOffer.kellyPercent,
+                      };
+                      onTrack(modifiedBet, notes);
+                    }
+                    setStep("initial");
+                  }}
+                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold shadow-lg shadow-emerald-900/20 active:scale-[0.98] transition-all"
+                >
+                  Confirm
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 py-2 bg-slate-800 text-slate-500 rounded-lg text-sm font-semibold border border-slate-700 text-center">
+              Tracked
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
