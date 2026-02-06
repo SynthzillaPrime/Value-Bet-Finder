@@ -3,6 +3,7 @@ import { ApiKeyInput } from "./components/ApiKeyInput";
 import { BetCard } from "./components/BetCard";
 import { LeagueSelector } from "./components/LeagueSelector";
 import { BetTracker } from "./components/BetTracker";
+import { AnalysisView } from "./components/AnalysisView";
 import { fetchOddsData, calculateEdges } from "./services/edgeFinder";
 import { BetEdge, FetchStatus, TrackedBet, MatchResponse } from "./types";
 import { LEAGUES, HARDCODED_API_KEY } from "./constants";
@@ -12,6 +13,7 @@ import {
   Trophy,
   Activity,
   Search,
+  BarChart3,
 } from "lucide-react";
 
 const STORAGE_KEY = "ods_api_key";
@@ -37,7 +39,9 @@ const App: React.FC = () => {
     LEAGUES.map((l) => l.key),
   );
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const [view, setView] = useState<"scanner" | "tracker">("scanner");
+  const [view, setView] = useState<"scanner" | "tracker" | "analysis">(
+    "scanner",
+  );
 
   useEffect(() => {
     const storedKey = localStorage.getItem(STORAGE_KEY);
@@ -185,13 +189,6 @@ const App: React.FC = () => {
     return calculateEdges(rawMatches);
   }, [rawMatches]);
 
-  // Initial scan when key is ready
-  useEffect(() => {
-    if (status === "idle" && apiKey) {
-      runScan();
-    }
-  }, [status, apiKey, runScan]);
-
   // View: API Key Input (Initial or Changing)
   if (!apiKey || isChangingKey) {
     return (
@@ -233,10 +230,16 @@ const App: React.FC = () => {
             onClick={() => setView("tracker")}
             className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm font-semibold ${view === "tracker" ? "bg-slate-800 text-white shadow-sm ring-1 ring-slate-700" : "text-slate-400 hover:text-slate-200"}`}
           >
-            <Activity className="w-4 h-4" /> My Bets{" "}
+            <Activity className="w-4 h-4" /> Recent Bets{" "}
             <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full ml-1">
               {trackedBets.length}
             </span>
+          </button>
+          <button
+            onClick={() => setView("analysis")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm font-semibold ${view === "analysis" ? "bg-slate-800 text-white shadow-sm ring-1 ring-slate-700" : "text-slate-400 hover:text-slate-200"}`}
+          >
+            <BarChart3 className="w-4 h-4" /> Analysis
           </button>
         </div>
 
@@ -260,7 +263,7 @@ const App: React.FC = () => {
                   <RefreshCw
                     className={`w-4 h-4 ${status === "loading" ? "animate-spin" : ""}`}
                   />
-                  {status === "loading" ? "Scanning..." : "Refresh Odds"}
+                  {status === "loading" ? "Scanning..." : "Fetch Odds"}
                 </button>
               </div>
 
@@ -278,6 +281,19 @@ const App: React.FC = () => {
               <div className="bg-red-500/10 border border-red-500/50 text-red-200 p-4 rounded-xl flex items-center gap-3 mb-6">
                 <AlertTriangle className="w-5 h-5 text-red-500" />
                 {errorMessage}
+              </div>
+            )}
+
+            {status === "idle" && (
+              <div className="flex flex-col items-center justify-center py-20 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
+                <div className="text-5xl mb-4">🔍</div>
+                <h3 className="text-xl font-semibold text-slate-300">
+                  No odds loaded
+                </h3>
+                <p className="text-slate-500 mt-2 max-w-md text-center">
+                  Select your competitions and click "Fetch Odds" to start
+                  looking for value.
+                </p>
               </div>
             )}
 
@@ -307,8 +323,16 @@ const App: React.FC = () => {
               </div>
             )}
           </>
-        ) : (
+        ) : view === "tracker" ? (
           <BetTracker
+            bets={trackedBets}
+            apiKey={apiKey}
+            bankroll={bankroll}
+            onUpdateBet={handleUpdateTrackedBet}
+            onDeleteBet={handleDeleteTrackedBet}
+          />
+        ) : (
+          <AnalysisView
             bets={trackedBets}
             apiKey={apiKey}
             bankroll={bankroll}
