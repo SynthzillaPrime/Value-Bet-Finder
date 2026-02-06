@@ -120,6 +120,24 @@ export const BetTracker: React.FC<Props> = ({
         else result = "push";
       }
     }
+    // Logic for Handicap (spreads)
+    else if (bet.market === "Handicap") {
+      const parts = bet.selection.split(" ");
+      const point = parseFloat(parts[parts.length - 1]);
+      const team = parts.slice(0, -1).join(" ");
+
+      if (team === bet.homeTeam) {
+        const adjustedScore = homeScore + point;
+        if (adjustedScore > awayScore) result = "won";
+        else if (adjustedScore < awayScore) result = "lost";
+        else result = "push";
+      } else if (team === bet.awayTeam) {
+        const adjustedScore = awayScore + point;
+        if (adjustedScore > homeScore) result = "won";
+        else if (adjustedScore < homeScore) result = "lost";
+        else result = "push";
+      }
+    }
 
     let flatPL = 0;
     let kellyPL = 0;

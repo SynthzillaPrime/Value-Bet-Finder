@@ -1,4 +1,4 @@
-import { BOOKMAKERS, EXCHANGES } from "../constants";
+import { BOOKMAKERS, EXCHANGES, MARKETS } from "../constants";
 import {
   MatchResponse,
   BetEdge,
@@ -46,7 +46,7 @@ const fetchLeagueOdds = async (
   leagueKey: string,
 ): Promise<FetchResult> => {
   // h2h = 1X2, totals = Over/Under (btts not supported by this endpoint)
-  const url = `https://api.the-odds-api.com/v4/sports/${leagueKey}/odds?apiKey=${apiKey}&regions=uk,eu,us&markets=h2h,totals&oddsFormat=decimal&bookmakers=${BOOKMAKERS}`;
+  const url = `https://api.the-odds-api.com/v4/sports/${leagueKey}/odds?apiKey=${apiKey}&regions=uk,eu,us&markets=${MARKETS}&oddsFormat=decimal&bookmakers=${BOOKMAKERS}`;
 
   try {
     const response = await fetch(url);
@@ -123,11 +123,15 @@ export const calculateEdges = (
       let marketName = pinnMarket.key;
       if (pinnMarket.key === "h2h") marketName = "Match Result";
       else if (pinnMarket.key === "totals") marketName = "Over/Under";
+      else if (pinnMarket.key === "spreads") marketName = "Handicap";
 
       // Iterate through each selection (outcome) in the Pinnacle market
       for (const outcome of pinnMarket.outcomes) {
-        const selection = outcome.name;
-        const fairPrice = fairPrices[selection];
+        const selection =
+          outcome.point !== undefined
+            ? `${outcome.name} ${outcome.point > 0 ? "+" : ""}${outcome.point}`
+            : outcome.name;
+        const fairPrice = fairPrices[outcome.name];
 
         if (!fairPrice) continue;
 
@@ -145,7 +149,9 @@ export const calculateEdges = (
           );
           if (!exMarket) continue;
 
-          const exOutcome = exMarket.outcomes.find((o) => o.name === selection);
+          const exOutcome = exMarket.outcomes.find(
+            (o) => o.name === outcome.name && o.point === outcome.point,
+          );
           if (!exOutcome) continue;
 
           // Calculate Net Edge considering commission
@@ -245,7 +251,7 @@ export const fetchClosingLineForBet = async (
   // ISO string is required for the date param
   const dateStr = bet.kickoff.toISOString().split(".")[0] + "Z";
 
-  const url = `https://api.the-odds-api.com/v4/sports/${bet.sportKey}/odds-history?apiKey=${apiKey}&regions=eu,uk&markets=h2h,totals&date=${dateStr}&bookmakers=pinnacle`;
+  const url = `https://api.the-odds-api.com/v4/sports/${bet.sportKey}/odds-history?apiKey=${apiKey}&regions=eu,uk&markets=${MARKETS}&date=${dateStr}&bookmakers=pinnacle`;
 
   try {
     const response = await fetch(url);
@@ -269,12 +275,19 @@ export const fetchClosingLineForBet = async (
     // Map market name back to key
     let marketKey = "h2h";
     if (bet.market === "Over/Under") marketKey = "totals";
+    else if (bet.market === "Handicap") marketKey = "spreads";
 
     const market = pinnacle.markets.find((m) => m.key === marketKey);
 
     if (!market) return null;
 
-    const outcome = market.outcomes.find((o) => o.name === bet.selection);
+    const outcome = market.outcomes.find((o) => {
+      const selection =
+        o.point !== undefined
+          ? `${o.name} ${o.point > 0 ? "+" : ""}${o.point}`
+          : o.name;
+      return selection === bet.selection;
+    });
     if (!outcome) return null;
 
     // Calculate fair prices for the whole market at close
