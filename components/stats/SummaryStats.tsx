@@ -70,7 +70,7 @@ export const SummaryStats: React.FC<Props> = ({
     },
     {
       label: "Avg CLV",
-      value: `${avgClv > 0 ? "+" : ""}${avgClv.toFixed(2)}%`,
+      value: `${avgClv > 0 ? "+" : ""}${avgClv.toFixed(1)}%`,
       subValue: `${beatCloseRate.toFixed(1)}% Beat Close`,
       icon: <TrendingUp className="w-4 h-4" />,
       color: avgClv >= 0 ? "text-emerald-400" : "text-red-400",
