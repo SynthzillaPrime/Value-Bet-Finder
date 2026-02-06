@@ -11,7 +11,7 @@ import {
   AlertTriangle,
   Trophy,
   Activity,
-  Radar,
+  Search,
 } from "lucide-react";
 
 const STORAGE_KEY = "ods_api_key";
@@ -227,7 +227,7 @@ const App: React.FC = () => {
             onClick={() => setView("scanner")}
             className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm font-semibold ${view === "scanner" ? "bg-slate-800 text-white shadow-sm ring-1 ring-slate-700" : "text-slate-400 hover:text-slate-200"}`}
           >
-            <Radar className="w-4 h-4" /> Bet Finder
+            <Search className="w-4 h-4" /> Bet Finder
           </button>
           <button
             onClick={() => setView("tracker")}
