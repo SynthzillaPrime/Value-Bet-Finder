@@ -5,7 +5,13 @@ import { LeagueSelector } from "./components/LeagueSelector";
 import { BetTracker } from "./components/BetTracker";
 import { AnalysisView } from "./components/AnalysisView";
 import { fetchOddsData, calculateEdges } from "./services/edgeFinder";
-import { BetEdge, FetchStatus, TrackedBet, MatchResponse } from "./types";
+import {
+  BetEdge,
+  FetchStatus,
+  TrackedBet,
+  MatchResponse,
+  ExchangeBankroll,
+} from "./types";
 import { LEAGUES, HARDCODED_API_KEY } from "./constants";
 import {
   RefreshCw,
@@ -18,7 +24,8 @@ import {
 
 const STORAGE_KEY = "ods_api_key";
 const BETS_STORAGE_KEY = "tracked_bets";
-const BANKROLL_STORAGE_KEY = "simulated_bankroll";
+
+const EXCHANGE_BANKROLL_STORAGE_KEY = "exchange_bankrolls";
 
 const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -28,7 +35,20 @@ const App: React.FC = () => {
   // Data State
   const [rawMatches, setRawMatches] = useState<MatchResponse[]>([]);
   const [trackedBets, setTrackedBets] = useState<TrackedBet[]>([]);
-  const [bankroll, setBankroll] = useState<number>(100);
+  const [exchangeBankrolls, setExchangeBankrolls] = useState<ExchangeBankroll>({
+    smarkets: 50,
+    matchbook: 30,
+    betfair: 20,
+  });
+
+  const bankroll = useMemo(() => {
+    return (
+      exchangeBankrolls.smarkets +
+      exchangeBankrolls.matchbook +
+      exchangeBankrolls.betfair
+    );
+  }, [exchangeBankrolls]);
+
   const [remainingRequests, setRemainingRequests] = useState<number | null>(
     null,
   );
@@ -46,10 +66,12 @@ const App: React.FC = () => {
   useEffect(() => {
     const storedKey = localStorage.getItem(STORAGE_KEY);
     const storedBets = localStorage.getItem(BETS_STORAGE_KEY);
-    const storedBankroll = localStorage.getItem(BANKROLL_STORAGE_KEY);
+    const storedExchangeBankrolls = localStorage.getItem(
+      EXCHANGE_BANKROLL_STORAGE_KEY,
+    );
 
-    if (storedBankroll) {
-      setBankroll(parseFloat(storedBankroll));
+    if (storedExchangeBankrolls) {
+      setExchangeBankrolls(JSON.parse(storedExchangeBankrolls));
     }
 
     // Priority: 1. LocalStorage, 2. Hardcoded Key
@@ -85,8 +107,11 @@ const App: React.FC = () => {
   }, [trackedBets]);
 
   useEffect(() => {
-    localStorage.setItem(BANKROLL_STORAGE_KEY, bankroll.toString());
-  }, [bankroll]);
+    localStorage.setItem(
+      EXCHANGE_BANKROLL_STORAGE_KEY,
+      JSON.stringify(exchangeBankrolls),
+    );
+  }, [exchangeBankrolls]);
 
   const handleSaveKey = (key: string) => {
     localStorage.setItem(STORAGE_KEY, key);
@@ -133,7 +158,17 @@ const App: React.FC = () => {
       updatedBet.result &&
       updatedBet.kellyPL !== undefined
     ) {
-      setBankroll((prev) => prev + (updatedBet.kellyPL || 0));
+      const pl = updatedBet.kellyPL || 0;
+
+      // Map exchange keys to bankroll keys
+      let bankrollKey: keyof ExchangeBankroll = "smarkets";
+      if (updatedBet.exchangeKey === "matchbook") bankrollKey = "matchbook";
+      if (updatedBet.exchangeKey === "betfair_ex_uk") bankrollKey = "betfair";
+
+      setExchangeBankrolls((prev) => ({
+        ...prev,
+        [bankrollKey]: prev[bankrollKey] + pl,
+      }));
     }
     setTrackedBets((prev) =>
       prev.map((b) => (b.id === updatedBet.id ? updatedBet : b)),
@@ -335,6 +370,8 @@ const App: React.FC = () => {
             bets={trackedBets}
             apiKey={apiKey}
             bankroll={bankroll}
+            exchangeBankrolls={exchangeBankrolls}
+            onUpdateExchangeBankrolls={setExchangeBankrolls}
             onUpdateBet={handleUpdateTrackedBet}
             onDeleteBet={handleDeleteTrackedBet}
           />

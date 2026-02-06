@@ -90,6 +90,12 @@ export interface TrackedBet extends BetEdge {
   smarketsPrice?: number;
 }
 
+export interface ExchangeBankroll {
+  smarkets: number;
+  betfair: number;
+  matchbook: number;
+}
+
 export interface LeagueOption {
   key: string;
   name: string;

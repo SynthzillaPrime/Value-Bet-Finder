@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { TrackedBet } from "../types";
 import { fetchMatchResult } from "../services/edgeFinder";
+import { EXCHANGES } from "../constants";
 import { Trash2, Trophy } from "lucide-react";
 
 interface Props {
@@ -96,12 +97,15 @@ export const BetTracker: React.FC<Props> = ({
       }
     }
 
+    const exchange = EXCHANGES.find((ex) => ex.key === bet.exchangeKey);
+    const commission = exchange ? exchange.commission : 0;
+
     let flatPL = 0;
     let kellyPL = 0;
 
     if (result === "won") {
-      flatPL = bet.exchangePrice - 1;
-      kellyPL = bet.kellyStake * (bet.exchangePrice - 1);
+      flatPL = (bet.exchangePrice - 1) * (1 - commission);
+      kellyPL = bet.kellyStake * (bet.exchangePrice - 1) * (1 - commission);
     } else if (result === "lost") {
       flatPL = -1;
       kellyPL = -bet.kellyStake;

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { TrackedBet } from "../types";
 import { SummaryStats } from "./stats/SummaryStats";
 import { AnalysisDashboard } from "./AnalysisDashboard";
+import { EXCHANGES } from "../constants";
 import {
   fetchClosingLineForBet,
   fetchMatchResult,
@@ -29,12 +30,17 @@ import {
   Trophy,
   Trash2,
   ChevronDown,
+  Wallet,
 } from "lucide-react";
+
+import { ExchangeBankroll } from "../types";
 
 interface Props {
   bets: TrackedBet[];
   apiKey: string;
   bankroll: number;
+  exchangeBankrolls: ExchangeBankroll;
+  onUpdateExchangeBankrolls: (b: ExchangeBankroll) => void;
   onUpdateBet: (bet: TrackedBet) => void;
   onDeleteBet: (id: string) => void;
 }
@@ -46,16 +52,20 @@ type AnalysisOption =
   | "By Competition"
   | "By Odds Band"
   | "By Timing"
-  | "By Market";
+  | "By Market"
+  | "By Exchange";
 
 export const AnalysisView: React.FC<Props> = ({
   bets,
   apiKey,
   bankroll,
+  exchangeBankrolls,
+  onUpdateExchangeBankrolls,
   onUpdateBet,
   onDeleteBet,
 }) => {
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const [selectedAnalysis, setSelectedAnalysis] =
     useState<AnalysisOption>("By Competition");
 
@@ -139,14 +149,19 @@ export const AnalysisView: React.FC<Props> = ({
       }
     }
 
-    let flatPL =
-      result === "won" ? bet.exchangePrice - 1 : result === "lost" ? -1 : 0;
-    let kellyPL =
-      result === "won"
-        ? bet.kellyStake * (bet.exchangePrice - 1)
-        : result === "lost"
-          ? -bet.kellyStake
-          : 0;
+    const exchange = EXCHANGES.find((ex) => ex.key === bet.exchangeKey);
+    const commission = exchange ? exchange.commission : 0;
+
+    let flatPL = 0;
+    let kellyPL = 0;
+
+    if (result === "won") {
+      flatPL = (bet.exchangePrice - 1) * (1 - commission);
+      kellyPL = bet.kellyStake * (bet.exchangePrice - 1) * (1 - commission);
+    } else if (result === "lost") {
+      flatPL = -1;
+      kellyPL = -bet.kellyStake;
+    }
 
     onUpdateBet({
       ...bet,
@@ -239,6 +254,7 @@ export const AnalysisView: React.FC<Props> = ({
     "By Odds Band",
     "By Timing",
     "By Market",
+    "By Exchange",
   ];
 
   return (
@@ -246,6 +262,12 @@ export const AnalysisView: React.FC<Props> = ({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-bold text-white">Performance Analysis</h2>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className={`flex items-center gap-2 px-3 py-1.5 border rounded-lg text-xs font-semibold transition-colors ${showSettings ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700"}`}
+          >
+            <Wallet className="w-3.5 h-3.5" /> Bankroll Settings
+          </button>
           <button
             onClick={() => alert("Import CSV coming soon")}
             className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors"
@@ -259,6 +281,53 @@ export const AnalysisView: React.FC<Props> = ({
             <Download className="w-3.5 h-3.5" /> Export
           </button>
         </div>
+
+        {showSettings && (
+          <div className="bg-slate-900/80 border border-slate-700 p-6 rounded-2xl animate-in slide-in-from-top-4 duration-300">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <Wallet className="w-4 h-4" /> Exchange Bankrolls
+              </h3>
+              <div className="text-right">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                  Total Balance
+                </span>
+                <span className="text-xl font-bold text-emerald-400">
+                  £{bankroll.toFixed(2)}
+                </span>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {(["smarkets", "matchbook", "betfair"] as const).map((ex) => (
+                <div key={ex} className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-tight">
+                    {ex === "betfair"
+                      ? "Betfair (5%)"
+                      : ex === "smarkets"
+                        ? "Smarkets (2%)"
+                        : "Matchbook (1.5%)"}{" "}
+                    (£)
+                  </label>
+                  <input
+                    type="number"
+                    value={exchangeBankrolls[ex]}
+                    onChange={(e) =>
+                      onUpdateExchangeBankrolls({
+                        ...exchangeBankrolls,
+                        [ex]: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-slate-600 mt-4 italic">
+              Note: Total bankroll is the sum of these balances. Editing these
+              will update your simulated "Kelly Bankroll" starting point.
+            </p>
+          </div>
+        )}
       </div>
 
       <SummaryStats bets={bets} currentKellyBankroll={bankroll} />
@@ -1209,6 +1278,215 @@ export const AnalysisView: React.FC<Props> = ({
                             >
                               {row.avgClv > 0 ? "+" : ""}
                               {row.avgClv.toFixed(2)}%
+                            </td>
+                            <td
+                              className={`p-4 text-right font-bold ${row.roi >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                            >
+                              {row.roi > 0 ? "+" : ""}
+                              {row.roi.toFixed(1)}%
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        ) : selectedAnalysis === "By Exchange" ? (
+          <div className="space-y-6">
+            {(() => {
+              const settled = bets.filter((b) => b.result !== undefined);
+              const exchangeKeys = [
+                { key: "smarkets", apiKey: "smarkets", name: "Smarkets" },
+                { key: "matchbook", apiKey: "matchbook", name: "Matchbook" },
+                { key: "betfair", apiKey: "betfair_ex_uk", name: "Betfair" },
+              ];
+
+              const exchangeData = exchangeKeys.map((ex) => {
+                const exBets = settled.filter(
+                  (b) => b.exchangeKey === ex.apiKey,
+                );
+                const exConfig = EXCHANGES.find((e) => e.key === ex.apiKey);
+                const commRate = exConfig?.commission || 0;
+
+                let grossProfit = 0;
+                let commissionPaid = 0;
+                let totalStakes = 0;
+                let lostStakes = 0;
+                let wins = 0;
+
+                exBets.forEach((b) => {
+                  totalStakes += b.kellyStake;
+                  if (b.result === "won") {
+                    wins++;
+                    const profit = (b.exchangePrice - 1) * b.kellyStake;
+                    grossProfit += profit;
+                    commissionPaid += profit * commRate;
+                  } else if (b.result === "lost") {
+                    lostStakes += b.kellyStake;
+                  }
+                });
+
+                const netProfit = grossProfit - commissionPaid - lostStakes;
+                const roi =
+                  totalStakes > 0 ? (netProfit / totalStakes) * 100 : 0;
+
+                return {
+                  name: ex.name,
+                  key: ex.key,
+                  bets: exBets.length,
+                  wins,
+                  winRate: exBets.length > 0 ? (wins / exBets.length) * 100 : 0,
+                  grossProfit,
+                  commissionPaid,
+                  netProfit,
+                  roi,
+                  bankroll: exchangeBankrolls[ex.key as keyof ExchangeBankroll],
+                };
+              });
+
+              return (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {exchangeData.map((ex) => (
+                      <div
+                        key={ex.key}
+                        className="bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl space-y-3"
+                      >
+                        <div className="flex justify-between items-start">
+                          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            {ex.name}
+                          </span>
+                          <span className="text-sm font-mono font-bold text-slate-200">
+                            £{ex.bankroll.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase">
+                              Bets
+                            </p>
+                            <p className="text-sm font-bold text-slate-300">
+                              {ex.bets}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase">
+                              ROI
+                            </p>
+                            <p
+                              className={`text-sm font-bold ${ex.roi >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                            >
+                              {ex.roi > 0 ? "+" : ""}
+                              {ex.roi.toFixed(1)}%
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+                    <div className="w-full h-[250px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={exchangeData}
+                          margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                        >
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="#1e293b"
+                            vertical={false}
+                          />
+                          <XAxis
+                            dataKey="name"
+                            stroke="#64748b"
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                          />
+                          <YAxis
+                            stroke="#64748b"
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                            tickFormatter={(v) => `${v}%`}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "#0f172a",
+                              borderColor: "#1e293b",
+                              borderRadius: "8px",
+                              color: "#f8fafc",
+                            }}
+                            formatter={(v: number | undefined) => {
+                              if (v === undefined) return null;
+                              return [`${v.toFixed(2)}%`, "ROI"];
+                            }}
+                          />
+                          <ReferenceLine
+                            y={0}
+                            stroke="#475569"
+                            strokeWidth={2}
+                          />
+                          <Bar dataKey="roi" radius={[4, 4, 0, 0]}>
+                            {exchangeData.map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={entry.roi >= 0 ? "#10b981" : "#ef4444"}
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider">
+                          <th className="p-4 font-medium">Exchange</th>
+                          <th className="p-4 font-medium text-right">Bets</th>
+                          <th className="p-4 font-medium text-right">
+                            Win Rate
+                          </th>
+                          <th className="p-4 font-medium text-right">
+                            Gross Profit
+                          </th>
+                          <th className="p-4 font-medium text-right">Comm.</th>
+                          <th className="p-4 font-medium text-right">
+                            Net P/L
+                          </th>
+                          <th className="p-4 font-medium text-right">ROI</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-sm text-slate-300">
+                        {exchangeData.map((row) => (
+                          <tr
+                            key={row.key}
+                            className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors"
+                          >
+                            <td className="p-4 font-medium text-slate-200">
+                              {row.name}
+                            </td>
+                            <td className="p-4 text-right">{row.bets}</td>
+                            <td className="p-4 text-right">
+                              {row.winRate.toFixed(1)}%
+                            </td>
+                            <td className="p-4 text-right text-slate-400 font-mono">
+                              £{row.grossProfit.toFixed(2)}
+                            </td>
+                            <td className="p-4 text-right text-red-900/50 font-mono">
+                              -£{row.commissionPaid.toFixed(2)}
+                            </td>
+                            <td
+                              className={`p-4 text-right font-bold font-mono ${row.netProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                            >
+                              {row.netProfit >= 0 ? "£+" : "-£"}
+                              {Math.abs(row.netProfit).toFixed(2)}
                             </td>
                             <td
                               className={`p-4 text-right font-bold ${row.roi >= 0 ? "text-emerald-400" : "text-red-400"}`}
