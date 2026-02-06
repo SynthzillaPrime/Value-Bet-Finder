@@ -11,6 +11,7 @@ import {
   TrackedBet,
   MatchResponse,
   ExchangeBankroll,
+  BankrollTransaction,
 } from "./types";
 import { LEAGUES, HARDCODED_API_KEY } from "./constants";
 import {
@@ -24,8 +25,7 @@ import {
 
 const STORAGE_KEY = "ods_api_key";
 const BETS_STORAGE_KEY = "tracked_bets";
-
-const EXCHANGE_BANKROLL_STORAGE_KEY = "exchange_bankrolls";
+const TRANSACTIONS_STORAGE_KEY = "bankroll_transactions";
 
 const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -35,11 +35,15 @@ const App: React.FC = () => {
   // Data State
   const [rawMatches, setRawMatches] = useState<MatchResponse[]>([]);
   const [trackedBets, setTrackedBets] = useState<TrackedBet[]>([]);
-  const [exchangeBankrolls, setExchangeBankrolls] = useState<ExchangeBankroll>({
-    smarkets: 50,
-    matchbook: 30,
-    betfair: 20,
-  });
+  const [transactions, setTransactions] = useState<BankrollTransaction[]>([]);
+
+  const exchangeBankrolls = useMemo(() => {
+    const totals: ExchangeBankroll = { smarkets: 0, matchbook: 0, betfair: 0 };
+    transactions.forEach((t) => {
+      totals[t.exchange] += t.amount;
+    });
+    return totals;
+  }, [transactions]);
 
   const bankroll = useMemo(() => {
     return (
@@ -66,12 +70,10 @@ const App: React.FC = () => {
   useEffect(() => {
     const storedKey = localStorage.getItem(STORAGE_KEY);
     const storedBets = localStorage.getItem(BETS_STORAGE_KEY);
-    const storedExchangeBankrolls = localStorage.getItem(
-      EXCHANGE_BANKROLL_STORAGE_KEY,
-    );
+    const storedTransactions = localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
 
-    if (storedExchangeBankrolls) {
-      setExchangeBankrolls(JSON.parse(storedExchangeBankrolls));
+    if (storedTransactions) {
+      setTransactions(JSON.parse(storedTransactions));
     }
 
     // Priority: 1. LocalStorage, 2. Hardcoded Key
@@ -108,10 +110,10 @@ const App: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem(
-      EXCHANGE_BANKROLL_STORAGE_KEY,
-      JSON.stringify(exchangeBankrolls),
+      TRANSACTIONS_STORAGE_KEY,
+      JSON.stringify(transactions),
     );
-  }, [exchangeBankrolls]);
+  }, [transactions]);
 
   const handleSaveKey = (key: string) => {
     localStorage.setItem(STORAGE_KEY, key);
@@ -165,10 +167,21 @@ const App: React.FC = () => {
       if (updatedBet.exchangeKey === "matchbook") bankrollKey = "matchbook";
       if (updatedBet.exchangeKey === "betfair_ex_uk") bankrollKey = "betfair";
 
-      setExchangeBankrolls((prev) => ({
-        ...prev,
-        [bankrollKey]: prev[bankrollKey] + pl,
-      }));
+      let type: BankrollTransaction["type"] = "bet_win";
+      if (updatedBet.result === "lost") type = "bet_loss";
+      else if (updatedBet.result === "push") type = "bet_push";
+      else if (updatedBet.result === "void") type = "bet_void";
+
+      const transaction: BankrollTransaction = {
+        id: `bet-${updatedBet.id}-${Date.now()}`,
+        timestamp: Date.now(),
+        exchange: bankrollKey,
+        type,
+        amount: pl,
+        betId: updatedBet.id,
+      };
+
+      setTransactions((prev) => [...prev, transaction]);
     }
     setTrackedBets((prev) =>
       prev.map((b) => (b.id === updatedBet.id ? updatedBet : b)),
@@ -371,7 +384,8 @@ const App: React.FC = () => {
             apiKey={apiKey}
             bankroll={bankroll}
             exchangeBankrolls={exchangeBankrolls}
-            onUpdateExchangeBankrolls={setExchangeBankrolls}
+            transactions={transactions}
+            onAddTransaction={(t) => setTransactions((prev) => [...prev, t])}
             onUpdateBet={handleUpdateTrackedBet}
             onDeleteBet={handleDeleteTrackedBet}
           />

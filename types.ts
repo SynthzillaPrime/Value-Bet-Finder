@@ -74,7 +74,7 @@ export interface TrackedBet extends BetEdge {
   closingFairPrice?: number; // Pinnacle no-vig price at kickoff
   clvPercent?: number; // (MyOdds / ClosingFairPrice - 1) * 100
   status: "open" | "closed";
-  result?: "won" | "lost" | "push";
+  result?: "won" | "lost" | "push" | "void";
   homeScore?: number;
   awayScore?: number;
 
@@ -94,6 +94,23 @@ export interface ExchangeBankroll {
   smarkets: number;
   betfair: number;
   matchbook: number;
+}
+
+export interface BankrollTransaction {
+  id: string;
+  timestamp: number;
+  exchange: "smarkets" | "betfair" | "matchbook";
+  type:
+    | "deposit"
+    | "withdrawal"
+    | "bet_win"
+    | "bet_loss"
+    | "bet_push"
+    | "bet_void"
+    | "adjustment";
+  amount: number; // positive for deposits/wins, negative for withdrawals/losses
+  note?: string;
+  betId?: string; // links to TrackedBet if it's from a bet
 }
 
 export interface LeagueOption {

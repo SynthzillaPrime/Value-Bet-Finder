@@ -33,14 +33,15 @@ import {
   Wallet,
 } from "lucide-react";
 
-import { ExchangeBankroll } from "../types";
+import { ExchangeBankroll, BankrollTransaction } from "../types";
 
 interface Props {
   bets: TrackedBet[];
   apiKey: string;
   bankroll: number;
   exchangeBankrolls: ExchangeBankroll;
-  onUpdateExchangeBankrolls: (b: ExchangeBankroll) => void;
+  transactions: BankrollTransaction[];
+  onAddTransaction: (t: BankrollTransaction) => void;
   onUpdateBet: (bet: TrackedBet) => void;
   onDeleteBet: (id: string) => void;
 }
@@ -60,12 +61,25 @@ export const AnalysisView: React.FC<Props> = ({
   apiKey,
   bankroll,
   exchangeBankrolls,
-  onUpdateExchangeBankrolls,
+  transactions,
+  onAddTransaction,
   onUpdateBet,
   onDeleteBet,
 }) => {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [newTx, setNewTx] = useState<{
+    exchange: "smarkets" | "betfair" | "matchbook";
+    type: "deposit" | "withdrawal" | "adjustment";
+    amount: string;
+    note: string;
+  }>({
+    exchange: "smarkets",
+    type: "deposit",
+    amount: "",
+    note: "",
+  });
+
   const [selectedAnalysis, setSelectedAnalysis] =
     useState<AnalysisOption>("By Competition");
 
@@ -161,6 +175,9 @@ export const AnalysisView: React.FC<Props> = ({
     } else if (result === "lost") {
       flatPL = -1;
       kellyPL = -bet.kellyStake;
+    } else if (result === "push" || result === "void") {
+      flatPL = 0;
+      kellyPL = 0;
     }
 
     onUpdateBet({
@@ -283,10 +300,10 @@ export const AnalysisView: React.FC<Props> = ({
         </div>
 
         {showSettings && (
-          <div className="bg-slate-900/80 border border-slate-700 p-6 rounded-2xl animate-in slide-in-from-top-4 duration-300">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-slate-900/80 border border-slate-700 p-6 rounded-2xl animate-in slide-in-from-top-4 duration-300 space-y-8">
+            <div className="flex justify-between items-center">
               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <Wallet className="w-4 h-4" /> Exchange Bankrolls
+                <Wallet className="w-4 h-4" /> Bankroll Management
               </h3>
               <div className="text-right">
                 <span className="text-[10px] uppercase font-bold text-slate-500 block">
@@ -297,35 +314,133 @@ export const AnalysisView: React.FC<Props> = ({
                 </span>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            {/* Quick Balances */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {(["smarkets", "matchbook", "betfair"] as const).map((ex) => (
-                <div key={ex} className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-tight">
-                    {ex === "betfair"
-                      ? "Betfair (5%)"
-                      : ex === "smarkets"
-                        ? "Smarkets (2%)"
-                        : "Matchbook (1.5%)"}{" "}
-                    (£)
-                  </label>
-                  <input
-                    type="number"
-                    value={exchangeBankrolls[ex]}
-                    onChange={(e) =>
-                      onUpdateExchangeBankrolls({
-                        ...exchangeBankrolls,
-                        [ex]: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                <div
+                  key={ex}
+                  className="bg-slate-800/50 p-3 rounded-lg border border-slate-700"
+                >
+                  <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
+                    {ex}
+                  </span>
+                  <span className="text-lg font-mono font-bold text-slate-200">
+                    £{exchangeBankrolls[ex].toFixed(2)}
+                  </span>
                 </div>
               ))}
             </div>
-            <p className="text-[10px] text-slate-600 mt-4 italic">
-              Note: Total bankroll is the sum of these balances. Editing these
-              will update your simulated "Kelly Bankroll" starting point.
-            </p>
+
+            {/* New Transaction Form */}
+            <div className="bg-slate-800/30 p-4 rounded-xl border border-slate-700/50">
+              <h4 className="text-xs font-bold text-slate-400 uppercase mb-4">
+                Add Transaction
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-500 uppercase font-bold">
+                    Exchange
+                  </label>
+                  <select
+                    value={newTx.exchange}
+                    onChange={(e) =>
+                      setNewTx({ ...newTx, exchange: e.target.value as any })
+                    }
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                  >
+                    <option value="smarkets">Smarkets</option>
+                    <option value="matchbook">Matchbook</option>
+                    <option value="betfair">Betfair</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-500 uppercase font-bold">
+                    Type
+                  </label>
+                  <select
+                    value={newTx.type}
+                    onChange={(e) =>
+                      setNewTx({ ...newTx, type: e.target.value as any })
+                    }
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                  >
+                    <option value="deposit">Deposit</option>
+                    <option value="withdrawal">Withdrawal</option>
+                    <option value="adjustment">Adjustment</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-500 uppercase font-bold">
+                    Amount (£)
+                  </label>
+                  <input
+                    type="number"
+                    value={newTx.amount}
+                    placeholder="0.00"
+                    onChange={(e) =>
+                      setNewTx({ ...newTx, amount: e.target.value })
+                    }
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono"
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    const amount = parseFloat(newTx.amount);
+                    if (isNaN(amount) || amount === 0) return;
+                    onAddTransaction({
+                      id: `tx-${Date.now()}`,
+                      timestamp: Date.now(),
+                      exchange: newTx.exchange,
+                      type: newTx.type as any,
+                      amount:
+                        newTx.type === "withdrawal"
+                          ? -Math.abs(amount)
+                          : amount,
+                      note: newTx.note,
+                    });
+                    setNewTx({ ...newTx, amount: "", note: "" });
+                  }}
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg text-sm transition-colors"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+
+            {/* Recent History */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-slate-400 uppercase">
+                Recent Transactions
+              </h4>
+              <div className="max-h-48 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
+                {[...transactions]
+                  .sort((a, b) => b.timestamp - a.timestamp)
+                  .slice(0, 10)
+                  .map((t) => (
+                    <div
+                      key={t.id}
+                      className="flex justify-between items-center text-xs py-2 border-b border-slate-800"
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-300 capitalize">
+                          {t.type.replace("_", " ")}
+                        </span>
+                        <span className="text-[10px] text-slate-500">
+                          {new Date(t.timestamp).toLocaleString()} •{" "}
+                          {t.exchange}
+                        </span>
+                      </div>
+                      <span
+                        className={`font-mono font-bold ${t.amount >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                      >
+                        {t.amount >= 0 ? "+" : ""}£
+                        {Math.abs(t.amount).toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -362,17 +477,18 @@ export const AnalysisView: React.FC<Props> = ({
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
                     data={[
-                      { betNum: 0, bankroll: 100 },
-                      ...bets
-                        .filter((b) => b.result !== undefined)
-                        .sort((a, b) => a.placedAt - b.placedAt)
-                        .reduce((acc: any[], bet, idx) => {
+                      ...transactions
+                        .sort((a, b) => a.timestamp - b.timestamp)
+                        .reduce((acc: any[], tx) => {
                           const prevBankroll =
-                            acc.length > 0 ? acc[acc.length - 1].bankroll : 100;
+                            acc.length > 0 ? acc[acc.length - 1].bankroll : 0;
                           acc.push({
-                            betNum: idx + 1,
-                            bankroll: prevBankroll + (bet.kellyPL || 0),
-                            match: `${bet.homeTeam} vs ${bet.awayTeam}`,
+                            timestamp: tx.timestamp,
+                            bankroll: prevBankroll + tx.amount,
+                            label:
+                              tx.type === "bet_win" || tx.type === "bet_loss"
+                                ? "Bet Settlement"
+                                : tx.type,
                           });
                           return acc;
                         }, []),
@@ -404,11 +520,14 @@ export const AnalysisView: React.FC<Props> = ({
                       vertical={false}
                     />
                     <XAxis
-                      dataKey="betNum"
+                      dataKey="timestamp"
                       stroke="#64748b"
-                      fontSize={12}
+                      fontSize={10}
                       tickLine={false}
                       axisLine={false}
+                      tickFormatter={(val) =>
+                        new Date(val).toLocaleDateString()
+                      }
                     />
                     <YAxis
                       stroke="#64748b"
@@ -515,22 +634,32 @@ export const AnalysisView: React.FC<Props> = ({
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
                     data={[
-                      { betNum: 0, actual: 100, expected: 100 },
-                      ...bets
-                        .filter((b) => b.result !== undefined)
-                        .sort((a, b) => a.placedAt - b.placedAt)
-                        .reduce((acc: any[], bet, idx) => {
+                      ...transactions
+                        .sort((a, b) => a.timestamp - b.timestamp)
+                        .reduce((acc: any[], tx) => {
                           const prevActual =
-                            acc.length > 0 ? acc[acc.length - 1].actual : 100;
+                            acc.length > 0 ? acc[acc.length - 1].actual : 0;
                           const prevExpected =
-                            acc.length > 0 ? acc[acc.length - 1].expected : 100;
-                          const expectedGain =
-                            (bet.netEdgePercent / 100) * bet.kellyStake;
+                            acc.length > 0 ? acc[acc.length - 1].expected : 0;
+
+                          let actualChange = tx.amount;
+                          let expectedChange = 0;
+
+                          if (tx.type === "bet_win" || tx.type === "bet_loss") {
+                            const bet = bets.find((b) => b.id === tx.betId);
+                            if (bet) {
+                              expectedChange =
+                                (bet.netEdgePercent / 100) * bet.kellyStake;
+                            }
+                          } else {
+                            // Deposits/Withdrawals add to both to keep them baseline aligned
+                            expectedChange = tx.amount;
+                          }
+
                           acc.push({
-                            betNum: idx + 1,
-                            actual: prevActual + (bet.kellyPL || 0),
-                            expected: prevExpected + expectedGain,
-                            match: `${bet.homeTeam} vs ${bet.awayTeam}`,
+                            timestamp: tx.timestamp,
+                            actual: prevActual + actualChange,
+                            expected: prevExpected + expectedChange,
                           });
                           return acc;
                         }, []),
@@ -542,11 +671,14 @@ export const AnalysisView: React.FC<Props> = ({
                       vertical={false}
                     />
                     <XAxis
-                      dataKey="betNum"
+                      dataKey="timestamp"
                       stroke="#64748b"
-                      fontSize={12}
+                      fontSize={10}
                       tickLine={false}
                       axisLine={false}
+                      tickFormatter={(val) =>
+                        new Date(val).toLocaleDateString()
+                      }
                     />
                     <YAxis
                       stroke="#64748b"
@@ -562,6 +694,9 @@ export const AnalysisView: React.FC<Props> = ({
                         borderRadius: "8px",
                         color: "#f8fafc",
                       }}
+                      labelFormatter={(val) =>
+                        new Date(val).toLocaleDateString()
+                      }
                       formatter={(value: number | undefined) => {
                         if (value === undefined) return null;
                         return [`£${value.toFixed(2)}`];
@@ -825,7 +960,17 @@ export const AnalysisView: React.FC<Props> = ({
         ) : selectedAnalysis === "By Competition" ? (
           <div className="space-y-6">
             {(() => {
-              const settled = bets.filter((b) => b.result !== undefined);
+              const settled = bets.filter(
+                (b) =>
+                  b.result !== undefined &&
+                  b.result !== "push" &&
+                  b.result !== "void",
+              );
+              const settledTxs = transactions.filter(
+                (t: BankrollTransaction) =>
+                  t.type === "bet_win" || t.type === "bet_loss",
+              );
+
               const competitionsMap: Record<string, TrackedBet[]> = {};
               settled.forEach((b) => {
                 if (!competitionsMap[b.sport]) competitionsMap[b.sport] = [];
@@ -834,10 +979,10 @@ export const AnalysisView: React.FC<Props> = ({
 
               const compData = Object.entries(competitionsMap)
                 .map(([name, compBets]) => {
-                  const totalPL = compBets.reduce(
-                    (sum, b) => sum + (b.kellyPL || 0),
-                    0,
+                  const compTxs = settledTxs.filter((t) =>
+                    compBets.some((b) => b.id === t.betId),
                   );
+                  const totalPL = compTxs.reduce((sum, t) => sum + t.amount, 0);
                   const totalStakes = compBets.reduce(
                     (sum, b) => sum + b.kellyStake,
                     0,
@@ -987,7 +1132,16 @@ export const AnalysisView: React.FC<Props> = ({
         ) : selectedAnalysis === "By Odds Band" ? (
           <div className="space-y-6">
             {(() => {
-              const settled = bets.filter((b) => b.result !== undefined);
+              const settled = bets.filter(
+                (b) =>
+                  b.result !== undefined &&
+                  b.result !== "push" &&
+                  b.result !== "void",
+              );
+              const settledTxs = transactions.filter(
+                (t: BankrollTransaction) =>
+                  t.type === "bet_win" || t.type === "bet_loss",
+              );
               const bands = [
                 { label: "1.50 - 3.00", min: 1.5, max: 3.0 },
                 { label: "3.00 - 6.00", min: 3.0, max: 6.0 },
@@ -1002,10 +1156,10 @@ export const AnalysisView: React.FC<Props> = ({
                     return b.exchangePrice >= 3.0 && b.exchangePrice < 6.0;
                   return b.exchangePrice >= 6.0 && b.exchangePrice <= 10.0;
                 });
-                const totalPL = bandBets.reduce(
-                  (sum, b) => sum + (b.kellyPL || 0),
-                  0,
+                const bandTxs = settledTxs.filter((t) =>
+                  bandBets.some((b) => b.id === t.betId),
                 );
+                const totalPL = bandTxs.reduce((sum, t) => sum + t.amount, 0);
                 const totalStakes = bandBets.reduce(
                   (sum, b) => sum + b.kellyStake,
                   0,
@@ -1144,17 +1298,26 @@ export const AnalysisView: React.FC<Props> = ({
         ) : selectedAnalysis === "By Timing" ? (
           <div className="space-y-6">
             {(() => {
-              const settled = bets.filter((b) => b.result !== undefined);
+              const settled = bets.filter(
+                (b) =>
+                  b.result !== undefined &&
+                  b.result !== "push" &&
+                  b.result !== "void",
+              );
+              const settledTxs = transactions.filter(
+                (t: BankrollTransaction) =>
+                  t.type === "bet_win" || t.type === "bet_loss",
+              );
               const buckets = ["48hr+", "24-48hr", "12-24hr", "<12hr"];
 
               const timingData = buckets.map((bucket) => {
                 const bucketBets = settled.filter(
                   (b) => b.timingBucket === bucket,
                 );
-                const totalPL = bucketBets.reduce(
-                  (sum, b) => sum + (b.kellyPL || 0),
-                  0,
+                const bucketTxs = settledTxs.filter((t) =>
+                  bucketBets.some((b) => b.id === t.betId),
                 );
+                const totalPL = bucketTxs.reduce((sum, t) => sum + t.amount, 0);
                 const totalStakes = bucketBets.reduce(
                   (sum, b) => sum + b.kellyStake,
                   0,
@@ -1297,7 +1460,16 @@ export const AnalysisView: React.FC<Props> = ({
         ) : selectedAnalysis === "By Exchange" ? (
           <div className="space-y-6">
             {(() => {
-              const settled = bets.filter((b) => b.result !== undefined);
+              const settled = bets.filter(
+                (b) =>
+                  b.result !== undefined &&
+                  b.result !== "push" &&
+                  b.result !== "void",
+              );
+              const settledTxs = transactions.filter(
+                (t: BankrollTransaction) =>
+                  t.type === "bet_win" || t.type === "bet_loss",
+              );
               const exchangeKeys = [
                 { key: "smarkets", apiKey: "smarkets", name: "Smarkets" },
                 { key: "matchbook", apiKey: "matchbook", name: "Matchbook" },
@@ -1317,6 +1489,8 @@ export const AnalysisView: React.FC<Props> = ({
                 let lostStakes = 0;
                 let wins = 0;
 
+                const exTxs = settledTxs.filter((t) => t.exchange === ex.key);
+
                 exBets.forEach((b) => {
                   totalStakes += b.kellyStake;
                   if (b.result === "won") {
@@ -1329,7 +1503,7 @@ export const AnalysisView: React.FC<Props> = ({
                   }
                 });
 
-                const netProfit = grossProfit - commissionPaid - lostStakes;
+                const netProfit = exTxs.reduce((sum, t) => sum + t.amount, 0);
                 const roi =
                   totalStakes > 0 ? (netProfit / totalStakes) * 100 : 0;
 
@@ -1506,13 +1680,25 @@ export const AnalysisView: React.FC<Props> = ({
         ) : selectedAnalysis === "By Market" ? (
           <div className="space-y-6">
             {(() => {
-              const settled = bets.filter((b) => b.result !== undefined);
+              const settled = bets.filter(
+                (b) =>
+                  b.result !== undefined &&
+                  b.result !== "push" &&
+                  b.result !== "void",
+              );
+              const settledTxs = transactions.filter(
+                (t: BankrollTransaction) =>
+                  t.type === "bet_win" || t.type === "bet_loss",
+              );
               const markets = ["Match Result", "Over/Under", "Handicap"];
 
               const marketData = markets.map((mkt) => {
                 const marketBets = settled.filter((b) => b.market === mkt);
-                const totalPL = marketBets.reduce(
-                  (sum, b) => sum + (b.kellyPL || 0),
+                const marketTxs = settledTxs.filter((t) =>
+                  marketBets.some((b) => b.id === t.betId),
+                );
+                const totalPL = marketTxs.reduce(
+                  (sum: number, t: BankrollTransaction) => sum + t.amount,
                   0,
                 );
                 const totalStakes = marketBets.reduce(

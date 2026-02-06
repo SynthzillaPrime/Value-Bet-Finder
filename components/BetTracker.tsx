@@ -109,6 +109,9 @@ export const BetTracker: React.FC<Props> = ({
     } else if (result === "lost") {
       flatPL = -1;
       kellyPL = -bet.kellyStake;
+    } else if (result === "push" || result === "void") {
+      flatPL = 0;
+      kellyPL = 0;
     }
 
     onUpdateBet({
