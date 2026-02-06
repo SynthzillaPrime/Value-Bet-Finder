@@ -164,8 +164,16 @@ const App: React.FC = () => {
       setLastUpdated(new Date());
       setStatus("success");
     } catch (err) {
-      if ((err as Error).message === "AUTH_ERROR") {
-        setErrorMessage("Invalid API Key. Please update it.");
+      const msg = (err as Error).message;
+      if (msg === "AUTH_ERROR") {
+        setErrorMessage(
+          "Invalid API Key. Please check your environment variable.",
+        );
+        setStatus("error");
+      } else if (msg === "QUOTA_EXCEEDED") {
+        setErrorMessage(
+          "API quota exceeded. Resets monthly — check your plan at the-odds-api.com",
+        );
         setStatus("error");
       } else {
         setErrorMessage("Network error. Check console for details.");

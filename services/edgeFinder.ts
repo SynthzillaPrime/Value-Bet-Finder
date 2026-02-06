@@ -57,14 +57,20 @@ const fetchLeagueOdds = async (
 
     if (!response.ok) {
       if (response.status === 401) throw new Error("AUTH_ERROR");
+      if (response.status === 429) throw new Error("QUOTA_EXCEEDED");
       console.warn(`Failed to fetch ${leagueKey}: ${response.statusText}`);
       return { data: [], remaining };
+    }
+
+    if (remaining !== null && remaining <= 0) {
+      throw new Error("QUOTA_EXCEEDED");
     }
 
     const data = await response.json();
     return { data: data as MatchResponse[], remaining };
   } catch (error) {
-    if ((error as Error).message === "AUTH_ERROR") throw error;
+    const msg = (error as Error).message;
+    if (msg === "AUTH_ERROR" || msg === "QUOTA_EXCEEDED") throw error;
     console.error(`Error fetching ${leagueKey}`, error);
     return { data: [], remaining: null };
   }
