@@ -1,8 +1,8 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { TrackedBet } from "../types";
 import { SummaryStats } from "./stats/SummaryStats";
 import { AnalysisDashboard } from "./AnalysisDashboard";
-import { EXCHANGES, LEAGUES } from "../constants";
+import { EXCHANGES } from "../constants";
 import {
   fetchClosingLineForBet,
   fetchMatchResult,
@@ -42,24 +42,7 @@ interface Props {
   transactions: BankrollTransaction[];
   onUpdateBet: (bet: TrackedBet) => void;
   onDeleteBet: (id: string) => void;
-  onImportBets?: (bets: TrackedBet[]) => void;
 }
-
-const splitCSVLine = (line: string) => {
-  const result = [];
-  let cur = "";
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    if (char === '"') inQuotes = !inQuotes;
-    else if (char === "," && !inQuotes) {
-      result.push(cur.trim());
-      cur = "";
-    } else cur += char;
-  }
-  result.push(cur.trim());
-  return result;
-};
 
 type AnalysisOption =
   | "Bankroll Over Time"
@@ -79,137 +62,11 @@ export const AnalysisView: React.FC<Props> = ({
   transactions,
   onUpdateBet,
   onDeleteBet,
-  onImportBets,
 }) => {
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [selectedAnalysis, setSelectedAnalysis] =
     useState<AnalysisOption>("By Competition");
-
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      if (!content) return;
-
-      try {
-        const lines = content.split("\n").filter((l) => l.trim());
-        if (lines.length < 2)
-          throw new Error("File is empty or missing headers");
-
-        const newTrackedBets: TrackedBet[] = [];
-        const data = lines.slice(1);
-
-        for (const line of data) {
-          const vals = splitCSVLine(line);
-          if (vals.length < 11) continue;
-
-          const matchStr = vals[0].replace(/"/g, "");
-          const selection = vals[2].replace(/"/g, "");
-          const kickoff = new Date(vals[17].replace(/"/g, ""));
-
-          if (isNaN(kickoff.getTime())) continue;
-
-          const isDuplicate =
-            bets.some(
-              (b) =>
-                b.match === matchStr &&
-                b.selection === selection &&
-                new Date(b.kickoff).getTime() === kickoff.getTime(),
-            ) ||
-            newTrackedBets.some(
-              (b) =>
-                b.match === matchStr &&
-                b.selection === selection &&
-                b.kickoff.getTime() === kickoff.getTime(),
-            );
-
-          if (isDuplicate) continue;
-
-          const teams = matchStr.split(" vs ");
-          const leagueName = vals[1].replace(/"/g, "");
-          const exchangeName = vals[4].replace(/"/g, "");
-          const resultVal = vals[10].replace(/"/g, "");
-
-          const sportKey =
-            LEAGUES.find((l) => l.name === leagueName)?.key ||
-            leagueName.toLowerCase().replace(/\s+/g, "_");
-          const exchangeKey =
-            EXCHANGES.find((e) => e.name === exchangeName)?.key ||
-            exchangeName.toLowerCase();
-
-          const placedAt =
-            new Date(vals[18].replace(/"/g, "")).getTime() || Date.now();
-          const hoursBeforeKickoff =
-            (kickoff.getTime() - placedAt) / (1000 * 60 * 60);
-
-          const bet: TrackedBet = {
-            id: `imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            match: matchStr,
-            homeTeam: teams[0] || "Unknown",
-            awayTeam: teams[1] || "Unknown",
-            sport: leagueName,
-            sportKey,
-            selection,
-            market: vals[3].replace(/"/g, ""),
-            exchangeName,
-            exchangeKey,
-            exchangePrice: parseFloat(vals[5]) || 0,
-            fairPrice: parseFloat(vals[6]) || 0,
-            fairPriceAtBet: parseFloat(vals[6]) || 0,
-            netEdgePercent: parseFloat(vals[7]) || 0,
-            edgePercent: parseFloat(vals[7]) || 0,
-            kellyPercent: 0,
-            hoursBeforeKickoff,
-            timingBucket: vals[8] as any,
-            notes: vals[9].replace(/"/g, ""),
-            status: resultVal === "open" ? "open" : "closed",
-            result: resultVal === "open" ? undefined : (resultVal as any),
-            closingFairPrice: parseFloat(vals[11]) || undefined,
-            clvPercent: parseFloat(vals[12]) || undefined,
-            flatStake: parseFloat(vals[13]) || 1,
-            flatPL: parseFloat(vals[14]) || undefined,
-            kellyStake: parseFloat(vals[15]) || 0,
-            kellyPL: parseFloat(vals[16]) || undefined,
-            kickoff,
-            placedAt,
-            offers: [],
-          };
-          newTrackedBets.push(bet);
-        }
-
-        if (newTrackedBets.length > 0) {
-          if (onImportBets) {
-            onImportBets(newTrackedBets);
-            alert(`Successfully imported ${newTrackedBets.length} new bets!`);
-          } else {
-            const stored = JSON.parse(
-              localStorage.getItem("tracked_bets") || "[]",
-            );
-            localStorage.setItem(
-              "tracked_bets",
-              JSON.stringify([...stored, ...newTrackedBets]),
-            );
-            alert(
-              `Imported ${newTrackedBets.length} bets to local storage. Please refresh the page to view them.`,
-            );
-          }
-        } else {
-          alert("No new unique bets found in the CSV file.");
-        }
-      } catch (err) {
-        alert(
-          "Error parsing CSV. Please ensure it matches the format of a file exported from this app.",
-        );
-      }
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    };
-    reader.readAsText(file);
-  };
 
   const checkClosingLine = async (bet: TrackedBet) => {
     if (new Date() < new Date(bet.kickoff)) {
@@ -408,18 +265,11 @@ export const AnalysisView: React.FC<Props> = ({
         <h2 className="text-2xl font-bold text-white">Performance Analysis</h2>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => alert("Import CSV coming soon")}
             className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors"
           >
             <Upload className="w-3.5 h-3.5" /> Import
           </button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleImport}
-            accept=".csv"
-            className="hidden"
-          />
           <button
             onClick={exportToCSV}
             className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors"
@@ -428,7 +278,9 @@ export const AnalysisView: React.FC<Props> = ({
           </button>
         </div>
       </div>
+
       <SummaryStats bets={bets} currentKellyBankroll={bankroll} />
+
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
@@ -462,28 +314,18 @@ export const AnalysisView: React.FC<Props> = ({
                       ...transactions
                         .sort((a, b) => a.timestamp - b.timestamp)
                         .reduce((acc: any[], tx) => {
-                          const prevBankroll = acc.length > 0 ? acc[acc.length - 1].bankroll : 0;
-                          let amountToAdd = tx.amount;
-
-                          // For bet transactions, if kellyPL is missing, use flatPL as fallback
-                          if ((tx.type === "bet_win" || tx.type === "bet_loss") && tx.betId) {
-                            const bet = bets.find(b => b.id === tx.betId);
-                            if (bet) {
-                              amountToAdd = (bet.kellyPL !== undefined ? bet.kellyPL : (bet.flatPL !== undefined ? bet.flatPL : 0));
-                            }
-                          }
-
+                          const prevBankroll =
+                            acc.length > 0 ? acc[acc.length - 1].bankroll : 0;
                           acc.push({
                             timestamp: tx.timestamp,
-                            bankroll: prevBankroll + amountToAdd,
+                            bankroll: prevBankroll + tx.amount,
                             label:
                               tx.type === "bet_win" || tx.type === "bet_loss"
                                 ? "Bet Settlement"
                                 : tx.type,
                           });
                           return acc;
-                        }, [])
-                      }
+                        }, []),
                     ]}
                   >
                     <defs>
@@ -572,15 +414,14 @@ export const AnalysisView: React.FC<Props> = ({
                     .sort((a, b) => a.placedAt - b.placedAt)
                     .reduce((acc: any[], bet, idx) => {
                       const prevBankroll =
-                        acc.length > 0 ? acc[acc.length - 1].bankroll : 0;
-                      const currentBankroll =
-                        prevBankroll + (bet.kellyPL || bet.flatPL || 0);
+                        acc.length > 0 ? acc[acc.length - 1].bankroll : 100;
+                      const currentBankroll = prevBankroll + (bet.kellyPL || 0);
                       acc.push({
                         betNum: idx + 1,
                         date: new Date(bet.placedAt).toLocaleDateString(),
                         match: `${bet.homeTeam} vs ${bet.awayTeam}`,
                         result: bet.result,
-                        pl: bet.kellyPL || bet.flatPL || 0,
+                        pl: bet.kellyPL || 0,
                         bankroll: currentBankroll,
                       });
                       return acc;
@@ -642,8 +483,7 @@ export const AnalysisView: React.FC<Props> = ({
                             const bet = bets.find((b) => b.id === tx.betId);
                             if (bet) {
                               expectedChange =
-                                (bet.netEdgePercent / 100) *
-                                (bet.kellyStake || bet.flatStake);
+                                (bet.netEdgePercent / 100) * bet.kellyStake;
                             }
                           } else {
                             // Deposits/Withdrawals add to both to keep them baseline aligned
@@ -733,11 +573,11 @@ export const AnalysisView: React.FC<Props> = ({
                   <tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider">
                     <th className="p-4 font-medium">Bet #</th>
                     <th className="p-4 font-medium">Match</th>
-                    <th className="p-4 font-medium text-right">Timing</th>
-                    <th className="p-4 font-medium text-right">Odds</th>
-                    <th className="p-4 font-medium text-right">CLV %</th>
-                    <th className="p-4 font-medium text-right">Result</th>
-                    <th className="p-4 font-medium text-right">Action</th>
+                    <th className="p-4 font-medium text-right">Edge %</th>
+                    <th className="p-4 font-medium text-right">Exp. Gain</th>
+                    <th className="p-4 font-medium text-right">Actual P/L</th>
+                    <th className="p-4 font-medium text-right">Exp. Bank</th>
+                    <th className="p-4 font-medium text-right">Act. Bank</th>
                   </tr>
                 </thead>
                 <tbody className="text-sm text-slate-300">
@@ -750,8 +590,7 @@ export const AnalysisView: React.FC<Props> = ({
                       const prevExpected =
                         acc.length > 0 ? acc[acc.length - 1].expected : 100;
                       const expectedGain =
-                        (bet.netEdgePercent / 100) *
-                        (bet.kellyStake || bet.flatStake);
+                        (bet.netEdgePercent / 100) * bet.kellyStake;
                       const currentActual = prevActual + (bet.kellyPL || 0);
                       const currentExpected = prevExpected + expectedGain;
                       acc.push({
@@ -979,7 +818,7 @@ export const AnalysisView: React.FC<Props> = ({
                   );
                   const totalPL = compTxs.reduce((sum, t) => sum + t.amount, 0);
                   const totalStakes = compBets.reduce(
-                    (sum, b) => sum + (b.kellyStake || b.flatStake || 1),
+                    (sum, b) => sum + b.kellyStake,
                     0,
                   );
                   const roi =
@@ -1035,10 +874,8 @@ export const AnalysisView: React.FC<Props> = ({
                             fontSize={10}
                             angle={-45}
                             textAnchor="end"
+                            interval={0}
                             height={80}
-                            dy={10}
-                            tickLine={false}
-                            axisLine={false}
                           />
                           <YAxis
                             stroke="#64748b"
@@ -1158,7 +995,7 @@ export const AnalysisView: React.FC<Props> = ({
                 );
                 const totalPL = bandTxs.reduce((sum, t) => sum + t.amount, 0);
                 const totalStakes = bandBets.reduce(
-                  (sum, b) => sum + (b.kellyStake || b.flatStake || 1),
+                  (sum, b) => sum + b.kellyStake,
                   0,
                 );
                 const roi = totalStakes > 0 ? (totalPL / totalStakes) * 100 : 0;
@@ -1201,10 +1038,6 @@ export const AnalysisView: React.FC<Props> = ({
                             dataKey="name"
                             stroke="#64748b"
                             fontSize={12}
-                            angle={-45}
-                            textAnchor="end"
-                            height={80}
-                            dy={10}
                             tickLine={false}
                             axisLine={false}
                           />
@@ -1320,7 +1153,7 @@ export const AnalysisView: React.FC<Props> = ({
                 );
                 const totalPL = bucketTxs.reduce((sum, t) => sum + t.amount, 0);
                 const totalStakes = bucketBets.reduce(
-                  (sum, b) => sum + (b.kellyStake || b.flatStake || 1),
+                  (sum, b) => sum + b.kellyStake,
                   0,
                 );
                 const roi = totalStakes > 0 ? (totalPL / totalStakes) * 100 : 0;
@@ -1367,10 +1200,6 @@ export const AnalysisView: React.FC<Props> = ({
                             dataKey="name"
                             stroke="#64748b"
                             fontSize={12}
-                            angle={-45}
-                            textAnchor="end"
-                            height={80}
-                            dy={10}
                             tickLine={false}
                             axisLine={false}
                           />
@@ -1497,14 +1326,14 @@ export const AnalysisView: React.FC<Props> = ({
                 const exTxs = settledTxs.filter((t) => t.exchange === ex.key);
 
                 exBets.forEach((b) => {
-                  totalStakes += b.kellyStake || b.flatStake || 1;
+                  totalStakes += b.kellyStake;
                   if (b.result === "won") {
                     wins++;
-                    const profit = (b.exchangePrice - 1) * (b.kellyStake || b.flatStake || 1);
+                    const profit = (b.exchangePrice - 1) * b.kellyStake;
                     grossProfit += profit;
                     commissionPaid += profit * commRate;
                   } else if (b.result === "lost") {
-                    lostStakes += b.kellyStake || b.flatStake || 1;
+                    lostStakes += b.kellyStake;
                   }
                 });
 
@@ -1583,10 +1412,6 @@ export const AnalysisView: React.FC<Props> = ({
                             dataKey="name"
                             stroke="#64748b"
                             fontSize={12}
-                            angle={-45}
-                            textAnchor="end"
-                            height={80}
-                            dy={10}
                             tickLine={false}
                             axisLine={false}
                           />
@@ -1711,7 +1536,7 @@ export const AnalysisView: React.FC<Props> = ({
                   0,
                 );
                 const totalStakes = marketBets.reduce(
-                  (sum, b) => sum + (b.kellyStake || b.flatStake || 1),
+                  (sum, b) => sum + b.kellyStake,
                   0,
                 );
                 const roi = totalStakes > 0 ? (totalPL / totalStakes) * 100 : 0;
@@ -1758,10 +1583,6 @@ export const AnalysisView: React.FC<Props> = ({
                             dataKey="name"
                             stroke="#64748b"
                             fontSize={12}
-                            angle={-45}
-                            textAnchor="end"
-                            height={80}
-                            dy={10}
                             tickLine={false}
                             axisLine={false}
                           />
@@ -1866,7 +1687,9 @@ export const AnalysisView: React.FC<Props> = ({
           </div>
         )}
       </div>
+
       <AnalysisDashboard bets={bets} />
+
       <div>
         <h3 className="text-xl font-bold text-white mb-4">Full Bet History</h3>
         <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50">
@@ -1877,7 +1700,7 @@ export const AnalysisView: React.FC<Props> = ({
                 <th className="p-4 font-medium">Selection</th>
                 <th className="p-4 font-medium text-right">Timing</th>
                 <th className="p-4 font-medium text-right">Odds</th>
-                {/* REMOVED: <th className="p-4 font-medium text-right">Score</th> */}
+                <th className="p-4 font-medium text-right">Score</th>
                 <th className="p-4 font-medium text-right">CLV %</th>
                 <th className="p-4 font-medium text-right">Result</th>
                 <th className="p-4 font-medium text-right">Action</th>
@@ -1930,7 +1753,15 @@ export const AnalysisView: React.FC<Props> = ({
                         {bet.exchangeName}
                       </div>
                     </td>
-                    {/* REMOVED SCORE CELL */}
+                    <td className="p-4 text-right">
+                      {bet.homeScore !== undefined ? (
+                        <div className="font-mono text-slate-200 font-bold">
+                          {bet.homeScore} - {bet.awayScore}
+                        </div>
+                      ) : (
+                        <span className="text-slate-600">-</span>
+                      )}
+                    </td>
                     <td className="p-4 text-right font-bold">
                       {bet.clvPercent !== undefined ? (
                         <div
@@ -1943,7 +1774,6 @@ export const AnalysisView: React.FC<Props> = ({
                         <span className="text-slate-600">-</span>
                       )}
                     </td>
-                    {/* ADDED RESULT CELL BACK */}
                     <td className="p-4 text-right">
                       {bet.result === "won" && (
                         <span className="text-emerald-400 font-bold uppercase text-xs">
@@ -2007,7 +1837,6 @@ export const AnalysisView: React.FC<Props> = ({
           </table>
         </div>
       </div>
-      ```
     </div>
   );
 };
