@@ -989,11 +989,13 @@ export const AnalysisView: React.FC<Props> = ({
                           />
                           <Tooltip
                             contentStyle={{
-                              backgroundColor: "#0f172a",
-                              borderColor: "#1e293b",
+                              backgroundColor: "#1e293b",
+                              borderColor: "#334155",
                               borderRadius: "8px",
                               color: "#f8fafc",
                             }}
+                            itemStyle={{ color: "#f8fafc" }}
+                            cursor={{ fill: "rgba(255,255,255,0.05)" }}
                             formatter={(v: number | undefined) => {
                               if (v === undefined) return null;
                               return [`${v.toFixed(2)}%`, "ROI"];
@@ -1148,11 +1150,13 @@ export const AnalysisView: React.FC<Props> = ({
                           />
                           <Tooltip
                             contentStyle={{
-                              backgroundColor: "#0f172a",
-                              borderColor: "#1e293b",
+                              backgroundColor: "#1e293b",
+                              borderColor: "#334155",
                               borderRadius: "8px",
                               color: "#f8fafc",
                             }}
+                            itemStyle={{ color: "#f8fafc" }}
+                            cursor={{ fill: "rgba(255,255,255,0.05)" }}
                             formatter={(v: number | undefined) => {
                               if (v === undefined) return null;
                               return [`${v.toFixed(2)}%`, "ROI"];
@@ -1303,11 +1307,13 @@ export const AnalysisView: React.FC<Props> = ({
                           />
                           <Tooltip
                             contentStyle={{
-                              backgroundColor: "#0f172a",
-                              borderColor: "#1e293b",
+                              backgroundColor: "#1e293b",
+                              borderColor: "#334155",
                               borderRadius: "8px",
                               color: "#f8fafc",
                             }}
+                            itemStyle={{ color: "#f8fafc" }}
+                            cursor={{ fill: "rgba(255,255,255,0.05)" }}
                             formatter={(v: number | undefined) => {
                               if (v === undefined) return null;
                               return [`${v.toFixed(2)}%`, "ROI"];
@@ -1512,11 +1518,13 @@ export const AnalysisView: React.FC<Props> = ({
                           />
                           <Tooltip
                             contentStyle={{
-                              backgroundColor: "#0f172a",
-                              borderColor: "#1e293b",
+                              backgroundColor: "#1e293b",
+                              borderColor: "#334155",
                               borderRadius: "8px",
                               color: "#f8fafc",
                             }}
+                            itemStyle={{ color: "#f8fafc" }}
+                            cursor={{ fill: "rgba(255,255,255,0.05)" }}
                             formatter={(v: number | undefined) => {
                               if (v === undefined) return null;
                               return [`${v.toFixed(2)}%`, "ROI"];
@@ -1673,11 +1681,13 @@ export const AnalysisView: React.FC<Props> = ({
                           />
                           <Tooltip
                             contentStyle={{
-                              backgroundColor: "#0f172a",
-                              borderColor: "#1e293b",
+                              backgroundColor: "#1e293b",
+                              borderColor: "#334155",
                               borderRadius: "8px",
                               color: "#f8fafc",
                             }}
+                            itemStyle={{ color: "#f8fafc" }}
+                            cursor={{ fill: "rgba(255,255,255,0.05)" }}
                             formatter={(v: number | undefined) => {
                               if (v === undefined) return null;
                               return [`${v.toFixed(2)}%`, "ROI"];
