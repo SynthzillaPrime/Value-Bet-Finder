@@ -258,14 +258,18 @@ export const AnalysisView: React.FC<Props> = ({
         const values = lines[i].split(",");
         const row: any = {};
         headers.forEach((header, index) => {
-          row[header.trim()] = values[index]?.trim();
+          const cleanHeader = header.trim().replace(/^"|"$/g, "");
+          const cleanValue = values[index]?.trim().replace(/^"|"$/g, "");
+          row[cleanHeader] = cleanValue;
         });
 
         const match = row["Match"];
         const homeTeam = match?.split(" vs ")[0];
         const awayTeam = match?.split(" vs ")[1];
         const selection = row["Selection"];
-        const kickoff = new Date(row["Kickoff"]).getTime();
+        const kickoffDate = new Date(row["Kickoff"]);
+        const kickoff = kickoffDate.getTime();
+        const placedAt = new Date(row["Tracked At"]).getTime();
 
         // Check for duplicates
         const isDuplicate = bets.some(
@@ -304,17 +308,21 @@ export const AnalysisView: React.FC<Props> = ({
           timingBucket: (row["Timing Bucket"] as any) || "",
           hoursBeforeKickoff: 0,
           notes: row["Notes"] || "",
-          flatStake: parseFloat(row["Flat Stake"]) || 1,
+          flatStake: parseFloat(row["Flat Stake"]) || 0,
           kellyStake: parseFloat(row["Kelly Stake"]) || 0,
-          kickoff: new Date(row["Kickoff"]),
-          placedAt: new Date(row["Tracked At"]).getTime(),
+          kickoff: kickoffDate,
+          placedAt: placedAt,
           status: row["Result"] ? "closed" : "open",
           result: row["Result"]?.toLowerCase() as any,
-          closingRawPrice: parseFloat(row["Closing True Odds"]) || undefined,
-          closingFairPrice: parseFloat(row["Closing True Odds"]) || undefined, // Approximate
-          clvPercent: parseFloat(row["CLV %"]) || undefined,
-          flatPL: parseFloat(row["Flat P/L"]) || undefined,
-          kellyPL: parseFloat(row["Kelly P/L"]) || undefined,
+          closingRawPrice: row["Closing True Odds"]
+            ? parseFloat(row["Closing True Odds"])
+            : undefined,
+          closingFairPrice: row["Closing True Odds"]
+            ? parseFloat(row["Closing True Odds"])
+            : undefined, // Approximate
+          clvPercent: row["CLV %"] ? parseFloat(row["CLV %"]) : undefined,
+          flatPL: row["Flat P/L"] ? parseFloat(row["Flat P/L"]) : undefined,
+          kellyPL: row["Kelly P/L"] ? parseFloat(row["Kelly P/L"]) : undefined,
         };
 
         newBets.push(importedBet);
