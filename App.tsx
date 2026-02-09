@@ -157,7 +157,11 @@ const App: React.FC = () => {
       updatedBet.result &&
       updatedBet.kellyPL !== undefined
     ) {
-      const pl = updatedBet.kellyPL || 0;
+      // Use kellyPL if available, otherwise flatPL as fallback for transactions
+      const pl =
+        updatedBet.kellyPL !== undefined
+          ? updatedBet.kellyPL
+          : updatedBet.flatPL || 0;
 
       // Map exchange keys to bankroll keys
       let bankrollKey: keyof ExchangeBankroll = "smarkets";

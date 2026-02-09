@@ -428,9 +428,7 @@ export const AnalysisView: React.FC<Props> = ({
           </button>
         </div>
       </div>
-
       <SummaryStats bets={bets} currentKellyBankroll={bankroll} />
-
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
@@ -464,18 +462,28 @@ export const AnalysisView: React.FC<Props> = ({
                       ...transactions
                         .sort((a, b) => a.timestamp - b.timestamp)
                         .reduce((acc: any[], tx) => {
-                          const prevBankroll =
-                            acc.length > 0 ? acc[acc.length - 1].bankroll : 0;
+                          const prevBankroll = acc.length > 0 ? acc[acc.length - 1].bankroll : 0;
+                          let amountToAdd = tx.amount;
+
+                          // For bet transactions, if kellyPL is missing, use flatPL as fallback
+                          if ((tx.type === "bet_win" || tx.type === "bet_loss") && tx.betId) {
+                            const bet = bets.find(b => b.id === tx.betId);
+                            if (bet) {
+                              amountToAdd = (bet.kellyPL !== undefined ? bet.kellyPL : (bet.flatPL !== undefined ? bet.flatPL : 0));
+                            }
+                          }
+
                           acc.push({
                             timestamp: tx.timestamp,
-                            bankroll: prevBankroll + tx.amount,
+                            bankroll: prevBankroll + amountToAdd,
                             label:
                               tx.type === "bet_win" || tx.type === "bet_loss"
                                 ? "Bet Settlement"
                                 : tx.type,
                           });
                           return acc;
-                        }, []),
+                        }, [])
+                      }
                     ]}
                   >
                     <defs>
@@ -725,11 +733,11 @@ export const AnalysisView: React.FC<Props> = ({
                   <tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider">
                     <th className="p-4 font-medium">Bet #</th>
                     <th className="p-4 font-medium">Match</th>
-                    <th className="p-4 font-medium text-right">Edge %</th>
-                    <th className="p-4 font-medium text-right">Exp. Gain</th>
-                    <th className="p-4 font-medium text-right">Actual P/L</th>
-                    <th className="p-4 font-medium text-right">Exp. Bank</th>
-                    <th className="p-4 font-medium text-right">Act. Bank</th>
+                    <th className="p-4 font-medium text-right">Timing</th>
+                    <th className="p-4 font-medium text-right">Odds</th>
+                    <th className="p-4 font-medium text-right">CLV %</th>
+                    <th className="p-4 font-medium text-right">Result</th>
+                    <th className="p-4 font-medium text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="text-sm text-slate-300">
@@ -971,7 +979,7 @@ export const AnalysisView: React.FC<Props> = ({
                   );
                   const totalPL = compTxs.reduce((sum, t) => sum + t.amount, 0);
                   const totalStakes = compBets.reduce(
-                    (sum, b) => sum + (b.kellyStake || b.flatStake),
+                    (sum, b) => sum + (b.kellyStake || b.flatStake || 1),
                     0,
                   );
                   const roi =
@@ -1025,9 +1033,12 @@ export const AnalysisView: React.FC<Props> = ({
                             dataKey="name"
                             stroke="#64748b"
                             fontSize={10}
-                            tickFormatter={(v) =>
-                              v.length > 12 ? `${v.substring(0, 10)}...` : v
-                            }
+                            angle={-45}
+                            textAnchor="end"
+                            height={80}
+                            dy={10}
+                            tickLine={false}
+                            axisLine={false}
                           />
                           <YAxis
                             stroke="#64748b"
@@ -1147,7 +1158,7 @@ export const AnalysisView: React.FC<Props> = ({
                 );
                 const totalPL = bandTxs.reduce((sum, t) => sum + t.amount, 0);
                 const totalStakes = bandBets.reduce(
-                  (sum, b) => sum + (b.kellyStake || b.flatStake),
+                  (sum, b) => sum + (b.kellyStake || b.flatStake || 1),
                   0,
                 );
                 const roi = totalStakes > 0 ? (totalPL / totalStakes) * 100 : 0;
@@ -1190,6 +1201,10 @@ export const AnalysisView: React.FC<Props> = ({
                             dataKey="name"
                             stroke="#64748b"
                             fontSize={12}
+                            angle={-45}
+                            textAnchor="end"
+                            height={80}
+                            dy={10}
                             tickLine={false}
                             axisLine={false}
                           />
@@ -1305,7 +1320,7 @@ export const AnalysisView: React.FC<Props> = ({
                 );
                 const totalPL = bucketTxs.reduce((sum, t) => sum + t.amount, 0);
                 const totalStakes = bucketBets.reduce(
-                  (sum, b) => sum + (b.kellyStake || b.flatStake),
+                  (sum, b) => sum + (b.kellyStake || b.flatStake || 1),
                   0,
                 );
                 const roi = totalStakes > 0 ? (totalPL / totalStakes) * 100 : 0;
@@ -1352,6 +1367,10 @@ export const AnalysisView: React.FC<Props> = ({
                             dataKey="name"
                             stroke="#64748b"
                             fontSize={12}
+                            angle={-45}
+                            textAnchor="end"
+                            height={80}
+                            dy={10}
                             tickLine={false}
                             axisLine={false}
                           />
@@ -1478,14 +1497,14 @@ export const AnalysisView: React.FC<Props> = ({
                 const exTxs = settledTxs.filter((t) => t.exchange === ex.key);
 
                 exBets.forEach((b) => {
-                  totalStakes += b.kellyStake || b.flatStake;
+                  totalStakes += b.kellyStake || b.flatStake || 1;
                   if (b.result === "won") {
                     wins++;
-                    const profit = (b.exchangePrice - 1) * b.kellyStake;
+                    const profit = (b.exchangePrice - 1) * (b.kellyStake || b.flatStake || 1);
                     grossProfit += profit;
                     commissionPaid += profit * commRate;
                   } else if (b.result === "lost") {
-                    lostStakes += b.kellyStake;
+                    lostStakes += b.kellyStake || b.flatStake || 1;
                   }
                 });
 
@@ -1564,6 +1583,10 @@ export const AnalysisView: React.FC<Props> = ({
                             dataKey="name"
                             stroke="#64748b"
                             fontSize={12}
+                            angle={-45}
+                            textAnchor="end"
+                            height={80}
+                            dy={10}
                             tickLine={false}
                             axisLine={false}
                           />
@@ -1688,7 +1711,7 @@ export const AnalysisView: React.FC<Props> = ({
                   0,
                 );
                 const totalStakes = marketBets.reduce(
-                  (sum, b) => sum + (b.kellyStake || b.flatStake),
+                  (sum, b) => sum + (b.kellyStake || b.flatStake || 1),
                   0,
                 );
                 const roi = totalStakes > 0 ? (totalPL / totalStakes) * 100 : 0;
@@ -1735,6 +1758,10 @@ export const AnalysisView: React.FC<Props> = ({
                             dataKey="name"
                             stroke="#64748b"
                             fontSize={12}
+                            angle={-45}
+                            textAnchor="end"
+                            height={80}
+                            dy={10}
                             tickLine={false}
                             axisLine={false}
                           />
@@ -1839,9 +1866,7 @@ export const AnalysisView: React.FC<Props> = ({
           </div>
         )}
       </div>
-
       <AnalysisDashboard bets={bets} />
-
       <div>
         <h3 className="text-xl font-bold text-white mb-4">Full Bet History</h3>
         <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50">
@@ -1852,6 +1877,7 @@ export const AnalysisView: React.FC<Props> = ({
                 <th className="p-4 font-medium">Selection</th>
                 <th className="p-4 font-medium text-right">Timing</th>
                 <th className="p-4 font-medium text-right">Odds</th>
+                {/* REMOVED: <th className="p-4 font-medium text-right">Score</th> */}
                 <th className="p-4 font-medium text-right">CLV %</th>
                 <th className="p-4 font-medium text-right">Result</th>
                 <th className="p-4 font-medium text-right">Action</th>
@@ -1904,7 +1930,7 @@ export const AnalysisView: React.FC<Props> = ({
                         {bet.exchangeName}
                       </div>
                     </td>
-
+                    {/* REMOVED SCORE CELL */}
                     <td className="p-4 text-right font-bold">
                       {bet.clvPercent !== undefined ? (
                         <div
@@ -1917,6 +1943,7 @@ export const AnalysisView: React.FC<Props> = ({
                         <span className="text-slate-600">-</span>
                       )}
                     </td>
+                    {/* ADDED RESULT CELL BACK */}
                     <td className="p-4 text-right">
                       {bet.result === "won" && (
                         <span className="text-emerald-400 font-bold uppercase text-xs">
@@ -1980,6 +2007,7 @@ export const AnalysisView: React.FC<Props> = ({
           </table>
         </div>
       </div>
+      ```
     </div>
   );
 };
