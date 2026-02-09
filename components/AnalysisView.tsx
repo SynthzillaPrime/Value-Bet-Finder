@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { TrackedBet } from "../types";
 import { SummaryStats } from "./stats/SummaryStats";
 import { AnalysisDashboard } from "./AnalysisDashboard";
-import { EXCHANGES } from "../constants";
+import { EXCHANGES, LEAGUES } from "../constants";
 import {
   fetchClosingLineForBet,
   fetchMatchResult,
@@ -42,7 +42,24 @@ interface Props {
   transactions: BankrollTransaction[];
   onUpdateBet: (bet: TrackedBet) => void;
   onDeleteBet: (id: string) => void;
+  onImportBets?: (bets: TrackedBet[]) => void;
 }
+
+const splitCSVLine = (line: string) => {
+  const result = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') inQuotes = !inQuotes;
+    else if (char === "," && !inQuotes) {
+      result.push(cur.trim());
+      cur = "";
+    } else cur += char;
+  }
+  result.push(cur.trim());
+  return result;
+};
 
 type AnalysisOption =
   | "Bankroll Over Time"
@@ -62,11 +79,132 @@ export const AnalysisView: React.FC<Props> = ({
   transactions,
   onUpdateBet,
   onDeleteBet,
+  onImportBets,
 }) => {
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [selectedAnalysis, setSelectedAnalysis] =
     useState<AnalysisOption>("By Competition");
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (!content) return;
+
+      try {
+        const lines = content.split("\n").filter((l) => l.trim());
+        if (lines.length < 2)
+          throw new Error("File is empty or missing headers");
+
+        const newTrackedBets: TrackedBet[] = [];
+        const data = lines.slice(1);
+
+        for (const line of data) {
+          const vals = splitCSVLine(line);
+          if (vals.length < 11) continue;
+
+          const matchStr = vals[0].replace(/"/g, "");
+          const selection = vals[2].replace(/"/g, "");
+          const kickoff = new Date(vals[17].replace(/"/g, ""));
+
+          if (isNaN(kickoff.getTime())) continue;
+
+          const isDuplicate =
+            bets.some(
+              (b) =>
+                b.match === matchStr &&
+                b.selection === selection &&
+                new Date(b.kickoff).getTime() === kickoff.getTime(),
+            ) ||
+            newTrackedBets.some(
+              (b) =>
+                b.match === matchStr &&
+                b.selection === selection &&
+                b.kickoff.getTime() === kickoff.getTime(),
+            );
+
+          if (isDuplicate) continue;
+
+          const teams = matchStr.split(" vs ");
+          const leagueName = vals[1].replace(/"/g, "");
+          const exchangeName = vals[4].replace(/"/g, "");
+          const resultVal = vals[10].replace(/"/g, "");
+
+          const sportKey =
+            LEAGUES.find((l) => l.name === leagueName)?.key ||
+            leagueName.toLowerCase().replace(/\s+/g, "_");
+          const exchangeKey =
+            EXCHANGES.find((e) => e.name === exchangeName)?.key ||
+            exchangeName.toLowerCase();
+
+          const bet: TrackedBet = {
+            id: `imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            match: matchStr,
+            homeTeam: teams[0] || "Unknown",
+            awayTeam: teams[1] || "Unknown",
+            sport: leagueName,
+            sportKey,
+            selection,
+            market: vals[3].replace(/"/g, ""),
+            exchangeName,
+            exchangeKey,
+            exchangePrice: parseFloat(vals[5]) || 0,
+            fairPrice: parseFloat(vals[6]) || 0,
+            fairPriceAtBet: parseFloat(vals[6]) || 0,
+            netEdgePercent: parseFloat(vals[7]) || 0,
+            edgePercent: parseFloat(vals[7]) || 0,
+            kellyPercent: 0,
+            timingBucket: vals[8] as any,
+            notes: vals[9].replace(/"/g, ""),
+            status: resultVal === "open" ? "open" : "closed",
+            result: resultVal === "open" ? undefined : (resultVal as any),
+            closingFairPrice: parseFloat(vals[11]) || undefined,
+            clvPercent: parseFloat(vals[12]) || undefined,
+            flatStake: parseFloat(vals[13]) || 1,
+            flatPL: parseFloat(vals[14]) || undefined,
+            kellyStake: parseFloat(vals[15]) || 0,
+            kellyPL: parseFloat(vals[16]) || undefined,
+            kickoff,
+            placedAt:
+              new Date(vals[18].replace(/"/g, "")).getTime() || Date.now(),
+            offers: [],
+          };
+          newTrackedBets.push(bet);
+        }
+
+        if (newTrackedBets.length > 0) {
+          if (onImportBets) {
+            onImportBets(newTrackedBets);
+            alert(`Successfully imported ${newTrackedBets.length} new bets!`);
+          } else {
+            const stored = JSON.parse(
+              localStorage.getItem("tracked_bets") || "[]",
+            );
+            localStorage.setItem(
+              "tracked_bets",
+              JSON.stringify([...stored, ...newTrackedBets]),
+            );
+            alert(
+              `Imported ${newTrackedBets.length} bets to local storage. Please refresh the page to view them.`,
+            );
+          }
+        } else {
+          alert("No new unique bets found in the CSV file.");
+        }
+      } catch (err) {
+        alert(
+          "Error parsing CSV. Please ensure it matches the format of a file exported from this app.",
+        );
+      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    reader.readAsText(file);
+  };
 
   const checkClosingLine = async (bet: TrackedBet) => {
     if (new Date() < new Date(bet.kickoff)) {
@@ -265,11 +403,18 @@ export const AnalysisView: React.FC<Props> = ({
         <h2 className="text-2xl font-bold text-white">Performance Analysis</h2>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => alert("Import CSV coming soon")}
+            onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors"
           >
             <Upload className="w-3.5 h-3.5" /> Import
           </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImport}
+            accept=".csv"
+            className="hidden"
+          />
           <button
             onClick={exportToCSV}
             className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors"

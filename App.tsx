@@ -191,6 +191,10 @@ const App: React.FC = () => {
     }
   };
 
+  const handleImportBets = (newBets: TrackedBet[]) => {
+    setTrackedBets((prev) => [...prev, ...newBets]);
+  };
+
   // --- Core Logic ---
 
   // 1. Fetching Data
@@ -387,6 +391,7 @@ const App: React.FC = () => {
             transactions={transactions}
             onUpdateBet={handleUpdateTrackedBet}
             onDeleteBet={handleDeleteTrackedBet}
+            onImportBets={handleImportBets}
           />
         ) : (
           <BankrollView
