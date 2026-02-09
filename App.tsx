@@ -30,14 +30,46 @@ const BETS_STORAGE_KEY = "tracked_bets";
 const TRANSACTIONS_STORAGE_KEY = "bankroll_transactions";
 
 const App: React.FC = () => {
-  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string | null>(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) return stored;
+    if (HARDCODED_API_KEY && HARDCODED_API_KEY.length > 5)
+      return HARDCODED_API_KEY;
+    return null;
+  });
   const [isChangingKey, setIsChangingKey] = useState(false);
-  const [status, setStatus] = useState<FetchStatus>("no-key");
+  const [status, setStatus] = useState<FetchStatus>(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    const hasKey =
+      stored || (HARDCODED_API_KEY && HARDCODED_API_KEY.length > 5);
+    return hasKey ? "idle" : "no-key";
+  });
 
   // Data State
   const [rawMatches, setRawMatches] = useState<MatchResponse[]>([]);
-  const [trackedBets, setTrackedBets] = useState<TrackedBet[]>([]);
-  const [transactions, setTransactions] = useState<BankrollTransaction[]>([]);
+  const [trackedBets, setTrackedBets] = useState<TrackedBet[]>(() => {
+    const stored = localStorage.getItem(BETS_STORAGE_KEY);
+    if (!stored) return [];
+    try {
+      const parsed = JSON.parse(stored);
+      return parsed.map((b: any) => ({
+        ...b,
+        kickoff: new Date(b.kickoff),
+        exchangeName: b.exchangeName || "Smarkets",
+        exchangeKey: b.exchangeKey || "smarkets",
+        exchangePrice: b.exchangePrice || b.smarketsPrice || 0,
+      }));
+    } catch (e) {
+      console.error("Failed to load tracked bets", e);
+      return [];
+    }
+  });
+  const [transactions, setTransactions] = useState<BankrollTransaction[]>(
+    () => {
+      const stored = localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    },
+  );
 
   const exchangeBankrolls = useMemo(() => {
     const totals: ExchangeBankroll = { smarkets: 0, matchbook: 0, betfair: 0 };
@@ -68,43 +100,6 @@ const App: React.FC = () => {
   const [view, setView] = useState<
     "scanner" | "tracker" | "analysis" | "bankroll"
   >("scanner");
-
-  useEffect(() => {
-    const storedKey = localStorage.getItem(STORAGE_KEY);
-    const storedBets = localStorage.getItem(BETS_STORAGE_KEY);
-    const storedTransactions = localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
-
-    if (storedTransactions) {
-      setTransactions(JSON.parse(storedTransactions));
-    }
-
-    // Priority: 1. LocalStorage, 2. Hardcoded Key
-    if (storedKey) {
-      setApiKey(storedKey);
-      setStatus("idle");
-    } else if (HARDCODED_API_KEY && HARDCODED_API_KEY.length > 5) {
-      setApiKey(HARDCODED_API_KEY);
-      setStatus("idle");
-    }
-
-    if (storedBets) {
-      try {
-        // Revive date strings to Date objects AND Migrate legacy data
-        const parsed = JSON.parse(storedBets);
-        const revived = parsed.map((b: any) => ({
-          ...b,
-          kickoff: new Date(b.kickoff),
-          // Migration: If legacy smarketsPrice exists but exchangePrice doesn't
-          exchangeName: b.exchangeName || "Smarkets",
-          exchangeKey: b.exchangeKey || "smarkets",
-          exchangePrice: b.exchangePrice || b.smarketsPrice || 0,
-        }));
-        setTrackedBets(revived);
-      } catch (e) {
-        console.error("Failed to load tracked bets", e);
-      }
-    }
-  }, []);
 
   useEffect(() => {
     localStorage.setItem(BETS_STORAGE_KEY, JSON.stringify(trackedBets));
