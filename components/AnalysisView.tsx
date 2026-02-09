@@ -905,11 +905,6 @@ export const AnalysisView: React.FC<Props> = ({
                   b.result !== "push" &&
                   b.result !== "void",
               );
-              const settledTxs = transactions.filter(
-                (t: BankrollTransaction) =>
-                  t.type === "bet_win" || t.type === "bet_loss",
-              );
-
               const competitionsMap: Record<string, TrackedBet[]> = {};
               settled.forEach((b) => {
                 if (!competitionsMap[b.sport]) competitionsMap[b.sport] = [];
@@ -918,14 +913,11 @@ export const AnalysisView: React.FC<Props> = ({
 
               const compData = Object.entries(competitionsMap)
                 .map(([name, compBets]) => {
-                  const compTxs = settledTxs.filter((t) =>
-                    compBets.some((b) => b.id === t.betId),
-                  );
-                  const totalPL = compTxs.reduce((sum, t) => sum + t.amount, 0);
-                  const totalStakes = compBets.reduce(
-                    (sum, b) => sum + b.kellyStake,
+                  const totalPL = compBets.reduce(
+                    (sum, b) => sum + (b.flatPL || 0),
                     0,
                   );
+                  const totalStakes = compBets.length;
                   const roi =
                     totalStakes > 0 ? (totalPL / totalStakes) * 100 : 0;
                   const wins = compBets.filter(
@@ -1077,10 +1069,6 @@ export const AnalysisView: React.FC<Props> = ({
                   b.result !== "push" &&
                   b.result !== "void",
               );
-              const settledTxs = transactions.filter(
-                (t: BankrollTransaction) =>
-                  t.type === "bet_win" || t.type === "bet_loss",
-              );
               const bands = [
                 { label: "1.50 - 3.00", min: 1.5, max: 3.0 },
                 { label: "3.00 - 6.00", min: 3.0, max: 6.0 },
@@ -1095,14 +1083,11 @@ export const AnalysisView: React.FC<Props> = ({
                     return b.exchangePrice >= 3.0 && b.exchangePrice < 6.0;
                   return b.exchangePrice >= 6.0 && b.exchangePrice <= 10.0;
                 });
-                const bandTxs = settledTxs.filter((t) =>
-                  bandBets.some((b) => b.id === t.betId),
-                );
-                const totalPL = bandTxs.reduce((sum, t) => sum + t.amount, 0);
-                const totalStakes = bandBets.reduce(
-                  (sum, b) => sum + b.kellyStake,
+                const totalPL = bandBets.reduce(
+                  (sum, b) => sum + (b.flatPL || 0),
                   0,
                 );
+                const totalStakes = bandBets.length;
                 const roi = totalStakes > 0 ? (totalPL / totalStakes) * 100 : 0;
                 const wins = bandBets.filter((b) => b.result === "won").length;
                 const clvBets = bandBets.filter(
@@ -1243,24 +1228,17 @@ export const AnalysisView: React.FC<Props> = ({
                   b.result !== "push" &&
                   b.result !== "void",
               );
-              const settledTxs = transactions.filter(
-                (t: BankrollTransaction) =>
-                  t.type === "bet_win" || t.type === "bet_loss",
-              );
               const buckets = ["48hr+", "24-48hr", "12-24hr", "<12hr"];
 
               const timingData = buckets.map((bucket) => {
                 const bucketBets = settled.filter(
                   (b) => b.timingBucket === bucket,
                 );
-                const bucketTxs = settledTxs.filter((t) =>
-                  bucketBets.some((b) => b.id === t.betId),
-                );
-                const totalPL = bucketTxs.reduce((sum, t) => sum + t.amount, 0);
-                const totalStakes = bucketBets.reduce(
-                  (sum, b) => sum + b.kellyStake,
+                const totalPL = bucketBets.reduce(
+                  (sum, b) => sum + (b.flatPL || 0),
                   0,
                 );
+                const totalStakes = bucketBets.length;
                 const roi = totalStakes > 0 ? (totalPL / totalStakes) * 100 : 0;
                 const wins = bucketBets.filter(
                   (b) => b.result === "won",
@@ -1405,10 +1383,6 @@ export const AnalysisView: React.FC<Props> = ({
                   b.result !== "push" &&
                   b.result !== "void",
               );
-              const settledTxs = transactions.filter(
-                (t: BankrollTransaction) =>
-                  t.type === "bet_win" || t.type === "bet_loss",
-              );
               const exchangeKeys = [
                 { key: "smarkets", apiKey: "smarkets", name: "Smarkets" },
                 { key: "matchbook", apiKey: "matchbook", name: "Matchbook" },
@@ -1428,21 +1402,22 @@ export const AnalysisView: React.FC<Props> = ({
                 let lostStakes = 0;
                 let wins = 0;
 
-                const exTxs = settledTxs.filter((t) => t.exchange === ex.key);
-
                 exBets.forEach((b) => {
-                  totalStakes += b.kellyStake;
+                  totalStakes += 1;
                   if (b.result === "won") {
                     wins++;
-                    const profit = (b.exchangePrice - 1) * b.kellyStake;
+                    const profit = (b.exchangePrice - 1) * 1;
                     grossProfit += profit;
                     commissionPaid += profit * commRate;
                   } else if (b.result === "lost") {
-                    lostStakes += b.kellyStake;
+                    lostStakes += 1;
                   }
                 });
 
-                const netProfit = exTxs.reduce((sum, t) => sum + t.amount, 0);
+                const netProfit = exBets.reduce(
+                  (sum, b) => sum + (b.flatPL || 0),
+                  0,
+                );
                 const roi =
                   totalStakes > 0 ? (netProfit / totalStakes) * 100 : 0;
 
@@ -1625,25 +1600,15 @@ export const AnalysisView: React.FC<Props> = ({
                   b.result !== "push" &&
                   b.result !== "void",
               );
-              const settledTxs = transactions.filter(
-                (t: BankrollTransaction) =>
-                  t.type === "bet_win" || t.type === "bet_loss",
-              );
               const markets = ["Match Result", "Over/Under", "Handicap"];
 
               const marketData = markets.map((mkt) => {
                 const marketBets = settled.filter((b) => b.market === mkt);
-                const marketTxs = settledTxs.filter((t) =>
-                  marketBets.some((b) => b.id === t.betId),
-                );
-                const totalPL = marketTxs.reduce(
-                  (sum: number, t: BankrollTransaction) => sum + t.amount,
+                const totalPL = marketBets.reduce(
+                  (sum, b) => sum + (b.flatPL || 0),
                   0,
                 );
-                const totalStakes = marketBets.reduce(
-                  (sum, b) => sum + b.kellyStake,
-                  0,
-                );
+                const totalStakes = marketBets.length;
                 const roi = totalStakes > 0 ? (totalPL / totalStakes) * 100 : 0;
                 const wins = marketBets.filter(
                   (b) => b.result === "won",
