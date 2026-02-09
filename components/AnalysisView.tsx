@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { TrackedBet } from "../types";
 import { SummaryStats } from "./stats/SummaryStats";
-import { AnalysisDashboard } from "./AnalysisDashboard";
+
 import { EXCHANGES } from "../constants";
 import {
   fetchClosingLineForBet,
@@ -42,6 +42,7 @@ interface Props {
   transactions: BankrollTransaction[];
   onUpdateBet: (bet: TrackedBet) => void;
   onDeleteBet: (id: string) => void;
+  onImportBets: (bets: TrackedBet[]) => void;
 }
 
 type AnalysisOption =
@@ -62,6 +63,7 @@ export const AnalysisView: React.FC<Props> = ({
   transactions,
   onUpdateBet,
   onDeleteBet,
+  onImportBets,
 }) => {
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
@@ -236,6 +238,106 @@ export const AnalysisView: React.FC<Props> = ({
     link.click();
   };
 
+  const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      if (!text) return;
+
+      const lines = text.split("\n");
+      const headers = lines[0].split(",");
+      const newBets: TrackedBet[] = [];
+      let skippedCount = 0;
+
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+
+        const values = lines[i].split(",");
+        const row: any = {};
+        headers.forEach((header, index) => {
+          row[header.trim()] = values[index]?.trim();
+        });
+
+        const match = row["Match"];
+        const homeTeam = match?.split(" vs ")[0];
+        const awayTeam = match?.split(" vs ")[1];
+        const selection = row["Selection"];
+        const kickoff = new Date(row["Kickoff"]).getTime();
+
+        // Check for duplicates
+        const isDuplicate = bets.some(
+          (b) =>
+            `${b.homeTeam} vs ${b.awayTeam}` === match &&
+            b.selection === selection &&
+            new Date(b.kickoff).getTime() === kickoff,
+        );
+
+        if (isDuplicate) {
+          skippedCount++;
+          continue;
+        }
+
+        const fairPrice = parseFloat(row["Pinnacle True Odds"]) || 0;
+        const netEdgePercent = parseFloat(row["Net Edge %"]) || 0;
+
+        const importedBet: TrackedBet = {
+          id: `${match}-${selection}-${kickoff}-${Math.random().toString(36).substr(2, 9)}`,
+          match: match || "",
+          homeTeam: homeTeam || "",
+          awayTeam: awayTeam || "",
+          sport: row["League"] || "",
+          sportKey: "imported", // Dummy key for API usage
+          selection: selection || "",
+          market: row["Market"] || "",
+          exchangeKey: row["Exchange"]?.toLowerCase() || "",
+          exchangeName: row["Exchange"] || "",
+          exchangePrice: parseFloat(row["Your Odds"]) || 0,
+          fairPrice: fairPrice,
+          fairPriceAtBet: fairPrice,
+          edgePercent: netEdgePercent, // Approximation
+          netEdgePercent: netEdgePercent,
+          kellyPercent: 0, // Not easily recoverable from CSV
+          offers: [], // Not recoverable from CSV
+          timingBucket: (row["Timing Bucket"] as any) || "",
+          hoursBeforeKickoff: 0,
+          notes: row["Notes"] || "",
+          flatStake: parseFloat(row["Flat Stake"]) || 1,
+          kellyStake: parseFloat(row["Kelly Stake"]) || 0,
+          kickoff: new Date(row["Kickoff"]),
+          placedAt: new Date(row["Tracked At"]).getTime(),
+          status: row["Result"] ? "closed" : "open",
+          result: row["Result"]?.toLowerCase() as any,
+          closingRawPrice: parseFloat(row["Closing True Odds"]) || undefined,
+          closingFairPrice: parseFloat(row["Closing True Odds"]) || undefined, // Approximate
+          clvPercent: parseFloat(row["CLV %"]) || undefined,
+          flatPL: parseFloat(row["Flat P/L"]) || undefined,
+          kellyPL: parseFloat(row["Kelly P/L"]) || undefined,
+        };
+
+        newBets.push(importedBet);
+      }
+
+      if (newBets.length > 0) {
+        onImportBets(newBets);
+        alert(
+          `Successfully imported ${newBets.length} bets.${skippedCount > 0 ? ` Skipped ${skippedCount} duplicates.` : ""}`,
+        );
+      } else {
+        alert(
+          skippedCount > 0
+            ? `No new bets found. Skipped ${skippedCount} duplicates.`
+            : "No valid data found in CSV.",
+        );
+      }
+    };
+    reader.readAsText(file);
+    // Reset input
+    event.target.value = "";
+  };
+
   const sortedBets = [...bets].sort(
     (a, b) => b.kickoff.getTime() - a.kickoff.getTime(),
   );
@@ -264,12 +366,15 @@ export const AnalysisView: React.FC<Props> = ({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-bold text-white">Performance Analysis</h2>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => alert("Import CSV coming soon")}
-            className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors"
-          >
+          <label className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors cursor-pointer">
             <Upload className="w-3.5 h-3.5" /> Import
-          </button>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleImportCSV}
+              className="hidden"
+            />
+          </label>
           <button
             onClick={exportToCSV}
             className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors"
@@ -414,7 +519,7 @@ export const AnalysisView: React.FC<Props> = ({
                     .sort((a, b) => a.placedAt - b.placedAt)
                     .reduce((acc: any[], bet, idx) => {
                       const prevBankroll =
-                        acc.length > 0 ? acc[acc.length - 1].bankroll : 100;
+                        acc.length > 0 ? acc[acc.length - 1].bankroll : 0;
                       const currentBankroll = prevBankroll + (bet.kellyPL || 0);
                       acc.push({
                         betNum: idx + 1,
@@ -586,9 +691,9 @@ export const AnalysisView: React.FC<Props> = ({
                     .sort((a, b) => a.placedAt - b.placedAt)
                     .reduce((acc: any[], bet, idx) => {
                       const prevActual =
-                        acc.length > 0 ? acc[acc.length - 1].actual : 100;
+                        acc.length > 0 ? acc[acc.length - 1].actual : 0;
                       const prevExpected =
-                        acc.length > 0 ? acc[acc.length - 1].expected : 100;
+                        acc.length > 0 ? acc[acc.length - 1].expected : 0;
                       const expectedGain =
                         (bet.netEdgePercent / 100) * bet.kellyStake;
                       const currentActual = prevActual + (bet.kellyPL || 0);
@@ -1688,8 +1793,6 @@ export const AnalysisView: React.FC<Props> = ({
         )}
       </div>
 
-      <AnalysisDashboard bets={bets} />
-
       <div>
         <h3 className="text-xl font-bold text-white mb-4">Full Bet History</h3>
         <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50">
@@ -1700,7 +1803,6 @@ export const AnalysisView: React.FC<Props> = ({
                 <th className="p-4 font-medium">Selection</th>
                 <th className="p-4 font-medium text-right">Timing</th>
                 <th className="p-4 font-medium text-right">Odds</th>
-                <th className="p-4 font-medium text-right">Score</th>
                 <th className="p-4 font-medium text-right">CLV %</th>
                 <th className="p-4 font-medium text-right">Result</th>
                 <th className="p-4 font-medium text-right">Action</th>
@@ -1752,15 +1854,6 @@ export const AnalysisView: React.FC<Props> = ({
                       <div className="text-[10px] text-slate-500 uppercase">
                         {bet.exchangeName}
                       </div>
-                    </td>
-                    <td className="p-4 text-right">
-                      {bet.homeScore !== undefined ? (
-                        <div className="font-mono text-slate-200 font-bold">
-                          {bet.homeScore} - {bet.awayScore}
-                        </div>
-                      ) : (
-                        <span className="text-slate-600">-</span>
-                      )}
                     </td>
                     <td className="p-4 text-right font-bold">
                       {bet.clvPercent !== undefined ? (

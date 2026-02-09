@@ -104,9 +104,9 @@ export const fetchOddsData = async (
 export const calculateEdges = (matches: MatchResponse[]): BetEdge[] => {
   const allBets: BetEdge[] = [];
 
-  // Filter out matches that have already started or are more than 72 hours away
+  // Filter out matches that have already started or are more than 48 hours away
   const now = new Date();
-  const maxKickoff = new Date(now.getTime() + 72 * 60 * 60 * 1000);
+  const maxKickoff = new Date(now.getTime() + 48 * 60 * 60 * 1000);
   const upcomingMatches = matches.filter((m) => {
     const kickoff = new Date(m.commence_time);
     return kickoff > now && kickoff <= maxKickoff;
@@ -299,11 +299,11 @@ export const fetchClosingLineForBet = async (
 
     // Calculate fair prices for the whole market at close
     const fairPrices = stripVig(market.outcomes);
-    if (!fairPrices || !fairPrices[bet.selection]) return null;
+    if (!fairPrices || !fairPrices[outcome.name]) return null;
 
     return {
       rawPrice: outcome.price,
-      fairPrice: fairPrices[bet.selection],
+      fairPrice: fairPrices[outcome.name],
     };
   } catch (e) {
     console.error("Error fetching closing line", e);
