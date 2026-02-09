@@ -142,6 +142,11 @@ export const AnalysisView: React.FC<Props> = ({
             EXCHANGES.find((e) => e.name === exchangeName)?.key ||
             exchangeName.toLowerCase();
 
+          const placedAt =
+            new Date(vals[18].replace(/"/g, "")).getTime() || Date.now();
+          const hoursBeforeKickoff =
+            (kickoff.getTime() - placedAt) / (1000 * 60 * 60);
+
           const bet: TrackedBet = {
             id: `imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             match: matchStr,
@@ -159,6 +164,7 @@ export const AnalysisView: React.FC<Props> = ({
             netEdgePercent: parseFloat(vals[7]) || 0,
             edgePercent: parseFloat(vals[7]) || 0,
             kellyPercent: 0,
+            hoursBeforeKickoff,
             timingBucket: vals[8] as any,
             notes: vals[9].replace(/"/g, ""),
             status: resultVal === "open" ? "open" : "closed",
@@ -170,8 +176,7 @@ export const AnalysisView: React.FC<Props> = ({
             kellyStake: parseFloat(vals[15]) || 0,
             kellyPL: parseFloat(vals[16]) || undefined,
             kickoff,
-            placedAt:
-              new Date(vals[18].replace(/"/g, "")).getTime() || Date.now(),
+            placedAt,
             offers: [],
           };
           newTrackedBets.push(bet);
@@ -559,14 +564,15 @@ export const AnalysisView: React.FC<Props> = ({
                     .sort((a, b) => a.placedAt - b.placedAt)
                     .reduce((acc: any[], bet, idx) => {
                       const prevBankroll =
-                        acc.length > 0 ? acc[acc.length - 1].bankroll : 100;
-                      const currentBankroll = prevBankroll + (bet.kellyPL || 0);
+                        acc.length > 0 ? acc[acc.length - 1].bankroll : 0;
+                      const currentBankroll =
+                        prevBankroll + (bet.kellyPL || bet.flatPL || 0);
                       acc.push({
                         betNum: idx + 1,
                         date: new Date(bet.placedAt).toLocaleDateString(),
                         match: `${bet.homeTeam} vs ${bet.awayTeam}`,
                         result: bet.result,
-                        pl: bet.kellyPL || 0,
+                        pl: bet.kellyPL || bet.flatPL || 0,
                         bankroll: currentBankroll,
                       });
                       return acc;
@@ -628,7 +634,8 @@ export const AnalysisView: React.FC<Props> = ({
                             const bet = bets.find((b) => b.id === tx.betId);
                             if (bet) {
                               expectedChange =
-                                (bet.netEdgePercent / 100) * bet.kellyStake;
+                                (bet.netEdgePercent / 100) *
+                                (bet.kellyStake || bet.flatStake);
                             }
                           } else {
                             // Deposits/Withdrawals add to both to keep them baseline aligned
@@ -735,7 +742,8 @@ export const AnalysisView: React.FC<Props> = ({
                       const prevExpected =
                         acc.length > 0 ? acc[acc.length - 1].expected : 100;
                       const expectedGain =
-                        (bet.netEdgePercent / 100) * bet.kellyStake;
+                        (bet.netEdgePercent / 100) *
+                        (bet.kellyStake || bet.flatStake);
                       const currentActual = prevActual + (bet.kellyPL || 0);
                       const currentExpected = prevExpected + expectedGain;
                       acc.push({
@@ -963,7 +971,7 @@ export const AnalysisView: React.FC<Props> = ({
                   );
                   const totalPL = compTxs.reduce((sum, t) => sum + t.amount, 0);
                   const totalStakes = compBets.reduce(
-                    (sum, b) => sum + b.kellyStake,
+                    (sum, b) => sum + (b.kellyStake || b.flatStake),
                     0,
                   );
                   const roi =
@@ -1017,10 +1025,9 @@ export const AnalysisView: React.FC<Props> = ({
                             dataKey="name"
                             stroke="#64748b"
                             fontSize={10}
-                            angle={-45}
-                            textAnchor="end"
-                            interval={0}
-                            height={80}
+                            tickFormatter={(v) =>
+                              v.length > 12 ? `${v.substring(0, 10)}...` : v
+                            }
                           />
                           <YAxis
                             stroke="#64748b"
@@ -1140,7 +1147,7 @@ export const AnalysisView: React.FC<Props> = ({
                 );
                 const totalPL = bandTxs.reduce((sum, t) => sum + t.amount, 0);
                 const totalStakes = bandBets.reduce(
-                  (sum, b) => sum + b.kellyStake,
+                  (sum, b) => sum + (b.kellyStake || b.flatStake),
                   0,
                 );
                 const roi = totalStakes > 0 ? (totalPL / totalStakes) * 100 : 0;
@@ -1298,7 +1305,7 @@ export const AnalysisView: React.FC<Props> = ({
                 );
                 const totalPL = bucketTxs.reduce((sum, t) => sum + t.amount, 0);
                 const totalStakes = bucketBets.reduce(
-                  (sum, b) => sum + b.kellyStake,
+                  (sum, b) => sum + (b.kellyStake || b.flatStake),
                   0,
                 );
                 const roi = totalStakes > 0 ? (totalPL / totalStakes) * 100 : 0;
@@ -1471,7 +1478,7 @@ export const AnalysisView: React.FC<Props> = ({
                 const exTxs = settledTxs.filter((t) => t.exchange === ex.key);
 
                 exBets.forEach((b) => {
-                  totalStakes += b.kellyStake;
+                  totalStakes += b.kellyStake || b.flatStake;
                   if (b.result === "won") {
                     wins++;
                     const profit = (b.exchangePrice - 1) * b.kellyStake;
@@ -1681,7 +1688,7 @@ export const AnalysisView: React.FC<Props> = ({
                   0,
                 );
                 const totalStakes = marketBets.reduce(
-                  (sum, b) => sum + b.kellyStake,
+                  (sum, b) => sum + (b.kellyStake || b.flatStake),
                   0,
                 );
                 const roi = totalStakes > 0 ? (totalPL / totalStakes) * 100 : 0;
@@ -1845,7 +1852,6 @@ export const AnalysisView: React.FC<Props> = ({
                 <th className="p-4 font-medium">Selection</th>
                 <th className="p-4 font-medium text-right">Timing</th>
                 <th className="p-4 font-medium text-right">Odds</th>
-                <th className="p-4 font-medium text-right">Score</th>
                 <th className="p-4 font-medium text-right">CLV %</th>
                 <th className="p-4 font-medium text-right">Result</th>
                 <th className="p-4 font-medium text-right">Action</th>
@@ -1898,15 +1904,7 @@ export const AnalysisView: React.FC<Props> = ({
                         {bet.exchangeName}
                       </div>
                     </td>
-                    <td className="p-4 text-right">
-                      {bet.homeScore !== undefined ? (
-                        <div className="font-mono text-slate-200 font-bold">
-                          {bet.homeScore} - {bet.awayScore}
-                        </div>
-                      ) : (
-                        <span className="text-slate-600">-</span>
-                      )}
-                    </td>
+
                     <td className="p-4 text-right font-bold">
                       {bet.clvPercent !== undefined ? (
                         <div
