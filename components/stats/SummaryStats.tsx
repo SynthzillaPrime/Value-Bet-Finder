@@ -4,14 +4,13 @@ import { Trophy, TrendingUp, Wallet, Percent, Activity } from "lucide-react";
 
 interface Props {
   bets: TrackedBet[];
-  currentKellyBankroll: number;
 }
 
-export const SummaryStats: React.FC<Props> = ({
-  bets,
-  currentKellyBankroll,
-}) => {
+export const SummaryStats: React.FC<Props> = ({ bets }) => {
   const settledBets = bets.filter((b) => b.result !== undefined);
+  const decisiveBets = settledBets.filter(
+    (b) => b.result === "won" || b.result === "lost",
+  );
   const clvBets = bets.filter((b) => b.clvPercent !== undefined);
 
   const totalBets = bets.length;
@@ -19,7 +18,17 @@ export const SummaryStats: React.FC<Props> = ({
 
   // Win Rate
   const wins = settledBets.filter((b) => b.result === "won").length;
-  const winRate = totalSettled > 0 ? (wins / totalSettled) * 100 : 0;
+  const losses = settledBets.filter((b) => b.result === "lost").length;
+  const voidCount = settledBets.filter((b) => b.result === "void").length;
+  const winRate =
+    decisiveBets.length > 0 ? (wins / decisiveBets.length) * 100 : 0;
+
+  const avgOdds =
+    decisiveBets.length > 0
+      ? decisiveBets.reduce((acc, b) => acc + b.exchangePrice, 0) /
+        decisiveBets.length
+      : 0;
+  const expectedWinRate = avgOdds > 0 ? (1 / avgOdds) * 100 : 0;
 
   // CLV Stats
   const avgClv =
@@ -53,7 +62,10 @@ export const SummaryStats: React.FC<Props> = ({
     {
       label: "Total Bets",
       value: totalBets,
-      subValue: `${totalSettled} Settled`,
+      subValue:
+        totalBets - totalSettled > 0
+          ? `${totalSettled} settled, ${totalBets - totalSettled} open`
+          : `${totalSettled} settled`,
       icon: <Activity className="w-4 h-4" />,
       color: "text-blue-400",
       bgColor: "bg-blue-500/10",
@@ -61,10 +73,11 @@ export const SummaryStats: React.FC<Props> = ({
     {
       label: "Win Rate",
       value: `${winRate.toFixed(1)}%`,
-      subValue: `${wins} Wins`,
+      subValue: `${wins}W ${losses}L${voidCount > 0 ? ` ${voidCount}V` : ""}\nAvg odds: ${avgOdds.toFixed(2)}\nReq. win rate: ${expectedWinRate.toFixed(0)}%`,
       icon: <Trophy className="w-4 h-4" />,
-      color: "text-emerald-400",
-      bgColor: "bg-emerald-500/10",
+      color: winRate >= expectedWinRate ? "text-emerald-400" : "text-red-400",
+      bgColor:
+        winRate >= expectedWinRate ? "bg-emerald-500/10" : "bg-red-500/10",
     },
     {
       label: "Avg CLV",
@@ -86,9 +99,9 @@ export const SummaryStats: React.FC<Props> = ({
       label: "Kelly ROI",
       value: `${kellyROI > 0 ? "+" : ""}${kellyROI.toFixed(1)}%`,
       subValue:
-        currentKellyBankroll === 0
-          ? "No bankroll"
-          : `£${currentKellyBankroll.toFixed(2)} Bank`,
+        totalSettled === 0
+          ? "No data yet"
+          : `${totalKellyPL >= 0 ? "+" : ""}£${totalKellyPL.toFixed(2)} total P/L`,
       icon: <Wallet className="w-4 h-4" />,
       color: kellyROI >= 0 ? "text-indigo-400" : "text-red-400",
       bgColor: "bg-slate-800",
@@ -111,7 +124,10 @@ export const SummaryStats: React.FC<Props> = ({
             </div>
           </div>
           <div className={`text-xl font-bold ${stat.color}`}>{stat.value}</div>
-          <div className="text-[10px] text-slate-400 font-medium">
+          <div
+            className="text-[10px] text-slate-400 font-medium"
+            style={{ whiteSpace: "pre-line" }}
+          >
             {stat.subValue}
           </div>
         </div>

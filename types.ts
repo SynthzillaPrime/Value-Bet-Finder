@@ -74,7 +74,7 @@ export interface TrackedBet extends BetEdge {
   closingFairPrice?: number; // Pinnacle no-vig price at kickoff
   clvPercent?: number; // (MyOdds / ClosingFairPrice - 1) * 100
   status: "open" | "closed";
-  result?: "won" | "lost" | "push" | "void";
+  result?: "won" | "lost" | "void";
   homeScore?: number;
   awayScore?: number;
 
@@ -105,7 +105,6 @@ export interface BankrollTransaction {
     | "withdrawal"
     | "bet_win"
     | "bet_loss"
-    | "bet_push"
     | "bet_void"
     | "adjustment";
   amount: number; // positive for deposits/wins, negative for withdrawals/losses

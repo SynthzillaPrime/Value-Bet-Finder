@@ -1,6 +1,12 @@
 import React, { useState } from "react";
 import { BankrollTransaction, ExchangeBankroll } from "../../types";
-import { Wallet, ArrowUpCircle, History } from "lucide-react";
+import {
+  Wallet,
+  ArrowUpCircle,
+  History,
+  ChevronDown,
+  Download,
+} from "lucide-react";
 
 interface Props {
   transactions: BankrollTransaction[];
@@ -25,10 +31,39 @@ export const BankrollView: React.FC<Props> = ({
     note: "",
   });
 
+  const [exFilter, setExFilter] = useState("All Exchanges");
+  const [typeFilter, setTypeFilter] = useState("All Types");
+
   const totalBalance =
     exchangeBankrolls.smarkets +
     exchangeBankrolls.matchbook +
     exchangeBankrolls.betfair;
+
+  const exportTransactionsToCSV = (
+    targetTxs: BankrollTransaction[] = transactions,
+  ) => {
+    const headers = ["Date", "Time", "Exchange", "Type", "Amount"];
+    const rows = targetTxs.map((t) => [
+      new Date(t.timestamp).toLocaleDateString(),
+      `"${new Date(t.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}"`,
+      t.exchange,
+      t.type.replace("_", " "),
+      t.amount.toFixed(2),
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const dateStr = new Date().toISOString().split("T")[0];
+    link.setAttribute("href", url);
+    link.setAttribute("download", `vbf-transactions-${dateStr}.csv`);
+    link.click();
+  };
 
   const handleAddTx = () => {
     const amount = parseFloat(newTx.amount);
@@ -46,9 +81,16 @@ export const BankrollView: React.FC<Props> = ({
     setNewTx({ ...newTx, amount: "", note: "" });
   };
 
-  const sortedTransactions = [...transactions].sort(
-    (a, b) => b.timestamp - a.timestamp,
-  );
+  const sortedTransactions = [...transactions]
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .filter((t) => {
+      const matchEx =
+        exFilter === "All Exchanges" || t.exchange === exFilter.toLowerCase();
+      const matchType =
+        typeFilter === "All Types" ||
+        t.type.replace("_", " ").toLowerCase() === typeFilter.toLowerCase();
+      return matchEx && matchType;
+    });
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -75,28 +117,68 @@ export const BankrollView: React.FC<Props> = ({
 
       {/* Exchange Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {(["smarkets", "matchbook", "betfair"] as const).map((ex) => (
-          <div
-            key={ex}
-            className="bg-slate-800/50 border border-slate-700 p-5 rounded-xl space-y-3 relative overflow-hidden group"
-          >
-            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-              <Wallet className="w-12 h-12" />
-            </div>
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-              {ex}
-            </h3>
-            <p className="text-2xl font-mono font-bold text-slate-100">
-              £{exchangeBankrolls[ex].toFixed(2)}
-            </p>
-            <div className="flex gap-2">
-              <div className="text-[10px] text-slate-500">
-                {transactions.filter((t) => t.exchange === ex).length}{" "}
-                Transactions
+        {(["smarkets", "matchbook", "betfair"] as const).map((ex) => {
+          const exTxs = transactions.filter((t) => t.exchange === ex);
+          const deposits = exTxs
+            .filter((t) => t.type === "deposit")
+            .reduce((sum, t) => sum + t.amount, 0);
+          const withdrawals = Math.abs(
+            exTxs
+              .filter((t) => t.type === "withdrawal")
+              .reduce((sum, t) => sum + t.amount, 0),
+          );
+          const adjustments = exTxs
+            .filter((t) => t.type === "adjustment")
+            .reduce((sum, t) => sum + t.amount, 0);
+          const pl = exTxs
+            .filter((t) => ["bet_win", "bet_loss", "bet_void"].includes(t.type))
+            .reduce((sum, t) => sum + t.amount, 0);
+
+          return (
+            <div
+              key={ex}
+              className="bg-slate-800/50 border border-slate-700 p-5 rounded-xl space-y-3 relative overflow-hidden group"
+            >
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Wallet className="w-12 h-12" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-100 uppercase tracking-widest">
+                {ex}
+              </h3>
+              <p className="text-2xl font-mono font-bold text-slate-100">
+                £{exchangeBankrolls[ex].toFixed(2)}
+              </p>
+              <div className="space-y-1 pt-2 border-t border-slate-700/50">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-400">Deposits:</span>
+                  <span className="text-xs font-mono text-slate-200">
+                    £{deposits.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-400">Withdrawals:</span>
+                  <span className="text-xs font-mono text-slate-200">
+                    £{withdrawals.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-400">Adjustments:</span>
+                  <span className="text-xs font-mono text-slate-200">
+                    £{adjustments.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-400">P/L:</span>
+                  <span
+                    className={`text-xs font-mono font-bold ${pl >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                  >
+                    {pl >= 0 ? "+" : "-"}£{Math.abs(pl).toFixed(2)}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -186,11 +268,64 @@ export const BankrollView: React.FC<Props> = ({
         {/* History Section */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center">
+            <div className="px-6 py-4 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                 <History className="w-4 h-4 text-slate-400" />
                 Transaction History
               </h3>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:flex-none">
+                  <select
+                    value={exFilter}
+                    onChange={(e) => setExFilter(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8 min-w-[180px]"
+                  >
+                    <option>All Exchanges</option>
+                    <option>Smarkets</option>
+                    <option>Matchbook</option>
+                    <option>Betfair</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
+                </div>
+                <div className="relative flex-1 sm:flex-none">
+                  <select
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8 min-w-[180px]"
+                  >
+                    <option>All Types</option>
+                    <option>Deposit</option>
+                    <option>Withdrawal</option>
+                    <option>Bet Win</option>
+                    <option>Bet Loss</option>
+                    <option>Bet Void</option>
+                    <option>Adjustment</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
+                </div>
+                <div className="relative flex-1 sm:flex-none">
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value === "all")
+                        exportTransactionsToCSV(transactions);
+                      if (e.target.value === "filtered")
+                        exportTransactionsToCSV(sortedTransactions);
+                      e.target.value = "";
+                    }}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8 min-w-[180px]"
+                  >
+                    <option value="" disabled>
+                      Export...
+                    </option>
+                    <option value="all">Export All Transactions</option>
+                    <option value="filtered">
+                      Export Filtered Transactions
+                    </option>
+                  </select>
+                  <Download className="absolute right-2 top-2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
+                </div>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
@@ -199,7 +334,6 @@ export const BankrollView: React.FC<Props> = ({
                     <th className="px-6 py-3 font-medium">Date</th>
                     <th className="px-6 py-3 font-medium">Exchange</th>
                     <th className="px-6 py-3 font-medium">Type</th>
-                    <th className="px-6 py-3 font-medium">Note</th>
                     <th className="px-6 py-3 font-medium text-right">Amount</th>
                   </tr>
                 </thead>
@@ -207,7 +341,7 @@ export const BankrollView: React.FC<Props> = ({
                   {sortedTransactions.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={4}
                         className="px-6 py-12 text-center text-slate-600 italic"
                       >
                         No transactions yet.
@@ -248,9 +382,6 @@ export const BankrollView: React.FC<Props> = ({
                             className={`px-6 py-4 font-bold uppercase text-[10px] ${typeColor}`}
                           >
                             {t.type.replace("_", " ")}
-                          </td>
-                          <td className="px-6 py-4 italic text-slate-500 truncate max-w-[150px]">
-                            {t.note || (t.betId ? "Bet Settlement" : "-")}
                           </td>
                           <td
                             className={`px-6 py-4 text-right font-mono font-bold text-sm ${isPositive ? "text-emerald-400" : "text-red-400"}`}

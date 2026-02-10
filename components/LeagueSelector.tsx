@@ -48,7 +48,7 @@ export const LeagueSelector: React.FC<Props> = ({
         disabled={disabled}
         className={`flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm font-semibold text-slate-200 hover:bg-slate-800 transition-all ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       >
-        Competitions
+        Competitions ({selected.length})
         <ChevronDown
           className={`w-4 h-4 text-slate-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
         />

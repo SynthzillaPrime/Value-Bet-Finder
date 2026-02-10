@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { TrackedBet } from "../types";
 import { SummaryStats } from "./stats/SummaryStats";
 
-import { EXCHANGES } from "../constants";
+import { EXCHANGES, LEAGUES } from "../constants";
 import {
   fetchClosingLineForBet,
   fetchMatchResult,
@@ -23,26 +23,19 @@ import {
   Bar,
   Cell,
 } from "recharts";
-import {
-  Download,
-  Upload,
-  RefreshCw,
-  Trophy,
-  Trash2,
-  ChevronDown,
-} from "lucide-react";
+import { RefreshCw, Trophy, Trash2, ChevronDown } from "lucide-react";
 
 import { ExchangeBankroll, BankrollTransaction } from "../types";
 
 interface Props {
   bets: TrackedBet[];
   apiKey: string;
-  bankroll: number;
   exchangeBankrolls: ExchangeBankroll;
   transactions: BankrollTransaction[];
   onUpdateBet: (bet: TrackedBet) => void;
   onDeleteBet: (id: string) => void;
   onImportBets: (bets: TrackedBet[]) => void;
+  onAddTransaction: (t: BankrollTransaction) => void;
 }
 
 type AnalysisOption =
@@ -58,17 +51,40 @@ type AnalysisOption =
 export const AnalysisView: React.FC<Props> = ({
   bets,
   apiKey,
-  bankroll,
   exchangeBankrolls,
   transactions,
   onUpdateBet,
   onDeleteBet,
   onImportBets,
+  onAddTransaction,
 }) => {
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const [selectedAnalysis, setSelectedAnalysis] =
     useState<AnalysisOption>("By Competition");
+
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        exportRef.current &&
+        !exportRef.current.contains(event.target as Node)
+      ) {
+        setIsExportOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Filter states for Full Bet History
+  const [compFilter, setCompFilter] = useState("All Competitions");
+  const [timingFilter, setTimingFilter] = useState("All Timing");
+  const [oddsFilter, setOddsFilter] = useState("All Odds");
+  const [clvFilter, setClvFilter] = useState("All CLV");
+  const [resultFilter, setResultFilter] = useState("All Results");
 
   const checkClosingLine = async (bet: TrackedBet) => {
     if (new Date() < new Date(bet.kickoff)) {
@@ -107,7 +123,7 @@ export const AnalysisView: React.FC<Props> = ({
     const { homeScore, awayScore } = scoreResult;
     if (homeScore === undefined || awayScore === undefined) return;
 
-    let result: "won" | "lost" | "push" = "lost";
+    let result: "won" | "lost" | "void" = "lost";
 
     if (bet.market === "Match Result") {
       if (bet.selection === bet.homeTeam) {
@@ -127,11 +143,11 @@ export const AnalysisView: React.FC<Props> = ({
       if (type === "Over") {
         if (total > line) result = "won";
         else if (total < line) result = "lost";
-        else result = "push";
+        else result = "void";
       } else if (type === "Under") {
         if (total < line) result = "won";
         else if (total > line) result = "lost";
-        else result = "push";
+        else result = "void";
       }
     } else if (bet.market === "Handicap") {
       const parts = bet.selection.split(" ");
@@ -141,12 +157,12 @@ export const AnalysisView: React.FC<Props> = ({
         const adjusted = homeScore + point;
         if (adjusted > awayScore) result = "won";
         else if (adjusted < awayScore) result = "lost";
-        else result = "push";
+        else result = "void";
       } else if (team === bet.awayTeam) {
         const adjusted = awayScore + point;
         if (adjusted > homeScore) result = "won";
         else if (adjusted < homeScore) result = "lost";
-        else result = "push";
+        else result = "void";
       }
     }
 
@@ -162,7 +178,7 @@ export const AnalysisView: React.FC<Props> = ({
     } else if (result === "lost") {
       flatPL = -1;
       kellyPL = -bet.kellyStake;
-    } else if (result === "push" || result === "void") {
+    } else if (result === "void") {
       flatPL = 0;
       kellyPL = 0;
     }
@@ -178,7 +194,7 @@ export const AnalysisView: React.FC<Props> = ({
     });
   };
 
-  const exportToCSV = () => {
+  const exportToCSV = (targetBets: TrackedBet[] = bets) => {
     const headers = [
       "Match",
       "League",
@@ -201,27 +217,29 @@ export const AnalysisView: React.FC<Props> = ({
       "Tracked At",
     ];
 
-    const rows = bets.map((bet) => [
-      `"${bet.homeTeam} vs ${bet.awayTeam}"`,
-      `"${bet.sport}"`,
-      `"${bet.selection}"`,
-      `"${bet.market}"`,
-      `"${bet.exchangeName}"`,
-      bet.exchangePrice,
-      bet.fairPrice,
-      bet.netEdgePercent,
-      bet.timingBucket,
-      `"${bet.notes || ""}"`,
-      bet.result || "open",
-      bet.closingFairPrice || "",
-      bet.clvPercent || "",
-      bet.flatStake,
-      bet.flatPL !== undefined ? bet.flatPL : "",
-      bet.kellyStake,
-      bet.kellyPL !== undefined ? bet.kellyPL : "",
-      `"${new Date(bet.kickoff).toLocaleString()}"`,
-      `"${new Date(bet.placedAt).toLocaleString()}"`,
-    ]);
+    const rows = [...targetBets]
+      .sort((a, b) => b.kickoff.getTime() - a.kickoff.getTime())
+      .map((bet) => [
+        `"${bet.homeTeam} vs ${bet.awayTeam}"`,
+        `"${bet.sport}"`,
+        `"${bet.selection}"`,
+        `"${bet.market}"`,
+        `"${bet.exchangeName}"`,
+        bet.exchangePrice,
+        bet.fairPrice,
+        bet.netEdgePercent,
+        bet.timingBucket,
+        `"${bet.notes || ""}"`,
+        bet.result || "open",
+        bet.closingFairPrice || "",
+        bet.clvPercent || "",
+        bet.flatStake,
+        bet.flatPL !== undefined ? bet.flatPL : "",
+        bet.kellyStake,
+        bet.kellyPL !== undefined ? bet.kellyPL : "",
+        `"${new Date(bet.kickoff).toLocaleString()}"`,
+        `"${new Date(bet.placedAt).toLocaleString()}"`,
+      ]);
 
     const csvContent = [
       headers.join(","),
@@ -248,14 +266,17 @@ export const AnalysisView: React.FC<Props> = ({
       if (!text) return;
 
       const lines = text.split("\n");
-      const headers = lines[0].split(",");
+      // Split headers while ignoring commas inside quotes
+      const csvSplitRegex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+      const headers = lines[0].split(csvSplitRegex);
       const newBets: TrackedBet[] = [];
+      const newTransactions: BankrollTransaction[] = [];
       let skippedCount = 0;
 
       for (let i = 1; i < lines.length; i++) {
         if (!lines[i].trim()) continue;
 
-        const values = lines[i].split(",");
+        const values = lines[i].split(csvSplitRegex);
         const row: any = {};
         headers.forEach((header, index) => {
           const cleanHeader = header.trim().replace(/^"|"$/g, "");
@@ -269,7 +290,11 @@ export const AnalysisView: React.FC<Props> = ({
         const selection = row["Selection"];
         const kickoffDate = new Date(row["Kickoff"]);
         const kickoff = kickoffDate.getTime();
-        const placedAt = new Date(row["Tracked At"]).getTime();
+
+        let placedAt = new Date(row["Tracked At"]).getTime();
+        if (isNaN(placedAt)) {
+          placedAt = Date.now();
+        }
 
         // Check for duplicates
         const isDuplicate = bets.some(
@@ -313,7 +338,9 @@ export const AnalysisView: React.FC<Props> = ({
           kickoff: kickoffDate,
           placedAt: placedAt,
           status: row["Result"] ? "closed" : "open",
-          result: row["Result"]?.toLowerCase() as any,
+          result: (row["Result"]?.toLowerCase() === "push"
+            ? "void"
+            : row["Result"]?.toLowerCase()) as any,
           closingRawPrice: row["Closing True Odds"]
             ? parseFloat(row["Closing True Odds"])
             : undefined,
@@ -326,10 +353,34 @@ export const AnalysisView: React.FC<Props> = ({
         };
 
         newBets.push(importedBet);
+
+        // Create transaction for settled bets
+        if (importedBet.result && importedBet.flatPL !== undefined) {
+          let bankrollKey: "smarkets" | "betfair" | "matchbook" = "smarkets";
+          const ex = importedBet.exchangeKey.toLowerCase();
+          if (ex === "matchbook") bankrollKey = "matchbook";
+          else if (ex === "betfair" || ex === "betfair_ex_uk")
+            bankrollKey = "betfair";
+          else bankrollKey = "smarkets";
+
+          let type: BankrollTransaction["type"] = "bet_win";
+          if (importedBet.result === "lost") type = "bet_loss";
+          else if (importedBet.result === "void") type = "bet_void";
+
+          newTransactions.push({
+            id: `import-bet-${importedBet.id}-${Date.now()}`,
+            timestamp: importedBet.placedAt,
+            exchange: bankrollKey,
+            type,
+            amount: importedBet.flatPL,
+            betId: importedBet.id,
+          });
+        }
       }
 
       if (newBets.length > 0) {
         onImportBets(newBets);
+        newTransactions.forEach((t) => onAddTransaction(t));
         alert(
           `Successfully imported ${newBets.length} bets.${skippedCount > 0 ? ` Skipped ${skippedCount} duplicates.` : ""}`,
         );
@@ -346,7 +397,49 @@ export const AnalysisView: React.FC<Props> = ({
     event.target.value = "";
   };
 
-  const sortedBets = [...bets].sort(
+  const filteredBets = bets.filter((bet) => {
+    // Competition Filter
+    if (compFilter !== "All Competitions" && bet.sport !== compFilter)
+      return false;
+
+    // Timing Filter
+    if (timingFilter !== "All Timing" && bet.timingBucket !== timingFilter)
+      return false;
+
+    // Odds Range Filter
+    if (oddsFilter !== "All Odds") {
+      const price = bet.exchangePrice;
+      if (oddsFilter === "1.50 - 3.00" && !(price >= 1.5 && price < 3.0))
+        return false;
+      if (oddsFilter === "3.00 - 6.00" && !(price >= 3.0 && price < 6.0))
+        return false;
+      if (oddsFilter === "6.00 - 10.00" && !(price >= 6.0 && price <= 10.0))
+        return false;
+    }
+
+    // CLV Filter
+    if (clvFilter !== "All CLV") {
+      if (clvFilter === "Positive CLV" && !((bet.clvPercent || 0) > 0))
+        return false;
+      if (clvFilter === "Negative CLV" && !((bet.clvPercent || 0) < 0))
+        return false;
+      if (clvFilter === "No CLV" && bet.clvPercent !== undefined) return false;
+    }
+
+    // Result Filter
+    if (resultFilter !== "All Results") {
+      const res = bet.result?.toLowerCase();
+      const status = bet.status;
+      if (resultFilter === "Open" && status !== "open") return false;
+      if (resultFilter === "Won" && res !== "won") return false;
+      if (resultFilter === "Lost" && res !== "lost") return false;
+      if (resultFilter === "Void" && res !== "void") return false;
+    }
+
+    return true;
+  });
+
+  const sortedBets = [...filteredBets].sort(
     (a, b) => b.kickoff.getTime() - a.kickoff.getTime(),
   );
 
@@ -373,26 +466,9 @@ export const AnalysisView: React.FC<Props> = ({
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-bold text-white">Performance Analysis</h2>
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors cursor-pointer">
-            <Upload className="w-3.5 h-3.5" /> Import
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleImportCSV}
-              className="hidden"
-            />
-          </label>
-          <button
-            onClick={exportToCSV}
-            className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors"
-          >
-            <Download className="w-3.5 h-3.5" /> Export
-          </button>
-        </div>
       </div>
 
-      <SummaryStats bets={bets} currentKellyBankroll={bankroll} />
+      <SummaryStats bets={bets} />
 
       <div className="space-y-4">
         <div className="flex items-center gap-3">
@@ -472,8 +548,12 @@ export const AnalysisView: React.FC<Props> = ({
                       fontSize={10}
                       tickLine={false}
                       axisLine={false}
+                      allowDuplicatedCategory={false}
                       tickFormatter={(val) =>
-                        new Date(val).toLocaleDateString()
+                        new Date(val).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                        })
                       }
                     />
                     <YAxis
@@ -490,6 +570,12 @@ export const AnalysisView: React.FC<Props> = ({
                         borderRadius: "8px",
                         color: "#f8fafc",
                       }}
+                      labelFormatter={(val) =>
+                        new Date(val).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                        })
+                      }
                       itemStyle={{ color: "#10b981" }}
                       formatter={(value: number | undefined) => {
                         if (value === undefined) return null;
@@ -908,10 +994,7 @@ export const AnalysisView: React.FC<Props> = ({
           <div className="space-y-6">
             {(() => {
               const settled = bets.filter(
-                (b) =>
-                  b.result !== undefined &&
-                  b.result !== "push" &&
-                  b.result !== "void",
+                (b) => b.result !== undefined && b.result !== "void",
               );
               const competitionsMap: Record<string, TrackedBet[]> = {};
               settled.forEach((b) => {
@@ -977,10 +1060,8 @@ export const AnalysisView: React.FC<Props> = ({
                             dataKey="name"
                             stroke="#64748b"
                             fontSize={10}
-                            angle={-45}
-                            textAnchor="end"
-                            interval={0}
-                            height={80}
+                            interval="preserveStartEnd"
+                            tick={{ fontSize: 10 }}
                           />
                           <YAxis
                             stroke="#64748b"
@@ -1074,10 +1155,7 @@ export const AnalysisView: React.FC<Props> = ({
           <div className="space-y-6">
             {(() => {
               const settled = bets.filter(
-                (b) =>
-                  b.result !== undefined &&
-                  b.result !== "push" &&
-                  b.result !== "void",
+                (b) => b.result !== undefined && b.result !== "void",
               );
               const bands = [
                 { label: "1.50 - 3.00", min: 1.5, max: 3.0 },
@@ -1235,10 +1313,7 @@ export const AnalysisView: React.FC<Props> = ({
           <div className="space-y-6">
             {(() => {
               const settled = bets.filter(
-                (b) =>
-                  b.result !== undefined &&
-                  b.result !== "push" &&
-                  b.result !== "void",
+                (b) => b.result !== undefined && b.result !== "void",
               );
               const buckets = ["48hr+", "24-48hr", "12-24hr", "<12hr"];
 
@@ -1392,10 +1467,7 @@ export const AnalysisView: React.FC<Props> = ({
           <div className="space-y-6">
             {(() => {
               const settled = bets.filter(
-                (b) =>
-                  b.result !== undefined &&
-                  b.result !== "push" &&
-                  b.result !== "void",
+                (b) => b.result !== undefined && b.result !== "void",
               );
               const exchangeKeys = [
                 { key: "smarkets", apiKey: "smarkets", name: "Smarkets" },
@@ -1611,10 +1683,7 @@ export const AnalysisView: React.FC<Props> = ({
           <div className="space-y-6">
             {(() => {
               const settled = bets.filter(
-                (b) =>
-                  b.result !== undefined &&
-                  b.result !== "push" &&
-                  b.result !== "void",
+                (b) => b.result !== undefined && b.result !== "void",
               );
               const markets = ["Match Result", "Over/Under", "Handicap"];
 
@@ -1777,7 +1846,147 @@ export const AnalysisView: React.FC<Props> = ({
       </div>
 
       <div>
-        <h3 className="text-xl font-bold text-white mb-4">Full Bet History</h3>
+        <div className="flex flex-col gap-4 mb-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-xl font-bold text-white">Full Bet History</h3>
+            <div className="flex items-center gap-2">
+              <label className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors cursor-pointer min-w-[120px] text-center">
+                Import
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleImportCSV}
+                  className="hidden"
+                />
+              </label>
+              <div className="relative" ref={exportRef}>
+                <button
+                  onClick={() => setIsExportOpen(!isExportOpen)}
+                  className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors min-w-[120px] text-center"
+                >
+                  Export
+                </button>
+                {isExportOpen && (
+                  <div className="absolute right-0 mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 overflow-visible min-w-[120px]">
+                    <button
+                      onClick={() => {
+                        exportToCSV(bets);
+                        setIsExportOpen(false);
+                      }}
+                      className="block w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
+                    >
+                      All Bets
+                    </button>
+                    <button
+                      onClick={() => {
+                        exportToCSV(filteredBets);
+                        setIsExportOpen(false);
+                      }}
+                      className="block w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
+                    >
+                      Filtered Bets
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {/* Competition Filter */}
+            <div className="relative">
+              <select
+                value={compFilter}
+                onChange={(e) => setCompFilter(e.target.value)}
+                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              >
+                <option>All Competitions</option>
+                {(() => {
+                  const uniqueSports = Array.from(
+                    new Set(bets.map((b) => b.sport)),
+                  );
+                  const sortedSports = uniqueSports.sort((a, b) => {
+                    const idxA = LEAGUES.findIndex((l) => l.name === a);
+                    const idxB = LEAGUES.findIndex((l) => l.name === b);
+                    if (idxA === -1 && idxB === -1) return a.localeCompare(b);
+                    if (idxA === -1) return 1;
+                    if (idxB === -1) return -1;
+                    return idxA - idxB;
+                  });
+                  return sortedSports.map((sport) => (
+                    <option key={sport} value={sport}>
+                      {sport}
+                    </option>
+                  ));
+                })()}
+              </select>
+              <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
+            </div>
+
+            {/* Timing Filter */}
+            <div className="relative">
+              <select
+                value={timingFilter}
+                onChange={(e) => setTimingFilter(e.target.value)}
+                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              >
+                <option>All Timing</option>
+                <option>48hr+</option>
+                <option>24-48hr</option>
+                <option>12-24hr</option>
+                <option>&lt;12hr</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
+            </div>
+
+            {/* Odds Range Filter */}
+            <div className="relative">
+              <select
+                value={oddsFilter}
+                onChange={(e) => setOddsFilter(e.target.value)}
+                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              >
+                <option>All Odds</option>
+                <option>1.50 - 3.00</option>
+                <option>3.00 - 6.00</option>
+                <option>6.00 - 10.00</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
+            </div>
+
+            {/* CLV Filter */}
+            <div className="relative">
+              <select
+                value={clvFilter}
+                onChange={(e) => setClvFilter(e.target.value)}
+                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              >
+                <option>All CLV</option>
+                <option>Positive CLV</option>
+                <option>Negative CLV</option>
+                <option>No CLV</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
+            </div>
+
+            {/* Result Filter */}
+            <div className="relative">
+              <select
+                value={resultFilter}
+                onChange={(e) => setResultFilter(e.target.value)}
+                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              >
+                <option>All Results</option>
+                <option>Won</option>
+                <option>Lost</option>
+                <option>Void</option>
+                <option>Open</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
+            </div>
+          </div>
+        </div>
+
         <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -1861,9 +2070,9 @@ export const AnalysisView: React.FC<Props> = ({
                           Lost
                         </span>
                       )}
-                      {bet.result === "push" && (
+                      {bet.result === "void" && (
                         <span className="text-slate-400 font-bold uppercase text-xs">
-                          Push
+                          Void
                         </span>
                       )}
                       {!bet.result && (

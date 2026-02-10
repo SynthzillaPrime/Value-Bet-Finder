@@ -168,7 +168,6 @@ const App: React.FC = () => {
 
       let type: BankrollTransaction["type"] = "bet_win";
       if (updatedBet.result === "lost") type = "bet_loss";
-      else if (updatedBet.result === "push") type = "bet_push";
       else if (updatedBet.result === "void") type = "bet_void";
 
       const transaction: BankrollTransaction = {
@@ -259,11 +258,8 @@ const App: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 flex items-center gap-3">
               <Trophy className="text-blue-500" />
-              Matchday Edge Finder
+              Value Bet Finder
             </h1>
-            <p className="text-slate-500 text-sm mt-1 ml-1">
-              Smart Money vs Public Money
-            </p>
           </div>
 
           <div className="flex items-center gap-3"></div>
@@ -376,12 +372,12 @@ const App: React.FC = () => {
           <AnalysisView
             bets={trackedBets}
             apiKey={apiKey}
-            bankroll={bankroll}
             exchangeBankrolls={exchangeBankrolls}
             transactions={transactions}
             onUpdateBet={handleUpdateTrackedBet}
             onDeleteBet={handleDeleteTrackedBet}
             onImportBets={handleImportBets}
+            onAddTransaction={(t) => setTransactions((prev) => [...prev, t])}
           />
         ) : (
           <BankrollView
@@ -411,13 +407,6 @@ const App: React.FC = () => {
               requests remaining
             </div>
           )}
-          <p>
-            Odds data provided by The-Odds-API. Updates may be delayed by a few
-            minutes.
-          </p>
-          <p className="mt-1">
-            Kelly Criterion stakes are suggestions only. Gamble responsibly.
-          </p>
         </div>
       </div>
     </div>
