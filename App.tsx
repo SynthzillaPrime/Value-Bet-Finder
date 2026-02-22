@@ -4,7 +4,23 @@ import { BetCard } from "./components/BetCard";
 import { LeagueSelector } from "./components/LeagueSelector";
 import { AnalysisView } from "./components/AnalysisView";
 import { BankrollView } from "./components/bankroll/BankrollView";
+import { PinLock } from "./components/PinLock";
 import { fetchOddsData, calculateEdges } from "./services/edgeFinder";
+import {
+  isPinSetUp,
+  isSessionValid,
+  setPin,
+  verifyPin,
+  fetchAllBets,
+  fetchAllTransactions,
+  insertBet,
+  updateBet as supabaseUpdateBet,
+  deleteBet as supabaseDeleteBet,
+  insertBets,
+  insertTransaction,
+  insertTransactions,
+  migrateLocalStorageToSupabase,
+} from "./services/supabase";
 import {
   BetEdge,
   FetchStatus,
@@ -24,10 +40,13 @@ import {
 } from "lucide-react";
 
 const STORAGE_KEY = "ods_api_key";
-const BETS_STORAGE_KEY = "tracked_bets";
-const TRANSACTIONS_STORAGE_KEY = "bankroll_transactions";
 
 const App: React.FC = () => {
+  // Auth state
+  const [authState, setAuthState] = useState<
+    "loading" | "setup" | "locked" | "unlocked"
+  >("loading");
+
   const [apiKey, setApiKey] = useState<string | null>(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) return stored;
@@ -45,29 +64,9 @@ const App: React.FC = () => {
 
   // Data State
   const [rawMatches, setRawMatches] = useState<MatchResponse[]>([]);
-  const [trackedBets, setTrackedBets] = useState<TrackedBet[]>(() => {
-    const stored = localStorage.getItem(BETS_STORAGE_KEY);
-    if (!stored) return [];
-    try {
-      const parsed = JSON.parse(stored);
-      return parsed.map((b: any) => ({
-        ...b,
-        kickoff: new Date(b.kickoff),
-        exchangeName: b.exchangeName || "Smarkets",
-        exchangeKey: b.exchangeKey || "smarkets",
-        exchangePrice: b.exchangePrice || b.smarketsPrice || 0,
-      }));
-    } catch (e) {
-      console.error("Failed to load tracked bets", e);
-      return [];
-    }
-  });
-  const [transactions, setTransactions] = useState<BankrollTransaction[]>(
-    () => {
-      const stored = localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    },
-  );
+  const [trackedBets, setTrackedBets] = useState<TrackedBet[]>([]);
+  const [transactions, setTransactions] = useState<BankrollTransaction[]>([]);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   const exchangeBankrolls = useMemo(() => {
     const totals: ExchangeBankroll = { smarkets: 0, matchbook: 0, betfair: 0 };
@@ -99,16 +98,51 @@ const App: React.FC = () => {
     "scanner",
   );
 
+  // Check auth on mount
   useEffect(() => {
-    localStorage.setItem(BETS_STORAGE_KEY, JSON.stringify(trackedBets));
-  }, [trackedBets]);
+    const checkAuth = async () => {
+      const pinExists = await isPinSetUp();
+      if (!pinExists) {
+        setAuthState("setup");
+        return;
+      }
 
+      const sessionValid = await isSessionValid();
+      if (sessionValid) {
+        setAuthState("unlocked");
+      } else {
+        setAuthState("locked");
+      }
+    };
+    checkAuth();
+  }, []);
+
+  // Load data from Supabase once unlocked
   useEffect(() => {
-    localStorage.setItem(
-      TRANSACTIONS_STORAGE_KEY,
-      JSON.stringify(transactions),
-    );
-  }, [transactions]);
+    if (authState !== "unlocked" || dataLoaded) return;
+
+    const loadData = async () => {
+      // Try migration first (one-time, only runs if Supabase is empty)
+      const migration = await migrateLocalStorageToSupabase();
+      if (migration.bets > 0 || migration.transactions > 0) {
+        console.log(
+          `Migrated ${migration.bets} bets and ${migration.transactions} transactions to Supabase`,
+        );
+      }
+
+      // Load from Supabase
+      const [bets, txs] = await Promise.all([
+        fetchAllBets(),
+        fetchAllTransactions(),
+      ]);
+
+      setTrackedBets(bets);
+      setTransactions(txs);
+      setDataLoaded(true);
+    };
+
+    loadData();
+  }, [authState, dataLoaded]);
 
   const handleSaveKey = (key: string) => {
     localStorage.setItem(STORAGE_KEY, key);
@@ -121,9 +155,10 @@ const App: React.FC = () => {
     setIsChangingKey(false);
   };
 
-  const handleTrackBet = (bet: BetEdge, notes?: string) => {
+  const handleTrackBet = async (bet: BetEdge, notes?: string) => {
     const now = Date.now();
-    const hoursBeforeKickoff = (bet.kickoff.getTime() - now) / (1000 * 60 * 60);
+    const hoursBeforeKickoff =
+      (bet.kickoff.getTime() - now) / (1000 * 60 * 60);
     let timingBucket: "48hr+" | "24-48hr" | "12-24hr" | "<12hr" = "<12hr";
 
     if (hoursBeforeKickoff >= 48) timingBucket = "48hr+";
@@ -143,25 +178,28 @@ const App: React.FC = () => {
       flatStake: 1,
       kellyStake: fractionalKellyStake,
     };
+
+    // Optimistic update
     setTrackedBets((prev) => [...prev, newTrackedBet]);
+    // Persist to Supabase
+    await insertBet(newTrackedBet);
   };
 
-  const handleUpdateTrackedBet = (updatedBet: TrackedBet) => {
+  const handleUpdateTrackedBet = async (updatedBet: TrackedBet) => {
     const oldBet = trackedBets.find((b) => b.id === updatedBet.id);
-    // If the bet just settled, update the bankroll
+
+    // If the bet just settled, create a bankroll transaction
     if (
       oldBet &&
       !oldBet.result &&
       updatedBet.result &&
       updatedBet.kellyPL !== undefined
     ) {
-      // Use kellyPL if available, otherwise flatPL as fallback for transactions
       const pl =
         updatedBet.kellyPL !== undefined
           ? updatedBet.kellyPL
           : updatedBet.flatPL || 0;
 
-      // Map exchange keys to bankroll keys
       let bankrollKey: keyof ExchangeBankroll = "smarkets";
       if (updatedBet.exchangeKey === "matchbook") bankrollKey = "matchbook";
       if (updatedBet.exchangeKey === "betfair_ex_uk") bankrollKey = "betfair";
@@ -179,21 +217,41 @@ const App: React.FC = () => {
         betId: updatedBet.id,
       };
 
+      // Optimistic update
       setTransactions((prev) => [...prev, transaction]);
+      // Persist to Supabase
+      await insertTransaction(transaction);
     }
+
+    // Optimistic update
     setTrackedBets((prev) =>
       prev.map((b) => (b.id === updatedBet.id ? updatedBet : b)),
     );
+    // Persist to Supabase
+    await supabaseUpdateBet(updatedBet);
   };
 
-  const handleDeleteTrackedBet = (id: string) => {
+  const handleDeleteTrackedBet = async (id: string) => {
     if (window.confirm("Delete this record?")) {
+      // Optimistic update
       setTrackedBets((prev) => prev.filter((b) => b.id !== id));
+      // Persist to Supabase
+      await supabaseDeleteBet(id);
     }
   };
 
-  const handleImportBets = (newBets: TrackedBet[]) => {
+  const handleImportBets = async (newBets: TrackedBet[]) => {
+    // Optimistic update
     setTrackedBets((prev) => [...prev, ...newBets]);
+    // Persist to Supabase
+    await insertBets(newBets);
+  };
+
+  const handleAddTransaction = async (t: BankrollTransaction) => {
+    // Optimistic update
+    setTransactions((prev) => [...prev, t]);
+    // Persist to Supabase
+    await insertTransaction(t);
   };
 
   // --- Core Logic ---
@@ -239,13 +297,54 @@ const App: React.FC = () => {
     return calculateEdges(rawMatches);
   }, [rawMatches]);
 
-  // View: API Key Input (Initial or Changing)
+  // --- Auth Views ---
+
+  if (authState === "loading") {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-slate-400 text-sm">Loading...</div>
+      </div>
+    );
+  }
+
+  if (authState === "setup") {
+    return (
+      <PinLock
+        mode="setup"
+        onSuccess={() => setAuthState("unlocked")}
+        onVerify={verifyPin}
+        onSetup={setPin}
+      />
+    );
+  }
+
+  if (authState === "locked") {
+    return (
+      <PinLock
+        mode="login"
+        onSuccess={() => setAuthState("unlocked")}
+        onVerify={verifyPin}
+        onSetup={setPin}
+      />
+    );
+  }
+
+  // --- API Key Input ---
   if (!apiKey || isChangingKey) {
     return (
       <ApiKeyInput
         onSave={handleSaveKey}
         onCancel={apiKey ? handleCancelChangeKey : undefined}
       />
+    );
+  }
+
+  // --- Loading data ---
+  if (!dataLoaded) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-slate-400 text-sm">Loading your data...</div>
+      </div>
     );
   }
 
@@ -377,13 +476,13 @@ const App: React.FC = () => {
             onUpdateBet={handleUpdateTrackedBet}
             onDeleteBet={handleDeleteTrackedBet}
             onImportBets={handleImportBets}
-            onAddTransaction={(t) => setTransactions((prev) => [...prev, t])}
+            onAddTransaction={handleAddTransaction}
           />
         ) : (
           <BankrollView
             transactions={transactions}
             exchangeBankrolls={exchangeBankrolls}
-            onAddTransaction={(t) => setTransactions((prev) => [...prev, t])}
+            onAddTransaction={handleAddTransaction}
           />
         )}
 
