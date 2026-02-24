@@ -4,6 +4,8 @@ import { BetCard } from "./components/BetCard";
 import { LeagueSelector } from "./components/LeagueSelector";
 import { AnalysisView } from "./components/AnalysisView";
 import { BankrollView } from "./components/bankroll/BankrollView";
+import { OpenBetsView } from "./components/OpenBetsView";
+import { BetHistoryView } from "./components/BetHistoryView";
 import { PinLock } from "./components/PinLock";
 import { fetchOddsData, calculateEdges } from "./services/edgeFinder";
 import {
@@ -37,6 +39,8 @@ import {
   Search,
   BarChart3,
   Wallet,
+  ClipboardList,
+  History,
 } from "lucide-react";
 
 const STORAGE_KEY = "ods_api_key";
@@ -94,7 +98,7 @@ const App: React.FC = () => {
     LEAGUES.map((l) => l.key),
   );
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const [view, setView] = useState<"scanner" | "analysis" | "bankroll">(
+  const [view, setView] = useState<"scanner" | "openbets" | "history" | "analysis" | "bankroll">(
     "scanner",
   );
 
@@ -374,6 +378,20 @@ const App: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setView("openbets")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm font-semibold ${view === "openbets" ? "bg-slate-800 text-white shadow-sm ring-1 ring-slate-700" : "text-slate-400 hover:text-slate-200"}`}
+          >
+            <ClipboardList className="w-4 h-4" /> Open Bets
+          </button>
+
+          <button
+            onClick={() => setView("history")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm font-semibold ${view === "history" ? "bg-slate-800 text-white shadow-sm ring-1 ring-slate-700" : "text-slate-400 hover:text-slate-200"}`}
+          >
+            <History className="w-4 h-4" /> Bet History
+          </button>
+
+          <button
             onClick={() => setView("analysis")}
             className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm font-semibold ${view === "analysis" ? "bg-slate-800 text-white shadow-sm ring-1 ring-slate-700" : "text-slate-400 hover:text-slate-200"}`}
           >
@@ -467,6 +485,22 @@ const App: React.FC = () => {
               </div>
             )}
           </>
+        ) : view === "openbets" ? (
+          <OpenBetsView
+            bets={trackedBets}
+            apiKey={apiKey}
+            onUpdateBet={handleUpdateTrackedBet}
+            onDeleteBet={handleDeleteTrackedBet}
+          />
+        ) : view === "history" ? (
+          <BetHistoryView
+            bets={trackedBets}
+            apiKey={apiKey}
+            onUpdateBet={handleUpdateTrackedBet}
+            onDeleteBet={handleDeleteTrackedBet}
+            onImportBets={handleImportBets}
+            onAddTransaction={handleAddTransaction}
+          />
         ) : view === "analysis" ? (
           <AnalysisView
             bets={trackedBets}
@@ -474,9 +508,6 @@ const App: React.FC = () => {
             exchangeBankrolls={exchangeBankrolls}
             transactions={transactions}
             onUpdateBet={handleUpdateTrackedBet}
-            onDeleteBet={handleDeleteTrackedBet}
-            onImportBets={handleImportBets}
-            onAddTransaction={handleAddTransaction}
           />
         ) : (
           <BankrollView

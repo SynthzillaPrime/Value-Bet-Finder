@@ -1,12 +1,9 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import { TrackedBet } from "../types";
 import { SummaryStats } from "./stats/SummaryStats";
 
 import { EXCHANGES, LEAGUES } from "../constants";
-import {
-  fetchClosingLineForBet,
-  fetchMatchResult,
-} from "../services/edgeFinder";
+import { fetchClosingLineForBet } from "../services/edgeFinder";
 import {
   XAxis,
   YAxis,
@@ -23,7 +20,7 @@ import {
   Bar,
   Cell,
 } from "recharts";
-import { RefreshCw, Trophy, Trash2, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 import { ExchangeBankroll, BankrollTransaction } from "../types";
 
@@ -33,9 +30,6 @@ interface Props {
   exchangeBankrolls: ExchangeBankroll;
   transactions: BankrollTransaction[];
   onUpdateBet: (bet: TrackedBet) => void;
-  onDeleteBet: (id: string) => void;
-  onImportBets: (bets: TrackedBet[]) => void;
-  onAddTransaction: (t: BankrollTransaction) => void;
 }
 
 type AnalysisOption =
@@ -54,402 +48,9 @@ export const AnalysisView: React.FC<Props> = ({
   exchangeBankrolls,
   transactions,
   onUpdateBet,
-  onDeleteBet,
-  onImportBets,
-  onAddTransaction,
 }) => {
-  const [loadingId, setLoadingId] = useState<string | null>(null);
-
   const [selectedAnalysis, setSelectedAnalysis] =
     useState<AnalysisOption>("By Competition");
-
-  const [isExportOpen, setIsExportOpen] = useState(false);
-  const exportRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        exportRef.current &&
-        !exportRef.current.contains(event.target as Node)
-      ) {
-        setIsExportOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Filter states for Full Bet History
-  const [compFilter, setCompFilter] = useState("All Competitions");
-  const [timingFilter, setTimingFilter] = useState("All Timing");
-  const [oddsFilter, setOddsFilter] = useState("All Odds");
-  const [clvFilter, setClvFilter] = useState("All CLV");
-  const [resultFilter, setResultFilter] = useState("All Results");
-
-  const checkClosingLine = async (bet: TrackedBet) => {
-    if (new Date() < new Date(bet.kickoff)) {
-      alert("Match hasn't started yet.");
-      return;
-    }
-
-    setLoadingId(bet.id);
-    const result = await fetchClosingLineForBet(apiKey, bet);
-    setLoadingId(null);
-
-    if (result) {
-      const clv = (bet.exchangePrice / result.fairPrice - 1) * 100;
-      onUpdateBet({
-        ...bet,
-        closingRawPrice: result.rawPrice,
-        closingFairPrice: result.fairPrice,
-        clvPercent: clv,
-        status: "closed",
-      });
-    }
-  };
-
-  const checkBetResult = async (bet: TrackedBet) => {
-    if (new Date() < new Date(bet.kickoff)) {
-      alert("Match hasn't started yet.");
-      return;
-    }
-
-    setLoadingId(bet.id + "-result");
-    const scoreResult = await fetchMatchResult(apiKey, bet);
-    setLoadingId(null);
-
-    if (!scoreResult || !scoreResult.completed) return;
-
-    const { homeScore, awayScore } = scoreResult;
-    if (homeScore === undefined || awayScore === undefined) return;
-
-    let result: "won" | "lost" | "void" = "lost";
-
-    if (bet.market === "Match Result") {
-      if (bet.selection === bet.homeTeam) {
-        if (homeScore > awayScore) result = "won";
-        else if (homeScore === awayScore) result = "lost";
-      } else if (bet.selection === bet.awayTeam) {
-        if (awayScore > homeScore) result = "won";
-        else if (homeScore === awayScore) result = "lost";
-      } else if (bet.selection.toLowerCase() === "draw") {
-        if (homeScore === awayScore) result = "won";
-      }
-    } else if (bet.market === "Over/Under") {
-      const parts = bet.selection.split(" ");
-      const type = parts[0];
-      const line = parseFloat(parts[1]);
-      const total = homeScore + awayScore;
-      if (type === "Over") {
-        if (total > line) result = "won";
-        else if (total < line) result = "lost";
-        else result = "void";
-      } else if (type === "Under") {
-        if (total < line) result = "won";
-        else if (total > line) result = "lost";
-        else result = "void";
-      }
-    } else if (bet.market === "Handicap") {
-      const parts = bet.selection.split(" ");
-      const point = parseFloat(parts[parts.length - 1]);
-      const team = parts.slice(0, -1).join(" ");
-      if (team === bet.homeTeam) {
-        const adjusted = homeScore + point;
-        if (adjusted > awayScore) result = "won";
-        else if (adjusted < awayScore) result = "lost";
-        else result = "void";
-      } else if (team === bet.awayTeam) {
-        const adjusted = awayScore + point;
-        if (adjusted > homeScore) result = "won";
-        else if (adjusted < homeScore) result = "lost";
-        else result = "void";
-      }
-    }
-
-    const exchange = EXCHANGES.find((ex) => ex.key === bet.exchangeKey);
-    const commission = exchange ? exchange.commission : 0;
-
-    let flatPL = 0;
-    let kellyPL = 0;
-
-    if (result === "won") {
-      flatPL = (bet.exchangePrice - 1) * (1 - commission);
-      kellyPL = bet.kellyStake * (bet.exchangePrice - 1) * (1 - commission);
-    } else if (result === "lost") {
-      flatPL = -1;
-      kellyPL = -bet.kellyStake;
-    } else if (result === "void") {
-      flatPL = 0;
-      kellyPL = 0;
-    }
-
-    onUpdateBet({
-      ...bet,
-      result,
-      homeScore,
-      awayScore,
-      flatPL,
-      kellyPL,
-      status: "closed",
-    });
-  };
-
-  const exportToCSV = (targetBets: TrackedBet[] = bets) => {
-    const headers = [
-      "Match",
-      "League",
-      "Selection",
-      "Market",
-      "Exchange",
-      "Your Odds",
-      "Pinnacle True Odds",
-      "Net Edge %",
-      "Timing Bucket",
-      "Notes",
-      "Result",
-      "Closing True Odds",
-      "CLV %",
-      "Flat Stake",
-      "Flat P/L",
-      "Kelly Stake",
-      "Kelly P/L",
-      "Kickoff",
-      "Tracked At",
-    ];
-
-    const rows = [...targetBets]
-      .sort((a, b) => b.kickoff.getTime() - a.kickoff.getTime())
-      .map((bet) => [
-        `"${bet.homeTeam} vs ${bet.awayTeam}"`,
-        `"${bet.sport}"`,
-        `"${bet.selection}"`,
-        `"${bet.market}"`,
-        `"${bet.exchangeName}"`,
-        bet.exchangePrice,
-        bet.fairPrice,
-        bet.netEdgePercent,
-        bet.timingBucket,
-        `"${bet.notes || ""}"`,
-        bet.result || "open",
-        bet.closingFairPrice || "",
-        bet.clvPercent || "",
-        bet.flatStake,
-        bet.flatPL !== undefined ? bet.flatPL : "",
-        bet.kellyStake,
-        bet.kellyPL !== undefined ? bet.kellyPL : "",
-        `"${new Date(bet.kickoff).toLocaleString()}"`,
-        `"${new Date(bet.placedAt).toLocaleString()}"`,
-      ]);
-
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => row.join(",")),
-    ].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `value-bets-export-${new Date().toISOString().split("T")[0]}.csv`,
-    );
-    link.click();
-  };
-
-  const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      if (!text) return;
-
-      const lines = text.split("\n");
-      // Split headers while ignoring commas inside quotes
-      const csvSplitRegex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
-      const headers = lines[0].split(csvSplitRegex);
-      const newBets: TrackedBet[] = [];
-      const newTransactions: BankrollTransaction[] = [];
-      let skippedCount = 0;
-
-      for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue;
-
-        const values = lines[i].split(csvSplitRegex);
-        const row: any = {};
-        headers.forEach((header, index) => {
-          const cleanHeader = header.trim().replace(/^"|"$/g, "");
-          const cleanValue = values[index]?.trim().replace(/^"|"$/g, "");
-          row[cleanHeader] = cleanValue;
-        });
-
-        const match = row["Match"];
-        const homeTeam = match?.split(" vs ")[0];
-        const awayTeam = match?.split(" vs ")[1];
-        const selection = row["Selection"];
-        const kickoffDate = new Date(row["Kickoff"]);
-        const kickoff = kickoffDate.getTime();
-
-        let placedAt = new Date(row["Tracked At"]).getTime();
-        if (isNaN(placedAt)) {
-          placedAt = Date.now();
-        }
-
-        // Check for duplicates
-        const isDuplicate = bets.some(
-          (b) =>
-            `${b.homeTeam} vs ${b.awayTeam}` === match &&
-            b.selection === selection &&
-            new Date(b.kickoff).getTime() === kickoff,
-        );
-
-        if (isDuplicate) {
-          skippedCount++;
-          continue;
-        }
-
-        const fairPrice = parseFloat(row["Pinnacle True Odds"]) || 0;
-        const netEdgePercent = parseFloat(row["Net Edge %"]) || 0;
-
-        const importedBet: TrackedBet = {
-          id: `${match}-${selection}-${kickoff}-${Math.random().toString(36).substr(2, 9)}`,
-          match: match || "",
-          homeTeam: homeTeam || "",
-          awayTeam: awayTeam || "",
-          sport: row["League"] || "",
-          sportKey: "imported", // Dummy key for API usage
-          selection: selection || "",
-          market: row["Market"] || "",
-          exchangeKey: row["Exchange"]?.toLowerCase() || "",
-          exchangeName: row["Exchange"] || "",
-          exchangePrice: parseFloat(row["Your Odds"]) || 0,
-          fairPrice: fairPrice,
-          fairPriceAtBet: fairPrice,
-          edgePercent: netEdgePercent, // Approximation
-          netEdgePercent: netEdgePercent,
-          kellyPercent: 0, // Not easily recoverable from CSV
-          offers: [], // Not recoverable from CSV
-          timingBucket: (row["Timing Bucket"] as any) || "",
-          hoursBeforeKickoff: 0,
-          notes: row["Notes"] || "",
-          flatStake: parseFloat(row["Flat Stake"]) || 0,
-          kellyStake: parseFloat(row["Kelly Stake"]) || 0,
-          kickoff: kickoffDate,
-          placedAt: placedAt,
-          status: row["Result"] ? "closed" : "open",
-          result: (row["Result"]?.toLowerCase() === "push"
-            ? "void"
-            : row["Result"]?.toLowerCase()) as any,
-          closingRawPrice: row["Closing True Odds"]
-            ? parseFloat(row["Closing True Odds"])
-            : undefined,
-          closingFairPrice: row["Closing True Odds"]
-            ? parseFloat(row["Closing True Odds"])
-            : undefined, // Approximate
-          clvPercent: row["CLV %"] ? parseFloat(row["CLV %"]) : undefined,
-          flatPL: row["Flat P/L"] ? parseFloat(row["Flat P/L"]) : undefined,
-          kellyPL: row["Kelly P/L"] ? parseFloat(row["Kelly P/L"]) : undefined,
-        };
-
-        newBets.push(importedBet);
-
-        // Create transaction for settled bets
-        if (importedBet.result && importedBet.flatPL !== undefined) {
-          let bankrollKey: "smarkets" | "betfair" | "matchbook" = "smarkets";
-          const ex = importedBet.exchangeKey.toLowerCase();
-          if (ex === "matchbook") bankrollKey = "matchbook";
-          else if (ex === "betfair" || ex === "betfair_ex_uk")
-            bankrollKey = "betfair";
-          else bankrollKey = "smarkets";
-
-          let type: BankrollTransaction["type"] = "bet_win";
-          if (importedBet.result === "lost") type = "bet_loss";
-          else if (importedBet.result === "void") type = "bet_void";
-
-          newTransactions.push({
-            id: `import-bet-${importedBet.id}-${Date.now()}`,
-            timestamp: importedBet.placedAt,
-            exchange: bankrollKey,
-            type,
-            amount: importedBet.flatPL,
-            betId: importedBet.id,
-          });
-        }
-      }
-
-      if (newBets.length > 0) {
-        onImportBets(newBets);
-        newTransactions.forEach((t) => onAddTransaction(t));
-        alert(
-          `Successfully imported ${newBets.length} bets.${skippedCount > 0 ? ` Skipped ${skippedCount} duplicates.` : ""}`,
-        );
-      } else {
-        alert(
-          skippedCount > 0
-            ? `No new bets found. Skipped ${skippedCount} duplicates.`
-            : "No valid data found in CSV.",
-        );
-      }
-    };
-    reader.readAsText(file);
-    // Reset input
-    event.target.value = "";
-  };
-
-  const filteredBets = bets.filter((bet) => {
-    // Competition Filter
-    if (compFilter !== "All Competitions" && bet.sport !== compFilter)
-      return false;
-
-    // Timing Filter
-    if (timingFilter !== "All Timing" && bet.timingBucket !== timingFilter)
-      return false;
-
-    // Odds Range Filter
-    if (oddsFilter !== "All Odds") {
-      const price = bet.exchangePrice;
-      if (oddsFilter === "1.50 - 3.00" && !(price >= 1.5 && price < 3.0))
-        return false;
-      if (oddsFilter === "3.00 - 6.00" && !(price >= 3.0 && price < 6.0))
-        return false;
-      if (oddsFilter === "6.00 - 10.00" && !(price >= 6.0 && price <= 10.0))
-        return false;
-    }
-
-    // CLV Filter
-    if (clvFilter !== "All CLV") {
-      if (clvFilter === "Positive CLV" && !((bet.clvPercent || 0) > 0))
-        return false;
-      if (clvFilter === "Negative CLV" && !((bet.clvPercent || 0) < 0))
-        return false;
-      if (clvFilter === "No CLV" && bet.clvPercent !== undefined) return false;
-    }
-
-    // Result Filter
-    if (resultFilter !== "All Results") {
-      const res = bet.result?.toLowerCase();
-      const status = bet.status;
-      if (resultFilter === "Open" && status !== "open") return false;
-      if (resultFilter === "Won" && res !== "won") return false;
-      if (resultFilter === "Lost" && res !== "lost") return false;
-      if (resultFilter === "Void" && res !== "void") return false;
-    }
-
-    return true;
-  });
-
-  const sortedBets = [...filteredBets].sort(
-    (a, b) => b.kickoff.getTime() - a.kickoff.getTime(),
-  );
-
-  const formatTimePlaced = (bet: TrackedBet) => {
-    const hoursBefore =
-      (new Date(bet.kickoff).getTime() - bet.placedAt) / (1000 * 60 * 60);
-    if (hoursBefore > 48) return `${Math.floor(hoursBefore / 24)}d out`;
-    if (hoursBefore > 1) return `${Math.floor(hoursBefore)}h out`;
-    return `<1h out`;
-  };
 
   const analysisOptions: AnalysisOption[] = [
     "Bankroll Over Time",
@@ -685,7 +286,6 @@ export const AnalysisView: React.FC<Props> = ({
                                 (bet.netEdgePercent / 100) * bet.kellyStake;
                             }
                           } else {
-                            // Deposits/Withdrawals add to both to keep them baseline aligned
                             expectedChange = tx.amount;
                           }
 
@@ -1051,48 +651,14 @@ export const AnalysisView: React.FC<Props> = ({
                           data={compData}
                           margin={{ left: 0, right: 0, top: 10, bottom: 70 }}
                         >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#1e293b"
-                            vertical={false}
-                          />
-                          <XAxis
-                            dataKey="name"
-                            stroke="#64748b"
-                            fontSize={10}
-                            interval="preserveStartEnd"
-                            tick={{ fontSize: 10 }}
-                          />
-                          <YAxis
-                            stroke="#64748b"
-                            fontSize={12}
-                            tickFormatter={(v) => `${v}%`}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "#1e293b",
-                              borderColor: "#334155",
-                              borderRadius: "8px",
-                              color: "#f8fafc",
-                            }}
-                            itemStyle={{ color: "#f8fafc" }}
-                            cursor={{ fill: "rgba(255,255,255,0.05)" }}
-                            formatter={(v: number | undefined) => {
-                              if (v === undefined) return null;
-                              return [`${v.toFixed(2)}%`, "ROI"];
-                            }}
-                          />
-                          <ReferenceLine
-                            y={0}
-                            stroke="#475569"
-                            strokeWidth={2}
-                          />
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                          <XAxis dataKey="name" stroke="#64748b" fontSize={10} interval="preserveStartEnd" tick={{ fontSize: 10 }} />
+                          <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => `${v}%`} />
+                          <Tooltip contentStyle={{ backgroundColor: "#1e293b", borderColor: "#334155", borderRadius: "8px", color: "#f8fafc" }} itemStyle={{ color: "#f8fafc" }} cursor={{ fill: "rgba(255,255,255,0.05)" }} formatter={(v: number | undefined) => { if (v === undefined) return null; return [`${v.toFixed(2)}%`, "ROI"]; }} />
+                          <ReferenceLine y={0} stroke="#475569" strokeWidth={2} />
                           <Bar dataKey="roi">
                             {compData.map((entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={entry.roi >= 0 ? "#10b981" : "#ef4444"}
-                              />
+                              <Cell key={`cell-${index}`} fill={entry.roi >= 0 ? "#10b981" : "#ef4444"} />
                             ))}
                           </Bar>
                         </BarChart>
@@ -1107,41 +673,20 @@ export const AnalysisView: React.FC<Props> = ({
                           <th className="p-4 font-medium">Competition</th>
                           <th className="p-4 font-medium text-right">Bets</th>
                           <th className="p-4 font-medium text-right">Won</th>
-                          <th className="p-4 font-medium text-right">
-                            Win Rate
-                          </th>
-                          <th className="p-4 font-medium text-right">
-                            Avg CLV
-                          </th>
+                          <th className="p-4 font-medium text-right">Win Rate</th>
+                          <th className="p-4 font-medium text-right">Avg CLV</th>
                           <th className="p-4 font-medium text-right">ROI</th>
                         </tr>
                       </thead>
                       <tbody className="text-sm text-slate-300">
                         {compData.map((row) => (
-                          <tr
-                            key={row.name}
-                            className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors"
-                          >
-                            <td className="p-4 font-medium text-slate-200">
-                              {row.name}
-                            </td>
+                          <tr key={row.name} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
+                            <td className="p-4 font-medium text-slate-200">{row.name}</td>
                             <td className="p-4 text-right">{row.bets}</td>
                             <td className="p-4 text-right">{row.wins}</td>
-                            <td className="p-4 text-right">
-                              {row.winRate.toFixed(1)}%
-                            </td>
-                            <td
-                              className={`p-4 text-right ${row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"}`}
-                            >
-                              {row.avgClv > 0 ? "+" : ""}
-                              {row.avgClv.toFixed(2)}%
-                            </td>
-                            <td
-                              className={`p-4 text-right font-bold ${row.roi >= 0 ? "text-emerald-400" : "text-red-400"}`}
-                            >
-                              {row.roi > 0 ? "+" : ""}
-                              {row.roi.toFixed(1)}%
-                            </td>
+                            <td className="p-4 text-right">{row.winRate.toFixed(1)}%</td>
+                            <td className={`p-4 text-right ${row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"}`}>{row.avgClv > 0 ? "+" : ""}{row.avgClv.toFixed(2)}%</td>
+                            <td className={`p-4 text-right font-bold ${row.roi >= 0 ? "text-emerald-400" : "text-red-400"}`}>{row.roi > 0 ? "+" : ""}{row.roi.toFixed(1)}%</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1154,9 +699,7 @@ export const AnalysisView: React.FC<Props> = ({
         ) : selectedAnalysis === "By Odds Band" ? (
           <div className="space-y-6">
             {(() => {
-              const settled = bets.filter(
-                (b) => b.result !== undefined && b.result !== "void",
-              );
+              const settled = bets.filter((b) => b.result !== undefined && b.result !== "void");
               const bands = [
                 { label: "1.50 - 3.00", min: 1.5, max: 3.0 },
                 { label: "3.00 - 6.00", min: 3.0, max: 6.0 },
@@ -1165,37 +708,17 @@ export const AnalysisView: React.FC<Props> = ({
 
               const bandData = bands.map((band) => {
                 const bandBets = settled.filter((b) => {
-                  if (band.label === "1.50 - 3.00")
-                    return b.exchangePrice >= 1.5 && b.exchangePrice < 3.0;
-                  if (band.label === "3.00 - 6.00")
-                    return b.exchangePrice >= 3.0 && b.exchangePrice < 6.0;
+                  if (band.label === "1.50 - 3.00") return b.exchangePrice >= 1.5 && b.exchangePrice < 3.0;
+                  if (band.label === "3.00 - 6.00") return b.exchangePrice >= 3.0 && b.exchangePrice < 6.0;
                   return b.exchangePrice >= 6.0 && b.exchangePrice <= 10.0;
                 });
-                const totalPL = bandBets.reduce(
-                  (sum, b) => sum + (b.flatPL || 0),
-                  0,
-                );
-                const totalStakes = bandBets.length;
-                const roi = totalStakes > 0 ? (totalPL / totalStakes) * 100 : 0;
+                const totalPL = bandBets.reduce((sum, b) => sum + (b.flatPL || 0), 0);
+                const roi = bandBets.length > 0 ? (totalPL / bandBets.length) * 100 : 0;
                 const wins = bandBets.filter((b) => b.result === "won").length;
-                const clvBets = bandBets.filter(
-                  (b) => b.clvPercent !== undefined,
-                );
-                const avgClv =
-                  clvBets.length > 0
-                    ? clvBets.reduce((s, b) => s + (b.clvPercent || 0), 0) /
-                      clvBets.length
-                    : 0;
+                const clvBets = bandBets.filter((b) => b.clvPercent !== undefined);
+                const avgClv = clvBets.length > 0 ? clvBets.reduce((s, b) => s + (b.clvPercent || 0), 0) / clvBets.length : 0;
 
-                return {
-                  name: band.label,
-                  roi,
-                  bets: bandBets.length,
-                  wins,
-                  winRate:
-                    bandBets.length > 0 ? (wins / bandBets.length) * 100 : 0,
-                  avgClv,
-                };
+                return { name: band.label, roi, bets: bandBets.length, wins, winRate: bandBets.length > 0 ? (wins / bandBets.length) * 100 : 0, avgClv };
               });
 
               return (
@@ -1203,105 +726,24 @@ export const AnalysisView: React.FC<Props> = ({
                   <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
                     <div className="w-full h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={bandData}
-                          margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#1e293b"
-                            vertical={false}
-                          />
-                          <XAxis
-                            dataKey="name"
-                            stroke="#64748b"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                          />
-                          <YAxis
-                            stroke="#64748b"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                            tickFormatter={(v) => `${v}%`}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "#1e293b",
-                              borderColor: "#334155",
-                              borderRadius: "8px",
-                              color: "#f8fafc",
-                            }}
-                            itemStyle={{ color: "#f8fafc" }}
-                            cursor={{ fill: "rgba(255,255,255,0.05)" }}
-                            formatter={(v: number | undefined) => {
-                              if (v === undefined) return null;
-                              return [`${v.toFixed(2)}%`, "ROI"];
-                            }}
-                          />
-                          <ReferenceLine
-                            y={0}
-                            stroke="#475569"
-                            strokeWidth={2}
-                          />
+                        <BarChart data={bandData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                          <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                          <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                          <Tooltip contentStyle={{ backgroundColor: "#1e293b", borderColor: "#334155", borderRadius: "8px", color: "#f8fafc" }} itemStyle={{ color: "#f8fafc" }} cursor={{ fill: "rgba(255,255,255,0.05)" }} formatter={(v: number | undefined) => { if (v === undefined) return null; return [`${v.toFixed(2)}%`, "ROI"]; }} />
+                          <ReferenceLine y={0} stroke="#475569" strokeWidth={2} />
                           <Bar dataKey="roi" radius={[4, 4, 0, 0]}>
-                            {bandData.map((entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={entry.roi >= 0 ? "#10b981" : "#ef4444"}
-                              />
-                            ))}
+                            {bandData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.roi >= 0 ? "#10b981" : "#ef4444"} />))}
                           </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
-
                   <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50">
                     <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider">
-                          <th className="p-4 font-medium">Odds Band</th>
-                          <th className="p-4 font-medium text-right">Bets</th>
-                          <th className="p-4 font-medium text-right">Won</th>
-                          <th className="p-4 font-medium text-right">
-                            Win Rate
-                          </th>
-                          <th className="p-4 font-medium text-right">
-                            Avg CLV
-                          </th>
-                          <th className="p-4 font-medium text-right">ROI</th>
-                        </tr>
-                      </thead>
+                      <thead><tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider"><th className="p-4 font-medium">Odds Band</th><th className="p-4 font-medium text-right">Bets</th><th className="p-4 font-medium text-right">Won</th><th className="p-4 font-medium text-right">Win Rate</th><th className="p-4 font-medium text-right">Avg CLV</th><th className="p-4 font-medium text-right">ROI</th></tr></thead>
                       <tbody className="text-sm text-slate-300">
-                        {bandData.map((row) => (
-                          <tr
-                            key={row.name}
-                            className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors"
-                          >
-                            <td className="p-4 font-medium text-slate-200">
-                              {row.name}
-                            </td>
-                            <td className="p-4 text-right">{row.bets}</td>
-                            <td className="p-4 text-right">{row.wins}</td>
-                            <td className="p-4 text-right">
-                              {row.winRate.toFixed(1)}%
-                            </td>
-                            <td
-                              className={`p-4 text-right ${row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"}`}
-                            >
-                              {row.avgClv > 0 ? "+" : ""}
-                              {row.avgClv.toFixed(2)}%
-                            </td>
-                            <td
-                              className={`p-4 text-right font-bold ${row.roi >= 0 ? "text-emerald-400" : "text-red-400"}`}
-                            >
-                              {row.roi > 0 ? "+" : ""}
-                              {row.roi.toFixed(1)}%
-                            </td>
-                          </tr>
-                        ))}
+                        {bandData.map((row) => (<tr key={row.name} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors"><td className="p-4 font-medium text-slate-200">{row.name}</td><td className="p-4 text-right">{row.bets}</td><td className="p-4 text-right">{row.wins}</td><td className="p-4 text-right">{row.winRate.toFixed(1)}%</td><td className={`p-4 text-right ${row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"}`}>{row.avgClv > 0 ? "+" : ""}{row.avgClv.toFixed(2)}%</td><td className={`p-4 text-right font-bold ${row.roi >= 0 ? "text-emerald-400" : "text-red-400"}`}>{row.roi > 0 ? "+" : ""}{row.roi.toFixed(1)}%</td></tr>))}
                       </tbody>
                     </table>
                   </div>
@@ -1312,44 +754,18 @@ export const AnalysisView: React.FC<Props> = ({
         ) : selectedAnalysis === "By Timing" ? (
           <div className="space-y-6">
             {(() => {
-              const settled = bets.filter(
-                (b) => b.result !== undefined && b.result !== "void",
-              );
+              const settled = bets.filter((b) => b.result !== undefined && b.result !== "void");
               const buckets = ["48hr+", "24-48hr", "12-24hr", "<12hr"];
 
               const timingData = buckets.map((bucket) => {
-                const bucketBets = settled.filter(
-                  (b) => b.timingBucket === bucket,
-                );
-                const totalPL = bucketBets.reduce(
-                  (sum, b) => sum + (b.flatPL || 0),
-                  0,
-                );
-                const totalStakes = bucketBets.length;
-                const roi = totalStakes > 0 ? (totalPL / totalStakes) * 100 : 0;
-                const wins = bucketBets.filter(
-                  (b) => b.result === "won",
-                ).length;
-                const clvBets = bucketBets.filter(
-                  (b) => b.clvPercent !== undefined,
-                );
-                const avgClv =
-                  clvBets.length > 0
-                    ? clvBets.reduce((s, b) => s + (b.clvPercent || 0), 0) /
-                      clvBets.length
-                    : 0;
+                const bucketBets = settled.filter((b) => b.timingBucket === bucket);
+                const totalPL = bucketBets.reduce((sum, b) => sum + (b.flatPL || 0), 0);
+                const roi = bucketBets.length > 0 ? (totalPL / bucketBets.length) * 100 : 0;
+                const wins = bucketBets.filter((b) => b.result === "won").length;
+                const clvBets = bucketBets.filter((b) => b.clvPercent !== undefined);
+                const avgClv = clvBets.length > 0 ? clvBets.reduce((s, b) => s + (b.clvPercent || 0), 0) / clvBets.length : 0;
 
-                return {
-                  name: bucket,
-                  roi,
-                  bets: bucketBets.length,
-                  wins,
-                  winRate:
-                    bucketBets.length > 0
-                      ? (wins / bucketBets.length) * 100
-                      : 0,
-                  avgClv,
-                };
+                return { name: bucket, roi, bets: bucketBets.length, wins, winRate: bucketBets.length > 0 ? (wins / bucketBets.length) * 100 : 0, avgClv };
               });
 
               return (
@@ -1357,105 +773,24 @@ export const AnalysisView: React.FC<Props> = ({
                   <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
                     <div className="w-full h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={timingData}
-                          margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#1e293b"
-                            vertical={false}
-                          />
-                          <XAxis
-                            dataKey="name"
-                            stroke="#64748b"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                          />
-                          <YAxis
-                            stroke="#64748b"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                            tickFormatter={(v) => `${v}%`}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "#1e293b",
-                              borderColor: "#334155",
-                              borderRadius: "8px",
-                              color: "#f8fafc",
-                            }}
-                            itemStyle={{ color: "#f8fafc" }}
-                            cursor={{ fill: "rgba(255,255,255,0.05)" }}
-                            formatter={(v: number | undefined) => {
-                              if (v === undefined) return null;
-                              return [`${v.toFixed(2)}%`, "ROI"];
-                            }}
-                          />
-                          <ReferenceLine
-                            y={0}
-                            stroke="#475569"
-                            strokeWidth={2}
-                          />
+                        <BarChart data={timingData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                          <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                          <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                          <Tooltip contentStyle={{ backgroundColor: "#1e293b", borderColor: "#334155", borderRadius: "8px", color: "#f8fafc" }} itemStyle={{ color: "#f8fafc" }} cursor={{ fill: "rgba(255,255,255,0.05)" }} formatter={(v: number | undefined) => { if (v === undefined) return null; return [`${v.toFixed(2)}%`, "ROI"]; }} />
+                          <ReferenceLine y={0} stroke="#475569" strokeWidth={2} />
                           <Bar dataKey="roi" radius={[4, 4, 0, 0]}>
-                            {timingData.map((entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={entry.roi >= 0 ? "#10b981" : "#ef4444"}
-                              />
-                            ))}
+                            {timingData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.roi >= 0 ? "#10b981" : "#ef4444"} />))}
                           </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
-
                   <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50">
                     <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider">
-                          <th className="p-4 font-medium">Timing</th>
-                          <th className="p-4 font-medium text-right">Bets</th>
-                          <th className="p-4 font-medium text-right">Won</th>
-                          <th className="p-4 font-medium text-right">
-                            Win Rate
-                          </th>
-                          <th className="p-4 font-medium text-right">
-                            Avg CLV
-                          </th>
-                          <th className="p-4 font-medium text-right">ROI</th>
-                        </tr>
-                      </thead>
+                      <thead><tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider"><th className="p-4 font-medium">Timing</th><th className="p-4 font-medium text-right">Bets</th><th className="p-4 font-medium text-right">Won</th><th className="p-4 font-medium text-right">Win Rate</th><th className="p-4 font-medium text-right">Avg CLV</th><th className="p-4 font-medium text-right">ROI</th></tr></thead>
                       <tbody className="text-sm text-slate-300">
-                        {timingData.map((row) => (
-                          <tr
-                            key={row.name}
-                            className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors"
-                          >
-                            <td className="p-4 font-medium text-slate-200">
-                              {row.name}
-                            </td>
-                            <td className="p-4 text-right">{row.bets}</td>
-                            <td className="p-4 text-right">{row.wins}</td>
-                            <td className="p-4 text-right">
-                              {row.winRate.toFixed(1)}%
-                            </td>
-                            <td
-                              className={`p-4 text-right ${row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"}`}
-                            >
-                              {row.avgClv > 0 ? "+" : ""}
-                              {row.avgClv.toFixed(2)}%
-                            </td>
-                            <td
-                              className={`p-4 text-right font-bold ${row.roi >= 0 ? "text-emerald-400" : "text-red-400"}`}
-                            >
-                              {row.roi > 0 ? "+" : ""}
-                              {row.roi.toFixed(1)}%
-                            </td>
-                          </tr>
-                        ))}
+                        {timingData.map((row) => (<tr key={row.name} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors"><td className="p-4 font-medium text-slate-200">{row.name}</td><td className="p-4 text-right">{row.bets}</td><td className="p-4 text-right">{row.wins}</td><td className="p-4 text-right">{row.winRate.toFixed(1)}%</td><td className={`p-4 text-right ${row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"}`}>{row.avgClv > 0 ? "+" : ""}{row.avgClv.toFixed(2)}%</td><td className={`p-4 text-right font-bold ${row.roi >= 0 ? "text-emerald-400" : "text-red-400"}`}>{row.roi > 0 ? "+" : ""}{row.roi.toFixed(1)}%</td></tr>))}
                       </tbody>
                     </table>
                   </div>
@@ -1466,9 +801,7 @@ export const AnalysisView: React.FC<Props> = ({
         ) : selectedAnalysis === "By Exchange" ? (
           <div className="space-y-6">
             {(() => {
-              const settled = bets.filter(
-                (b) => b.result !== undefined && b.result !== "void",
-              );
+              const settled = bets.filter((b) => b.result !== undefined && b.result !== "void");
               const exchangeKeys = [
                 { key: "smarkets", apiKey: "smarkets", name: "Smarkets" },
                 { key: "matchbook", apiKey: "matchbook", name: "Matchbook" },
@@ -1476,47 +809,30 @@ export const AnalysisView: React.FC<Props> = ({
               ];
 
               const exchangeData = exchangeKeys.map((ex) => {
-                const exBets = settled.filter(
-                  (b) => b.exchangeKey === ex.apiKey,
-                );
+                const exBets = settled.filter((b) => b.exchangeKey === ex.apiKey);
                 const exConfig = EXCHANGES.find((e) => e.key === ex.apiKey);
                 const commRate = exConfig?.commission || 0;
 
                 let grossProfit = 0;
                 let commissionPaid = 0;
-                let totalStakes = 0;
-                let lostStakes = 0;
                 let wins = 0;
 
                 exBets.forEach((b) => {
-                  totalStakes += 1;
                   if (b.result === "won") {
                     wins++;
                     const profit = (b.exchangePrice - 1) * 1;
                     grossProfit += profit;
                     commissionPaid += profit * commRate;
-                  } else if (b.result === "lost") {
-                    lostStakes += 1;
                   }
                 });
 
-                const netProfit = exBets.reduce(
-                  (sum, b) => sum + (b.flatPL || 0),
-                  0,
-                );
-                const roi =
-                  totalStakes > 0 ? (netProfit / totalStakes) * 100 : 0;
+                const netProfit = exBets.reduce((sum, b) => sum + (b.flatPL || 0), 0);
+                const roi = exBets.length > 0 ? (netProfit / exBets.length) * 100 : 0;
 
                 return {
-                  name: ex.name,
-                  key: ex.key,
-                  bets: exBets.length,
-                  wins,
+                  name: ex.name, key: ex.key, bets: exBets.length, wins,
                   winRate: exBets.length > 0 ? (wins / exBets.length) * 100 : 0,
-                  grossProfit,
-                  commissionPaid,
-                  netProfit,
-                  roi,
+                  grossProfit, commissionPaid, netProfit, roi,
                   bankroll: exchangeBankrolls[ex.key as keyof ExchangeBankroll],
                 };
               });
@@ -1525,151 +841,47 @@ export const AnalysisView: React.FC<Props> = ({
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {exchangeData.map((ex) => (
-                      <div
-                        key={ex.key}
-                        className="bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl space-y-3"
-                      >
+                      <div key={ex.key} className="bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl space-y-3">
                         <div className="flex justify-between items-start">
-                          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                            {ex.name}
-                          </span>
-                          <span className="text-sm font-mono font-bold text-slate-200">
-                            £{ex.bankroll.toFixed(2)}
-                          </span>
+                          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{ex.name}</span>
+                          <span className="text-sm font-mono font-bold text-slate-200">£{ex.bankroll.toFixed(2)}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <p className="text-[10px] text-slate-500 uppercase">
-                              Bets
-                            </p>
-                            <p className="text-sm font-bold text-slate-300">
-                              {ex.bets}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-slate-500 uppercase">
-                              ROI
-                            </p>
-                            <p
-                              className={`text-sm font-bold ${ex.roi >= 0 ? "text-emerald-400" : "text-red-400"}`}
-                            >
-                              {ex.roi > 0 ? "+" : ""}
-                              {ex.roi.toFixed(1)}%
-                            </p>
-                          </div>
+                          <div><p className="text-[10px] text-slate-500 uppercase">Bets</p><p className="text-sm font-bold text-slate-300">{ex.bets}</p></div>
+                          <div><p className="text-[10px] text-slate-500 uppercase">ROI</p><p className={`text-sm font-bold ${ex.roi >= 0 ? "text-emerald-400" : "text-red-400"}`}>{ex.roi > 0 ? "+" : ""}{ex.roi.toFixed(1)}%</p></div>
                         </div>
                       </div>
                     ))}
                   </div>
-
                   <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
                     <div className="w-full h-[250px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={exchangeData}
-                          margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#1e293b"
-                            vertical={false}
-                          />
-                          <XAxis
-                            dataKey="name"
-                            stroke="#64748b"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                          />
-                          <YAxis
-                            stroke="#64748b"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                            tickFormatter={(v) => `${v}%`}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "#1e293b",
-                              borderColor: "#334155",
-                              borderRadius: "8px",
-                              color: "#f8fafc",
-                            }}
-                            itemStyle={{ color: "#f8fafc" }}
-                            cursor={{ fill: "rgba(255,255,255,0.05)" }}
-                            formatter={(v: number | undefined) => {
-                              if (v === undefined) return null;
-                              return [`${v.toFixed(2)}%`, "ROI"];
-                            }}
-                          />
-                          <ReferenceLine
-                            y={0}
-                            stroke="#475569"
-                            strokeWidth={2}
-                          />
+                        <BarChart data={exchangeData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                          <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                          <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                          <Tooltip contentStyle={{ backgroundColor: "#1e293b", borderColor: "#334155", borderRadius: "8px", color: "#f8fafc" }} itemStyle={{ color: "#f8fafc" }} cursor={{ fill: "rgba(255,255,255,0.05)" }} formatter={(v: number | undefined) => { if (v === undefined) return null; return [`${v.toFixed(2)}%`, "ROI"]; }} />
+                          <ReferenceLine y={0} stroke="#475569" strokeWidth={2} />
                           <Bar dataKey="roi" radius={[4, 4, 0, 0]}>
-                            {exchangeData.map((entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={entry.roi >= 0 ? "#10b981" : "#ef4444"}
-                              />
-                            ))}
+                            {exchangeData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.roi >= 0 ? "#10b981" : "#ef4444"} />))}
                           </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
-
                   <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50">
                     <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider">
-                          <th className="p-4 font-medium">Exchange</th>
-                          <th className="p-4 font-medium text-right">Bets</th>
-                          <th className="p-4 font-medium text-right">
-                            Win Rate
-                          </th>
-                          <th className="p-4 font-medium text-right">
-                            Gross Profit
-                          </th>
-                          <th className="p-4 font-medium text-right">Comm.</th>
-                          <th className="p-4 font-medium text-right">
-                            Net P/L
-                          </th>
-                          <th className="p-4 font-medium text-right">ROI</th>
-                        </tr>
-                      </thead>
+                      <thead><tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider"><th className="p-4 font-medium">Exchange</th><th className="p-4 font-medium text-right">Bets</th><th className="p-4 font-medium text-right">Win Rate</th><th className="p-4 font-medium text-right">Gross Profit</th><th className="p-4 font-medium text-right">Comm.</th><th className="p-4 font-medium text-right">Net P/L</th><th className="p-4 font-medium text-right">ROI</th></tr></thead>
                       <tbody className="text-sm text-slate-300">
                         {exchangeData.map((row) => (
-                          <tr
-                            key={row.key}
-                            className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors"
-                          >
-                            <td className="p-4 font-medium text-slate-200">
-                              {row.name}
-                            </td>
+                          <tr key={row.key} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
+                            <td className="p-4 font-medium text-slate-200">{row.name}</td>
                             <td className="p-4 text-right">{row.bets}</td>
-                            <td className="p-4 text-right">
-                              {row.winRate.toFixed(1)}%
-                            </td>
-                            <td className="p-4 text-right text-slate-400 font-mono">
-                              £{row.grossProfit.toFixed(2)}
-                            </td>
-                            <td className="p-4 text-right text-red-900/50 font-mono">
-                              -£{row.commissionPaid.toFixed(2)}
-                            </td>
-                            <td
-                              className={`p-4 text-right font-bold font-mono ${row.netProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}
-                            >
-                              {row.netProfit >= 0 ? "£+" : "-£"}
-                              {Math.abs(row.netProfit).toFixed(2)}
-                            </td>
-                            <td
-                              className={`p-4 text-right font-bold ${row.roi >= 0 ? "text-emerald-400" : "text-red-400"}`}
-                            >
-                              {row.roi > 0 ? "+" : ""}
-                              {row.roi.toFixed(1)}%
-                            </td>
+                            <td className="p-4 text-right">{row.winRate.toFixed(1)}%</td>
+                            <td className="p-4 text-right text-slate-400 font-mono">£{row.grossProfit.toFixed(2)}</td>
+                            <td className="p-4 text-right text-red-900/50 font-mono">-£{row.commissionPaid.toFixed(2)}</td>
+                            <td className={`p-4 text-right font-bold font-mono ${row.netProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>{row.netProfit >= 0 ? "£+" : "-£"}{Math.abs(row.netProfit).toFixed(2)}</td>
+                            <td className={`p-4 text-right font-bold ${row.roi >= 0 ? "text-emerald-400" : "text-red-400"}`}>{row.roi > 0 ? "+" : ""}{row.roi.toFixed(1)}%</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1682,42 +894,18 @@ export const AnalysisView: React.FC<Props> = ({
         ) : selectedAnalysis === "By Market" ? (
           <div className="space-y-6">
             {(() => {
-              const settled = bets.filter(
-                (b) => b.result !== undefined && b.result !== "void",
-              );
+              const settled = bets.filter((b) => b.result !== undefined && b.result !== "void");
               const markets = ["Match Result", "Over/Under", "Handicap"];
 
               const marketData = markets.map((mkt) => {
                 const marketBets = settled.filter((b) => b.market === mkt);
-                const totalPL = marketBets.reduce(
-                  (sum, b) => sum + (b.flatPL || 0),
-                  0,
-                );
-                const totalStakes = marketBets.length;
-                const roi = totalStakes > 0 ? (totalPL / totalStakes) * 100 : 0;
-                const wins = marketBets.filter(
-                  (b) => b.result === "won",
-                ).length;
-                const clvBets = marketBets.filter(
-                  (b) => b.clvPercent !== undefined,
-                );
-                const avgClv =
-                  clvBets.length > 0
-                    ? clvBets.reduce((s, b) => s + (b.clvPercent || 0), 0) /
-                      clvBets.length
-                    : 0;
+                const totalPL = marketBets.reduce((sum, b) => sum + (b.flatPL || 0), 0);
+                const roi = marketBets.length > 0 ? (totalPL / marketBets.length) * 100 : 0;
+                const wins = marketBets.filter((b) => b.result === "won").length;
+                const clvBets = marketBets.filter((b) => b.clvPercent !== undefined);
+                const avgClv = clvBets.length > 0 ? clvBets.reduce((s, b) => s + (b.clvPercent || 0), 0) / clvBets.length : 0;
 
-                return {
-                  name: mkt,
-                  roi,
-                  bets: marketBets.length,
-                  wins,
-                  winRate:
-                    marketBets.length > 0
-                      ? (wins / marketBets.length) * 100
-                      : 0,
-                  avgClv,
-                };
+                return { name: mkt, roi, bets: marketBets.length, wins, winRate: marketBets.length > 0 ? (wins / marketBets.length) * 100 : 0, avgClv };
               });
 
               return (
@@ -1725,105 +913,24 @@ export const AnalysisView: React.FC<Props> = ({
                   <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
                     <div className="w-full h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={marketData}
-                          margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#1e293b"
-                            vertical={false}
-                          />
-                          <XAxis
-                            dataKey="name"
-                            stroke="#64748b"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                          />
-                          <YAxis
-                            stroke="#64748b"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                            tickFormatter={(v) => `${v}%`}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "#1e293b",
-                              borderColor: "#334155",
-                              borderRadius: "8px",
-                              color: "#f8fafc",
-                            }}
-                            itemStyle={{ color: "#f8fafc" }}
-                            cursor={{ fill: "rgba(255,255,255,0.05)" }}
-                            formatter={(v: number | undefined) => {
-                              if (v === undefined) return null;
-                              return [`${v.toFixed(2)}%`, "ROI"];
-                            }}
-                          />
-                          <ReferenceLine
-                            y={0}
-                            stroke="#475569"
-                            strokeWidth={2}
-                          />
+                        <BarChart data={marketData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                          <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                          <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                          <Tooltip contentStyle={{ backgroundColor: "#1e293b", borderColor: "#334155", borderRadius: "8px", color: "#f8fafc" }} itemStyle={{ color: "#f8fafc" }} cursor={{ fill: "rgba(255,255,255,0.05)" }} formatter={(v: number | undefined) => { if (v === undefined) return null; return [`${v.toFixed(2)}%`, "ROI"]; }} />
+                          <ReferenceLine y={0} stroke="#475569" strokeWidth={2} />
                           <Bar dataKey="roi" radius={[4, 4, 0, 0]}>
-                            {marketData.map((entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={entry.roi >= 0 ? "#10b981" : "#ef4444"}
-                              />
-                            ))}
+                            {marketData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.roi >= 0 ? "#10b981" : "#ef4444"} />))}
                           </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
-
                   <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50">
                     <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider">
-                          <th className="p-4 font-medium">Market</th>
-                          <th className="p-4 font-medium text-right">Bets</th>
-                          <th className="p-4 font-medium text-right">Won</th>
-                          <th className="p-4 font-medium text-right">
-                            Win Rate
-                          </th>
-                          <th className="p-4 font-medium text-right">
-                            Avg CLV
-                          </th>
-                          <th className="p-4 font-medium text-right">ROI</th>
-                        </tr>
-                      </thead>
+                      <thead><tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider"><th className="p-4 font-medium">Market</th><th className="p-4 font-medium text-right">Bets</th><th className="p-4 font-medium text-right">Won</th><th className="p-4 font-medium text-right">Win Rate</th><th className="p-4 font-medium text-right">Avg CLV</th><th className="p-4 font-medium text-right">ROI</th></tr></thead>
                       <tbody className="text-sm text-slate-300">
-                        {marketData.map((row) => (
-                          <tr
-                            key={row.name}
-                            className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors"
-                          >
-                            <td className="p-4 font-medium text-slate-200">
-                              {row.name}
-                            </td>
-                            <td className="p-4 text-right">{row.bets}</td>
-                            <td className="p-4 text-right">{row.wins}</td>
-                            <td className="p-4 text-right">
-                              {row.winRate.toFixed(1)}%
-                            </td>
-                            <td
-                              className={`p-4 text-right ${row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"}`}
-                            >
-                              {row.avgClv > 0 ? "+" : ""}
-                              {row.avgClv.toFixed(2)}%
-                            </td>
-                            <td
-                              className={`p-4 text-right font-bold ${row.roi >= 0 ? "text-emerald-400" : "text-red-400"}`}
-                            >
-                              {row.roi > 0 ? "+" : ""}
-                              {row.roi.toFixed(1)}%
-                            </td>
-                          </tr>
-                        ))}
+                        {marketData.map((row) => (<tr key={row.name} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors"><td className="p-4 font-medium text-slate-200">{row.name}</td><td className="p-4 text-right">{row.bets}</td><td className="p-4 text-right">{row.wins}</td><td className="p-4 text-right">{row.winRate.toFixed(1)}%</td><td className={`p-4 text-right ${row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"}`}>{row.avgClv > 0 ? "+" : ""}{row.avgClv.toFixed(2)}%</td><td className={`p-4 text-right font-bold ${row.roi >= 0 ? "text-emerald-400" : "text-red-400"}`}>{row.roi > 0 ? "+" : ""}{row.roi.toFixed(1)}%</td></tr>))}
                       </tbody>
                     </table>
                   </div>
@@ -1843,284 +950,6 @@ export const AnalysisView: React.FC<Props> = ({
             </p>
           </div>
         )}
-      </div>
-
-      <div>
-        <div className="flex flex-col gap-4 mb-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xl font-bold text-white">Full Bet History</h3>
-            <div className="flex items-center gap-2">
-              <label className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors cursor-pointer min-w-[120px] text-center">
-                Import
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleImportCSV}
-                  className="hidden"
-                />
-              </label>
-              <div className="relative" ref={exportRef}>
-                <button
-                  onClick={() => setIsExportOpen(!isExportOpen)}
-                  className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors min-w-[120px] text-center"
-                >
-                  Export
-                </button>
-                {isExportOpen && (
-                  <div className="absolute right-0 mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 overflow-visible min-w-[120px]">
-                    <button
-                      onClick={() => {
-                        exportToCSV(bets);
-                        setIsExportOpen(false);
-                      }}
-                      className="block w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
-                    >
-                      All Bets
-                    </button>
-                    <button
-                      onClick={() => {
-                        exportToCSV(filteredBets);
-                        setIsExportOpen(false);
-                      }}
-                      className="block w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
-                    >
-                      Filtered Bets
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {/* Competition Filter */}
-            <div className="relative">
-              <select
-                value={compFilter}
-                onChange={(e) => setCompFilter(e.target.value)}
-                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
-              >
-                <option>All Competitions</option>
-                {(() => {
-                  const uniqueSports = Array.from(
-                    new Set(bets.map((b) => b.sport)),
-                  );
-                  const sortedSports = uniqueSports.sort((a, b) => {
-                    const idxA = LEAGUES.findIndex((l) => l.name === a);
-                    const idxB = LEAGUES.findIndex((l) => l.name === b);
-                    if (idxA === -1 && idxB === -1) return a.localeCompare(b);
-                    if (idxA === -1) return 1;
-                    if (idxB === -1) return -1;
-                    return idxA - idxB;
-                  });
-                  return sortedSports.map((sport) => (
-                    <option key={sport} value={sport}>
-                      {sport}
-                    </option>
-                  ));
-                })()}
-              </select>
-              <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
-            </div>
-
-            {/* Timing Filter */}
-            <div className="relative">
-              <select
-                value={timingFilter}
-                onChange={(e) => setTimingFilter(e.target.value)}
-                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
-              >
-                <option>All Timing</option>
-                <option>48hr+</option>
-                <option>24-48hr</option>
-                <option>12-24hr</option>
-                <option>&lt;12hr</option>
-              </select>
-              <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
-            </div>
-
-            {/* Odds Range Filter */}
-            <div className="relative">
-              <select
-                value={oddsFilter}
-                onChange={(e) => setOddsFilter(e.target.value)}
-                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
-              >
-                <option>All Odds</option>
-                <option>1.50 - 3.00</option>
-                <option>3.00 - 6.00</option>
-                <option>6.00 - 10.00</option>
-              </select>
-              <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
-            </div>
-
-            {/* CLV Filter */}
-            <div className="relative">
-              <select
-                value={clvFilter}
-                onChange={(e) => setClvFilter(e.target.value)}
-                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
-              >
-                <option>All CLV</option>
-                <option>Positive CLV</option>
-                <option>Negative CLV</option>
-                <option>No CLV</option>
-              </select>
-              <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
-            </div>
-
-            {/* Result Filter */}
-            <div className="relative">
-              <select
-                value={resultFilter}
-                onChange={(e) => setResultFilter(e.target.value)}
-                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
-              >
-                <option>All Results</option>
-                <option>Won</option>
-                <option>Lost</option>
-                <option>Void</option>
-                <option>Open</option>
-              </select>
-              <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
-            </div>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="text-slate-400 border-b border-slate-700 text-xs uppercase tracking-wider">
-                <th className="p-4 font-medium">Event</th>
-                <th className="p-4 font-medium">Selection</th>
-                <th className="p-4 font-medium text-right">Timing</th>
-                <th className="p-4 font-medium text-right">Odds</th>
-                <th className="p-4 font-medium text-right">CLV %</th>
-                <th className="p-4 font-medium text-right">Result</th>
-                <th className="p-4 font-medium text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="text-sm text-slate-300">
-              {sortedBets.map((bet) => {
-                const hasStarted = new Date() > new Date(bet.kickoff);
-                const clvColor =
-                  (bet.clvPercent || 0) > 0
-                    ? "text-emerald-400"
-                    : "text-red-400";
-                return (
-                  <tr
-                    key={bet.id}
-                    className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors"
-                  >
-                    <td className="p-4">
-                      <div className="font-semibold text-slate-200">
-                        {bet.homeTeam} vs {bet.awayTeam}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {new Date(bet.kickoff).toLocaleString([], {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div>{bet.selection}</div>
-                      <div className="text-[10px] text-slate-500 uppercase">
-                        {bet.market}
-                      </div>
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="text-xs font-medium text-slate-400 bg-slate-700/30 px-1.5 py-0.5 rounded inline-block">
-                        {bet.timingBucket}
-                      </div>
-                      <div className="text-[10px] text-slate-500 mt-1">
-                        {formatTimePlaced(bet)}
-                      </div>
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="font-mono text-blue-300 font-bold">
-                        {bet.exchangePrice.toFixed(2)}
-                      </div>
-                      <div className="text-[10px] text-slate-500 uppercase">
-                        {bet.exchangeName}
-                      </div>
-                    </td>
-                    <td className="p-4 text-right font-bold">
-                      {bet.clvPercent !== undefined ? (
-                        <div
-                          className={`flex items-center justify-end gap-1 ${clvColor}`}
-                        >
-                          {bet.clvPercent > 0 ? "+" : ""}
-                          {bet.clvPercent.toFixed(2)}%
-                        </div>
-                      ) : (
-                        <span className="text-slate-600">-</span>
-                      )}
-                    </td>
-                    <td className="p-4 text-right">
-                      {bet.result === "won" && (
-                        <span className="text-emerald-400 font-bold uppercase text-xs">
-                          Won
-                        </span>
-                      )}
-                      {bet.result === "lost" && (
-                        <span className="text-red-400 font-bold uppercase text-xs">
-                          Lost
-                        </span>
-                      )}
-                      {bet.result === "void" && (
-                        <span className="text-slate-400 font-bold uppercase text-xs">
-                          Void
-                        </span>
-                      )}
-                      {!bet.result && (
-                        <span className="text-slate-600 text-xs italic">
-                          Open
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {bet.status === "open" && (
-                          <>
-                            <button
-                              onClick={() => checkClosingLine(bet)}
-                              disabled={!hasStarted || loadingId === bet.id}
-                              className="p-2 text-blue-400 hover:bg-slate-700 rounded disabled:opacity-30"
-                            >
-                              <RefreshCw
-                                className={`w-4 h-4 ${loadingId === bet.id ? "animate-spin" : ""}`}
-                              />
-                            </button>
-                            <button
-                              onClick={() => checkBetResult(bet)}
-                              disabled={
-                                !hasStarted || loadingId === bet.id + "-result"
-                              }
-                              className="p-2 text-emerald-400 hover:bg-slate-700 rounded disabled:opacity-30"
-                            >
-                              <Trophy
-                                className={`w-4 h-4 ${loadingId === bet.id + "-result" ? "animate-pulse" : ""}`}
-                              />
-                            </button>
-                          </>
-                        )}
-                        <button
-                          onClick={() => onDeleteBet(bet.id)}
-                          className="p-2 text-slate-600 hover:text-red-400 hover:bg-red-900/20 rounded"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
       </div>
     </div>
   );
