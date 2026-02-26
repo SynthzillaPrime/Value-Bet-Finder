@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
-import { TrackedBet, BankrollTransaction } from "../types";
+import React, { useState, useEffect } from "react";
+import { TrackedBet } from "../types";
 import { EXCHANGES, LEAGUES } from "../constants";
 import {
   fetchClosingLineForBet,
@@ -12,8 +12,6 @@ interface Props {
   apiKey: string;
   onUpdateBet: (bet: TrackedBet) => void;
   onDeleteBet: (id: string) => void;
-  onImportBets: (bets: TrackedBet[]) => void;
-  onAddTransaction: (t: BankrollTransaction) => void;
 }
 
 export const BetHistoryView: React.FC<Props> = ({
@@ -21,25 +19,8 @@ export const BetHistoryView: React.FC<Props> = ({
   apiKey,
   onUpdateBet,
   onDeleteBet,
-  onImportBets,
-  onAddTransaction,
 }) => {
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [isExportOpen, setIsExportOpen] = useState(false);
-  const exportRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        exportRef.current &&
-        !exportRef.current.contains(event.target as Node)
-      ) {
-        setIsExportOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   // Filter states
   const [compFilter, setCompFilter] = useState("All Competitions");
@@ -160,205 +141,6 @@ export const BetHistoryView: React.FC<Props> = ({
     });
   };
 
-  const exportToCSV = (targetBets: TrackedBet[] = bets) => {
-    const headers = [
-      "Match",
-      "League",
-      "Selection",
-      "Market",
-      "Exchange",
-      "Your Odds",
-      "Pinnacle True Odds",
-      "Net Edge %",
-      "Timing Bucket",
-      "Notes",
-      "Result",
-      "Closing True Odds",
-      "CLV %",
-      "Flat Stake",
-      "Flat P/L",
-      "Kelly Stake",
-      "Kelly P/L",
-      "Kickoff",
-      "Tracked At",
-    ];
-
-    const rows = [...targetBets]
-      .sort((a, b) => b.kickoff.getTime() - a.kickoff.getTime())
-      .map((bet) => [
-        `"${bet.homeTeam} vs ${bet.awayTeam}"`,
-        `"${bet.sport}"`,
-        `"${bet.selection}"`,
-        `"${bet.market}"`,
-        `"${bet.exchangeName}"`,
-        bet.exchangePrice,
-        bet.fairPrice,
-        bet.netEdgePercent,
-        bet.timingBucket,
-        `"${bet.notes || ""}"`,
-        bet.result || "open",
-        bet.closingFairPrice || "",
-        bet.clvPercent || "",
-        bet.flatStake,
-        bet.flatPL !== undefined ? bet.flatPL : "",
-        bet.kellyStake,
-        bet.kellyPL !== undefined ? bet.kellyPL : "",
-        `"${new Date(bet.kickoff).toLocaleString()}"`,
-        `"${new Date(bet.placedAt).toLocaleString()}"`,
-      ]);
-
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => row.join(",")),
-    ].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `value-bets-export-${new Date().toISOString().split("T")[0]}.csv`,
-    );
-    link.click();
-  };
-
-  const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      if (!text) return;
-
-      const lines = text.split("\n");
-      const csvSplitRegex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
-      const headers = lines[0].split(csvSplitRegex);
-      const newBets: TrackedBet[] = [];
-      const newTransactions: BankrollTransaction[] = [];
-      let skippedCount = 0;
-
-      for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue;
-
-        const values = lines[i].split(csvSplitRegex);
-        const row: any = {};
-        headers.forEach((header, index) => {
-          const cleanHeader = header.trim().replace(/^"|"$/g, "");
-          const cleanValue = values[index]?.trim().replace(/^"|"$/g, "");
-          row[cleanHeader] = cleanValue;
-        });
-
-        const match = row["Match"];
-        const homeTeam = match?.split(" vs ")[0];
-        const awayTeam = match?.split(" vs ")[1];
-        const selection = row["Selection"];
-        const kickoffDate = new Date(row["Kickoff"]);
-        const kickoff = kickoffDate.getTime();
-
-        let placedAt = new Date(row["Tracked At"]).getTime();
-        if (isNaN(placedAt)) {
-          placedAt = Date.now();
-        }
-
-        const isDuplicate = bets.some(
-          (b) =>
-            `${b.homeTeam} vs ${b.awayTeam}` === match &&
-            b.selection === selection &&
-            new Date(b.kickoff).getTime() === kickoff,
-        );
-
-        if (isDuplicate) {
-          skippedCount++;
-          continue;
-        }
-
-        const fairPrice = parseFloat(row["Pinnacle True Odds"]) || 0;
-        const netEdgePercent = parseFloat(row["Net Edge %"]) || 0;
-
-        const importedBet: TrackedBet = {
-          id: `${match}-${selection}-${kickoff}-${Math.random().toString(36).substr(2, 9)}`,
-          match: match || "",
-          homeTeam: homeTeam || "",
-          awayTeam: awayTeam || "",
-          sport: row["League"] || "",
-          sportKey: "imported",
-          selection: selection || "",
-          market: row["Market"] || "",
-          exchangeKey: row["Exchange"]?.toLowerCase() || "",
-          exchangeName: row["Exchange"] || "",
-          exchangePrice: parseFloat(row["Your Odds"]) || 0,
-          fairPrice: fairPrice,
-          fairPriceAtBet: fairPrice,
-          edgePercent: netEdgePercent,
-          netEdgePercent: netEdgePercent,
-          kellyPercent: 0,
-          offers: [],
-          timingBucket: (row["Timing Bucket"] as any) || "",
-          hoursBeforeKickoff: 0,
-          notes: row["Notes"] || "",
-          flatStake: parseFloat(row["Flat Stake"]) || 0,
-          kellyStake: parseFloat(row["Kelly Stake"]) || 0,
-          kickoff: kickoffDate,
-          placedAt: placedAt,
-          status: row["Result"] ? "closed" : "open",
-          result: (row["Result"]?.toLowerCase() === "push"
-            ? "void"
-            : row["Result"]?.toLowerCase()) as any,
-          closingRawPrice: row["Closing True Odds"]
-            ? parseFloat(row["Closing True Odds"])
-            : undefined,
-          closingFairPrice: row["Closing True Odds"]
-            ? parseFloat(row["Closing True Odds"])
-            : undefined,
-          clvPercent: row["CLV %"] ? parseFloat(row["CLV %"]) : undefined,
-          flatPL: row["Flat P/L"] ? parseFloat(row["Flat P/L"]) : undefined,
-          kellyPL: row["Kelly P/L"] ? parseFloat(row["Kelly P/L"]) : undefined,
-        };
-
-        newBets.push(importedBet);
-
-        if (importedBet.result && importedBet.flatPL !== undefined) {
-          let bankrollKey: "smarkets" | "betfair" | "matchbook" = "smarkets";
-          const ex = importedBet.exchangeKey.toLowerCase();
-          if (ex === "matchbook") bankrollKey = "matchbook";
-          else if (ex === "betfair" || ex === "betfair_ex_uk")
-            bankrollKey = "betfair";
-          else bankrollKey = "smarkets";
-
-          let type: BankrollTransaction["type"] = "bet_win";
-          if (importedBet.result === "lost") type = "bet_loss";
-          else if (importedBet.result === "void") type = "bet_void";
-
-          newTransactions.push({
-            id: `import-bet-${importedBet.id}-${Date.now()}`,
-            timestamp: importedBet.placedAt,
-            exchange: bankrollKey,
-            type,
-            amount: importedBet.flatPL,
-            betId: importedBet.id,
-          });
-        }
-      }
-
-      if (newBets.length > 0) {
-        onImportBets(newBets);
-        newTransactions.forEach((t) => onAddTransaction(t));
-        alert(
-          `Successfully imported ${newBets.length} bets.${skippedCount > 0 ? ` Skipped ${skippedCount} duplicates.` : ""}`,
-        );
-      } else {
-        alert(
-          skippedCount > 0
-            ? `No new bets found. Skipped ${skippedCount} duplicates.`
-            : "No valid data found in CSV.",
-        );
-      }
-    };
-    reader.readAsText(file);
-    event.target.value = "";
-  };
-
   const filteredBets = bets.filter((bet) => {
     if (compFilter !== "All Competitions" && bet.sport !== compFilter)
       return false;
@@ -418,47 +200,6 @@ export const BetHistoryView: React.FC<Props> = ({
             <p className="text-sm text-slate-500 mt-1">
               {bets.length} total · {filteredBets.length} shown
             </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors cursor-pointer min-w-[120px] text-center">
-              Import
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleImportCSV}
-                className="hidden"
-              />
-            </label>
-            <div className="relative" ref={exportRef}>
-              <button
-                onClick={() => setIsExportOpen(!isExportOpen)}
-                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-colors min-w-[120px] text-center"
-              >
-                Export
-              </button>
-              {isExportOpen && (
-                <div className="absolute right-0 mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 overflow-visible min-w-[120px]">
-                  <button
-                    onClick={() => {
-                      exportToCSV(bets);
-                      setIsExportOpen(false);
-                    }}
-                    className="block w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
-                  >
-                    All Bets
-                  </button>
-                  <button
-                    onClick={() => {
-                      exportToCSV(filteredBets);
-                      setIsExportOpen(false);
-                    }}
-                    className="block w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
-                  >
-                    Filtered Bets
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
@@ -599,7 +340,7 @@ export const BetHistoryView: React.FC<Props> = ({
                         {bet.homeTeam} vs {bet.awayTeam}
                       </div>
                       <div className="text-xs text-slate-500">
-                        {new Date(bet.kickoff).toLocaleString([], {
+                        {new Date(bet.kickoff).toLocaleString("en-GB", {
                           month: "short",
                           day: "numeric",
                           hour: "2-digit",

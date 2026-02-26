@@ -18,9 +18,7 @@ import {
   insertBet,
   updateBet as supabaseUpdateBet,
   deleteBet as supabaseDeleteBet,
-  insertBets,
   insertTransaction,
-  insertTransactions,
   migrateLocalStorageToSupabase,
 } from "./services/supabase";
 import {
@@ -73,7 +71,7 @@ const App: React.FC = () => {
   const [dataLoaded, setDataLoaded] = useState(false);
 
   const exchangeBankrolls = useMemo(() => {
-    const totals: ExchangeBankroll = { smarkets: 0, matchbook: 0, betfair: 0 };
+    const totals: ExchangeBankroll = { smarkets: 0, matchbook: 0 };
     transactions.forEach((t) => {
       totals[t.exchange] += t.amount;
     });
@@ -81,11 +79,7 @@ const App: React.FC = () => {
   }, [transactions]);
 
   const bankroll = useMemo(() => {
-    return (
-      exchangeBankrolls.smarkets +
-      exchangeBankrolls.matchbook +
-      exchangeBankrolls.betfair
-    );
+    return exchangeBankrolls.smarkets + exchangeBankrolls.matchbook;
   }, [exchangeBankrolls]);
 
   const [remainingRequests, setRemainingRequests] = useState<number | null>(
@@ -98,9 +92,9 @@ const App: React.FC = () => {
     LEAGUES.map((l) => l.key),
   );
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const [view, setView] = useState<"scanner" | "openbets" | "history" | "analysis" | "bankroll">(
-    "scanner",
-  );
+  const [view, setView] = useState<
+    "scanner" | "openbets" | "history" | "analysis" | "bankroll"
+  >("scanner");
 
   // Check auth on mount
   useEffect(() => {
@@ -159,10 +153,9 @@ const App: React.FC = () => {
     setIsChangingKey(false);
   };
 
-  const handleTrackBet = async (bet: BetEdge, notes?: string) => {
+  const handleTrackBet = async (bet: BetEdge) => {
     const now = Date.now();
-    const hoursBeforeKickoff =
-      (bet.kickoff.getTime() - now) / (1000 * 60 * 60);
+    const hoursBeforeKickoff = (bet.kickoff.getTime() - now) / (1000 * 60 * 60);
     let timingBucket: "48hr+" | "24-48hr" | "12-24hr" | "<12hr" = "<12hr";
 
     if (hoursBeforeKickoff >= 48) timingBucket = "48hr+";
@@ -178,7 +171,6 @@ const App: React.FC = () => {
       status: "open",
       hoursBeforeKickoff,
       timingBucket,
-      notes,
       flatStake: 1,
       kellyStake: fractionalKellyStake,
     };
@@ -199,14 +191,10 @@ const App: React.FC = () => {
       updatedBet.result &&
       updatedBet.kellyPL !== undefined
     ) {
-      const pl =
-        updatedBet.kellyPL !== undefined
-          ? updatedBet.kellyPL
-          : updatedBet.flatPL || 0;
+      const pl = updatedBet.flatPL !== undefined ? updatedBet.flatPL : 0;
 
       let bankrollKey: keyof ExchangeBankroll = "smarkets";
       if (updatedBet.exchangeKey === "matchbook") bankrollKey = "matchbook";
-      if (updatedBet.exchangeKey === "betfair_ex_uk") bankrollKey = "betfair";
 
       let type: BankrollTransaction["type"] = "bet_win";
       if (updatedBet.result === "lost") type = "bet_loss";
@@ -242,13 +230,6 @@ const App: React.FC = () => {
       // Persist to Supabase
       await supabaseDeleteBet(id);
     }
-  };
-
-  const handleImportBets = async (newBets: TrackedBet[]) => {
-    // Optimistic update
-    setTrackedBets((prev) => [...prev, ...newBets]);
-    // Persist to Supabase
-    await insertBets(newBets);
   };
 
   const handleAddTransaction = async (t: BankrollTransaction) => {
@@ -448,27 +429,17 @@ const App: React.FC = () => {
 
             {status === "idle" && (
               <div className="flex flex-col items-center justify-center py-20 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
-                <div className="text-5xl mb-4">🔍</div>
                 <h3 className="text-xl font-semibold text-slate-300">
                   No odds loaded
                 </h3>
-                <p className="text-slate-500 mt-2 max-w-md text-center">
-                  Select your competitions and click "Fetch Odds" to start
-                  looking for value.
-                </p>
               </div>
             )}
 
             {status === "success" && bets.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
-                <div className="text-5xl mb-4">😐</div>
                 <h3 className="text-xl font-semibold text-slate-300">
                   No edges found
                 </h3>
-                <p className="text-slate-500 mt-2 max-w-md text-center">
-                  The market is efficient right now (no edges {">"}= 2.0%). Try
-                  refreshing later.
-                </p>
               </div>
             )}
 
@@ -498,17 +469,9 @@ const App: React.FC = () => {
             apiKey={apiKey}
             onUpdateBet={handleUpdateTrackedBet}
             onDeleteBet={handleDeleteTrackedBet}
-            onImportBets={handleImportBets}
-            onAddTransaction={handleAddTransaction}
           />
         ) : view === "analysis" ? (
-          <AnalysisView
-            bets={trackedBets}
-            apiKey={apiKey}
-            exchangeBankrolls={exchangeBankrolls}
-            transactions={transactions}
-            onUpdateBet={handleUpdateTrackedBet}
-          />
+          <AnalysisView bets={trackedBets} transactions={transactions} />
         ) : (
           <BankrollView
             transactions={transactions}

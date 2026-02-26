@@ -20,7 +20,7 @@ export const BankrollView: React.FC<Props> = ({
   onAddTransaction,
 }) => {
   const [newTx, setNewTx] = useState<{
-    exchange: "smarkets" | "betfair" | "matchbook";
+    exchange: "smarkets" | "matchbook";
     type: "deposit" | "withdrawal" | "adjustment";
     amount: string;
     note: string;
@@ -34,10 +34,7 @@ export const BankrollView: React.FC<Props> = ({
   const [exFilter, setExFilter] = useState("All Exchanges");
   const [typeFilter, setTypeFilter] = useState("All Types");
 
-  const totalBalance =
-    exchangeBankrolls.smarkets +
-    exchangeBankrolls.matchbook +
-    exchangeBankrolls.betfair;
+  const totalBalance = exchangeBankrolls.smarkets + exchangeBankrolls.matchbook;
 
   const exportTransactionsToCSV = (
     targetTxs: BankrollTransaction[] = transactions,
@@ -116,8 +113,8 @@ export const BankrollView: React.FC<Props> = ({
       </div>
 
       {/* Exchange Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {(["smarkets", "matchbook", "betfair"] as const).map((ex) => {
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {(["smarkets", "matchbook"] as const).map((ex) => {
           const exTxs = transactions.filter((t) => t.exchange === ex);
           const deposits = exTxs
             .filter((t) => t.type === "deposit")
@@ -204,7 +201,6 @@ export const BankrollView: React.FC<Props> = ({
                 >
                   <option value="smarkets">Smarkets</option>
                   <option value="matchbook">Matchbook</option>
-                  <option value="betfair">Betfair</option>
                 </select>
               </div>
 
@@ -283,7 +279,6 @@ export const BankrollView: React.FC<Props> = ({
                     <option>All Exchanges</option>
                     <option>Smarkets</option>
                     <option>Matchbook</option>
-                    <option>Betfair</option>
                   </select>
                   <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
                 </div>

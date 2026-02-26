@@ -1,6 +1,5 @@
 import React from "react";
 import { TrackedBet } from "../../types";
-import { Trophy, TrendingUp, Wallet, Percent, Activity } from "lucide-react";
 
 interface Props {
   bets: TrackedBet[];
@@ -8,126 +7,127 @@ interface Props {
 
 export const SummaryStats: React.FC<Props> = ({ bets }) => {
   const settledBets = bets.filter((b) => b.result !== undefined);
-  const decisiveBets = settledBets.filter(
+  const decisiveBets = bets.filter(
     (b) => b.result === "won" || b.result === "lost",
   );
   const clvBets = bets.filter((b) => b.clvPercent !== undefined);
 
-  const totalBets = bets.length;
-  const totalSettled = settledBets.length;
+  // 1. Total Bets
+  const totalCount = bets.length;
+  const settledCount = settledBets.length;
+  const openCount = totalCount - settledCount;
 
-  // Win Rate
-  const wins = settledBets.filter((b) => b.result === "won").length;
-  const losses = settledBets.filter((b) => b.result === "lost").length;
+  // 2. Win Rate & Required Win Rate
+  const wins = decisiveBets.filter((b) => b.result === "won").length;
+  const losses = decisiveBets.filter((b) => b.result === "lost").length;
   const voidCount = settledBets.filter((b) => b.result === "void").length;
   const winRate =
     decisiveBets.length > 0 ? (wins / decisiveBets.length) * 100 : 0;
 
-  const avgOdds =
+  const avgOddsDecisive =
     decisiveBets.length > 0
       ? decisiveBets.reduce((acc, b) => acc + b.exchangePrice, 0) /
         decisiveBets.length
       : 0;
-  const expectedWinRate = avgOdds > 0 ? (1 / avgOdds) * 100 : 0;
+  const requiredWinRate = avgOddsDecisive > 0 ? (1 / avgOddsDecisive) * 100 : 0;
 
-  // CLV Stats
+  // 4. Avg Edge (All bets)
+  const avgEdge =
+    bets.length > 0
+      ? bets.reduce((acc, b) => acc + (b.netEdgePercent || 0), 0) / bets.length
+      : 0;
+
+  // 5. Avg CLV
   const avgClv =
     clvBets.length > 0
       ? clvBets.reduce((acc, b) => acc + (b.clvPercent || 0), 0) /
         clvBets.length
       : 0;
-
   const beatCloseCount = clvBets.filter((b) => (b.clvPercent || 0) > 0).length;
   const beatCloseRate =
     clvBets.length > 0 ? (beatCloseCount / clvBets.length) * 100 : 0;
 
-  // P/L & ROI
+  // 6. Flat ROI
   const totalFlatPL = settledBets.reduce((acc, b) => acc + (b.flatPL || 0), 0);
-  const totalFlatStakes = settledBets.length; // Flat stake is always 1
+  const totalFlatStakes = settledBets.length; // Assuming flat stake of 1 unit per bet
   const flatROI =
     totalFlatStakes > 0 ? (totalFlatPL / totalFlatStakes) * 100 : 0;
 
+  // 7. Kelly ROI
   const totalKellyPL = settledBets.reduce(
     (acc, b) => acc + (b.kellyPL || 0),
     0,
   );
   const totalKellyStakes = settledBets.reduce(
-    (acc, b) => acc + b.kellyStake,
+    (acc, b) => acc + (b.kellyStake || 0),
     0,
   );
-  const kellyROI =
-    totalKellyStakes > 0 ? (totalKellyPL / totalKellyStakes) * 100 : 0;
+  const isKellyStaked = totalKellyStakes >= 0.01;
+  const kellyROI = isKellyStaked ? (totalKellyPL / totalKellyStakes) * 100 : 0;
 
   const stats = [
     {
       label: "Total Bets",
-      value: totalBets,
-      subValue:
-        totalBets - totalSettled > 0
-          ? `${totalSettled} settled, ${totalBets - totalSettled} open`
-          : `${totalSettled} settled`,
-      icon: <Activity className="w-4 h-4" />,
+      value: totalCount.toString(),
+      subValue: `${settledCount} settled, ${openCount} open`,
       color: "text-blue-400",
-      bgColor: "bg-blue-500/10",
     },
     {
       label: "Win Rate",
       value: `${winRate.toFixed(1)}%`,
-      subValue: `${wins}W ${losses}L${voidCount > 0 ? ` ${voidCount}V` : ""}\nAvg odds: ${avgOdds.toFixed(2)}\nReq. win rate: ${expectedWinRate.toFixed(0)}%`,
-      icon: <Trophy className="w-4 h-4" />,
-      color: winRate >= expectedWinRate ? "text-emerald-400" : "text-red-400",
-      bgColor:
-        winRate >= expectedWinRate ? "bg-emerald-500/10" : "bg-red-500/10",
+      subValue: `Req: ${requiredWinRate.toFixed(1)}%`,
+      color: winRate >= requiredWinRate ? "text-emerald-400" : "text-red-400",
+    },
+    {
+      label: "Avg Odds",
+      value: avgOddsDecisive.toFixed(2),
+      subValue: `${wins}W ${losses}L${voidCount > 0 ? ` ${voidCount}V` : ""}`,
+      color: "text-blue-400",
+    },
+    {
+      label: "Avg Edge",
+      value: `${avgEdge >= 0 ? "+" : ""}${avgEdge.toFixed(1)}%`,
+      subValue: "at time of bet",
+      color: avgEdge >= 0 ? "text-emerald-400" : "text-red-400",
     },
     {
       label: "Avg CLV",
-      value: `${avgClv > 0 ? "+" : ""}${avgClv.toFixed(1)}%`,
-      subValue: `${beatCloseRate.toFixed(1)}% Beat Close`,
-      icon: <TrendingUp className="w-4 h-4" />,
+      value: `${avgClv >= 0 ? "+" : ""}${avgClv.toFixed(1)}%`,
+      subValue: `${beatCloseRate.toFixed(1)}% beat close`,
       color: avgClv >= 0 ? "text-emerald-400" : "text-red-400",
-      bgColor: avgClv >= 0 ? "bg-emerald-500/10" : "bg-red-500/10",
     },
     {
       label: "Flat ROI",
-      value: `${flatROI > 0 ? "+" : ""}${flatROI.toFixed(1)}%`,
-      subValue: `${totalFlatPL >= 0 ? "+" : ""}£${totalFlatPL.toFixed(2)} total P/L`,
-      icon: <Percent className="w-4 h-4" />,
-      color: flatROI >= 0 ? "text-blue-400" : "text-red-400",
-      bgColor: "bg-slate-800",
+      value: `${flatROI >= 0 ? "+" : ""}${flatROI.toFixed(1)}%`,
+      subValue: `${totalFlatPL >= 0 ? "+" : "-"}£${Math.abs(totalFlatPL).toFixed(2)} total P/L`,
+      color: flatROI >= 0 ? "text-emerald-400" : "text-red-400",
     },
     {
       label: "Kelly ROI",
-      value: `${kellyROI > 0 ? "+" : ""}${kellyROI.toFixed(1)}%`,
-      subValue:
-        totalSettled === 0
-          ? "No data yet"
-          : `${totalKellyPL >= 0 ? "+" : ""}£${totalKellyPL.toFixed(2)} total P/L`,
-      icon: <Wallet className="w-4 h-4" />,
-      color: kellyROI >= 0 ? "text-indigo-400" : "text-red-400",
-      bgColor: "bg-slate-800",
+      value: isKellyStaked
+        ? `${kellyROI >= 0 ? "+" : ""}${kellyROI.toFixed(1)}%`
+        : "N/A",
+      subValue: `${totalKellyPL >= 0 ? "+" : "-"}£${Math.abs(totalKellyPL).toFixed(2)} total P/L`,
+      color: !isKellyStaked
+        ? "text-slate-500"
+        : kellyROI >= 0
+          ? "text-emerald-400"
+          : "text-red-400",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
       {stats.map((stat, i) => (
         <div
           key={i}
           className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl flex flex-col gap-1 transition-all hover:bg-slate-800 hover:border-slate-600"
         >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">
-              {stat.label}
-            </span>
-            <div className={`p-1.5 rounded-lg ${stat.bgColor} ${stat.color}`}>
-              {stat.icon}
-            </div>
-          </div>
-          <div className={`text-xl font-bold ${stat.color}`}>{stat.value}</div>
-          <div
-            className="text-[10px] text-slate-400 font-medium"
-            style={{ whiteSpace: "pre-line" }}
-          >
+          <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-1">
+            {stat.label}
+          </span>
+          <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+          <div className="text-[10px] text-slate-400 font-medium truncate">
             {stat.subValue}
           </div>
         </div>

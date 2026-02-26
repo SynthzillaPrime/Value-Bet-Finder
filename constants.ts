@@ -32,7 +32,6 @@ export const LEAGUES: LeagueOption[] = [
 
 export const EXCHANGES = [
   { key: "smarkets", name: "Smarkets", commission: 0.02 },
-  { key: "betfair_ex_uk", name: "Betfair", commission: 0.05 },
   { key: "matchbook", name: "Matchbook", commission: 0.015 },
 ];
 

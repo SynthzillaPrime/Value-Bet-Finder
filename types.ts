@@ -92,14 +92,13 @@ export interface TrackedBet extends BetEdge {
 
 export interface ExchangeBankroll {
   smarkets: number;
-  betfair: number;
   matchbook: number;
 }
 
 export interface BankrollTransaction {
   id: string;
   timestamp: number;
-  exchange: "smarkets" | "betfair" | "matchbook";
+  exchange: "smarkets" | "matchbook";
   type:
     | "deposit"
     | "withdrawal"

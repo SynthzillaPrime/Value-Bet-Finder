@@ -183,9 +183,20 @@ export const OpenBetsView: React.FC<Props> = ({
 
     if (nowMs < kickoffMs) {
       const hoursUntil = (kickoffMs - nowMs) / (1000 * 60 * 60);
-      if (hoursUntil < 1) return { label: `${Math.floor(hoursUntil * 60)}m to KO`, color: "text-amber-400" };
-      if (hoursUntil < 24) return { label: `${Math.floor(hoursUntil)}h to KO`, color: "text-slate-400" };
-      return { label: `${Math.floor(hoursUntil / 24)}d to KO`, color: "text-slate-500" };
+      if (hoursUntil < 1)
+        return {
+          label: `${Math.floor(hoursUntil * 60)}m to KO`,
+          color: "text-amber-400",
+        };
+      if (hoursUntil < 24)
+        return {
+          label: `${Math.floor(hoursUntil)}h to KO`,
+          color: "text-slate-400",
+        };
+      return {
+        label: `${Math.floor(hoursUntil / 24)}d to KO`,
+        color: "text-slate-500",
+      };
     }
 
     const hoursSince = (nowMs - kickoffMs) / (1000 * 60 * 60);
@@ -198,13 +209,7 @@ export const OpenBetsView: React.FC<Props> = ({
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-2xl font-bold text-white">Open Bets</h2>
         <div className="flex flex-col items-center justify-center py-20 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
-          <div className="text-5xl mb-4">✅</div>
-          <h3 className="text-xl font-semibold text-slate-300">
-            No open bets
-          </h3>
-          <p className="text-slate-500 mt-2 max-w-md text-center">
-            All your bets are settled. Head to Bet Finder to track new ones.
-          </p>
+          <h3 className="text-xl font-semibold text-slate-300">No open bets</h3>
         </div>
       </div>
     );
@@ -410,9 +415,7 @@ const BetRow: React.FC<BetRowProps> = ({
       </span>
     </td>
     <td className="p-4 text-right">
-      <div className="text-xs text-slate-400">
-        {formatKickoff(bet.kickoff)}
-      </div>
+      <div className="text-xs text-slate-400">{formatKickoff(bet.kickoff)}</div>
       <div className={`text-[10px] font-bold mt-0.5 ${timeStatus.color}`}>
         {timeStatus.label}
       </div>
