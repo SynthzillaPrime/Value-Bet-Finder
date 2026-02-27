@@ -20,12 +20,12 @@ export const BankrollView: React.FC<Props> = ({
   onAddTransaction,
 }) => {
   const [newTx, setNewTx] = useState<{
-    exchange: "smarkets" | "matchbook";
+    exchange: "matchbook";
     type: "deposit" | "withdrawal" | "adjustment";
     amount: string;
     note: string;
   }>({
-    exchange: "smarkets",
+    exchange: "matchbook",
     type: "deposit",
     amount: "",
     note: "",
@@ -34,7 +34,7 @@ export const BankrollView: React.FC<Props> = ({
   const [exFilter, setExFilter] = useState("All Exchanges");
   const [typeFilter, setTypeFilter] = useState("All Types");
 
-  const totalBalance = exchangeBankrolls.smarkets + exchangeBankrolls.matchbook;
+  const totalBalance = exchangeBankrolls.matchbook;
 
   const exportTransactionsToCSV = (
     targetTxs: BankrollTransaction[] = transactions,
@@ -113,8 +113,8 @@ export const BankrollView: React.FC<Props> = ({
       </div>
 
       {/* Exchange Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {(["smarkets", "matchbook"] as const).map((ex) => {
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+        {(["matchbook"] as const).map((ex) => {
           const exTxs = transactions.filter((t) => t.exchange === ex);
           const deposits = exTxs
             .filter((t) => t.type === "deposit")
@@ -199,7 +199,6 @@ export const BankrollView: React.FC<Props> = ({
                   }
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-1 focus:ring-blue-500 outline-none"
                 >
-                  <option value="smarkets">Smarkets</option>
                   <option value="matchbook">Matchbook</option>
                 </select>
               </div>
@@ -277,7 +276,6 @@ export const BankrollView: React.FC<Props> = ({
                     className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8 min-w-[180px]"
                   >
                     <option>All Exchanges</option>
-                    <option>Smarkets</option>
                     <option>Matchbook</option>
                   </select>
                   <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />

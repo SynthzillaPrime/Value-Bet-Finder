@@ -71,7 +71,7 @@ const App: React.FC = () => {
   const [dataLoaded, setDataLoaded] = useState(false);
 
   const exchangeBankrolls = useMemo(() => {
-    const totals: ExchangeBankroll = { smarkets: 0, matchbook: 0 };
+    const totals: ExchangeBankroll = { matchbook: 0 };
     transactions.forEach((t) => {
       totals[t.exchange] += t.amount;
     });
@@ -79,7 +79,7 @@ const App: React.FC = () => {
   }, [transactions]);
 
   const bankroll = useMemo(() => {
-    return exchangeBankrolls.smarkets + exchangeBankrolls.matchbook;
+    return exchangeBankrolls.matchbook;
   }, [exchangeBankrolls]);
 
   const [remainingRequests, setRemainingRequests] = useState<number | null>(
@@ -193,8 +193,7 @@ const App: React.FC = () => {
     ) {
       const pl = updatedBet.flatPL !== undefined ? updatedBet.flatPL : 0;
 
-      let bankrollKey: keyof ExchangeBankroll = "smarkets";
-      if (updatedBet.exchangeKey === "matchbook") bankrollKey = "matchbook";
+      const bankrollKey: keyof ExchangeBankroll = "matchbook";
 
       let type: BankrollTransaction["type"] = "bet_win";
       if (updatedBet.result === "lost") type = "bet_loss";
