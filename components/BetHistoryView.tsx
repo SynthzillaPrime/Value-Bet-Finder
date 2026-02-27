@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { TrackedBet } from "../types";
 import { EXCHANGES, LEAGUES } from "../constants";
 import {
@@ -21,6 +21,22 @@ export const BetHistoryView: React.FC<Props> = ({
   onDeleteBet,
 }) => {
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleDeleteClick = (id: string) => {
+    if (confirmDeleteId === id) {
+      onDeleteBet(id);
+      setConfirmDeleteId(null);
+      if (deleteTimeoutRef.current) clearTimeout(deleteTimeoutRef.current);
+    } else {
+      setConfirmDeleteId(id);
+      if (deleteTimeoutRef.current) clearTimeout(deleteTimeoutRef.current);
+      deleteTimeoutRef.current = setTimeout(() => {
+        setConfirmDeleteId(null);
+      }, 3000);
+    }
+  };
 
   // Filter states
   const [compFilter, setCompFilter] = useState("All Competitions");
@@ -431,10 +447,18 @@ export const BetHistoryView: React.FC<Props> = ({
                           </>
                         )}
                         <button
-                          onClick={() => onDeleteBet(bet.id)}
-                          className="p-2 text-slate-600 hover:text-red-400 hover:bg-red-900/20 rounded"
+                          onClick={() => handleDeleteClick(bet.id)}
+                          className={`transition-all rounded ${
+                            confirmDeleteId === bet.id
+                              ? "px-2 py-1 bg-red-900/40 text-red-400 text-[10px] font-bold uppercase tracking-wider"
+                              : "p-2 text-slate-600 hover:text-red-400 hover:bg-red-900/20"
+                          }`}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          {confirmDeleteId === bet.id ? (
+                            "Confirm?"
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                     </td>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { TrackedBet } from "../types";
 import { EXCHANGES } from "../constants";
 import {
@@ -27,6 +27,22 @@ export const OpenBetsView: React.FC<Props> = ({
   onDeleteBet,
 }) => {
   const [settlingId, setSettlingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleDeleteClick = (id: string) => {
+    if (confirmDeleteId === id) {
+      onDeleteBet(id);
+      setConfirmDeleteId(null);
+      if (deleteTimeoutRef.current) clearTimeout(deleteTimeoutRef.current);
+    } else {
+      setConfirmDeleteId(id);
+      if (deleteTimeoutRef.current) clearTimeout(deleteTimeoutRef.current);
+      deleteTimeoutRef.current = setTimeout(() => {
+        setConfirmDeleteId(null);
+      }, 3000);
+    }
+  };
   const [settlingAll, setSettlingAll] = useState(false);
   const [settleProgress, setSettleProgress] = useState<{
     current: number;
@@ -278,7 +294,8 @@ export const OpenBetsView: React.FC<Props> = ({
                     formatKickoff={formatKickoff}
                     settling={settlingId === bet.id || settlingAll}
                     onSettle={() => handleSettleSingle(bet)}
-                    onDelete={() => onDeleteBet(bet.id)}
+                    isConfirming={confirmDeleteId === bet.id}
+                    onDelete={() => handleDeleteClick(bet.id)}
                   />
                 ))}
               </tbody>
@@ -315,7 +332,8 @@ export const OpenBetsView: React.FC<Props> = ({
                     formatKickoff={formatKickoff}
                     settling={false}
                     onSettle={null}
-                    onDelete={() => onDeleteBet(bet.id)}
+                    isConfirming={confirmDeleteId === bet.id}
+                    onDelete={() => handleDeleteClick(bet.id)}
                   />
                 ))}
               </tbody>
@@ -352,7 +370,8 @@ export const OpenBetsView: React.FC<Props> = ({
                     formatKickoff={formatKickoff}
                     settling={false}
                     onSettle={null}
-                    onDelete={() => onDeleteBet(bet.id)}
+                    isConfirming={confirmDeleteId === bet.id}
+                    onDelete={() => handleDeleteClick(bet.id)}
                   />
                 ))}
               </tbody>
@@ -378,6 +397,7 @@ interface BetRowProps {
   settling: boolean;
   onSettle: (() => void) | null;
   onDelete: () => void;
+  isConfirming: boolean;
 }
 
 const BetRow: React.FC<BetRowProps> = ({
@@ -387,6 +407,7 @@ const BetRow: React.FC<BetRowProps> = ({
   settling,
   onSettle,
   onDelete,
+  isConfirming,
 }) => (
   <tr className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
     <td className="p-4">
@@ -437,9 +458,13 @@ const BetRow: React.FC<BetRowProps> = ({
         )}
         <button
           onClick={onDelete}
-          className="p-1.5 text-slate-600 hover:text-red-400 hover:bg-red-900/20 rounded transition-colors"
+          className={`transition-all rounded ${
+            isConfirming
+              ? "px-2 py-1 bg-red-900/40 text-red-400 text-[10px] font-bold uppercase tracking-wider"
+              : "p-1.5 text-slate-600 hover:text-red-400 hover:bg-red-900/20"
+          }`}
         >
-          <Trash2 className="w-3.5 h-3.5" />
+          {isConfirming ? "Confirm?" : <Trash2 className="w-3.5 h-3.5" />}
         </button>
       </div>
     </td>
