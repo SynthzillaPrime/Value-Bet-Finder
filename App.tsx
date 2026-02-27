@@ -224,12 +224,10 @@ const App: React.FC = () => {
   };
 
   const handleDeleteTrackedBet = async (id: string) => {
-    if (window.confirm("Delete this record?")) {
-      // Optimistic update
-      setTrackedBets((prev) => prev.filter((b) => b.id !== id));
-      // Persist to Supabase
-      await supabaseDeleteBet(id);
-    }
+    // Optimistic update
+    setTrackedBets((prev) => prev.filter((b) => b.id !== id));
+    // Persist to Supabase
+    await supabaseDeleteBet(id);
   };
 
   const handleAddTransaction = async (t: BankrollTransaction) => {
