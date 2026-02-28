@@ -219,18 +219,31 @@ export const BetHistoryView: React.FC<Props> = ({
                   new Set(bets.map((b) => b.sport)),
                 );
                 const sortedSports = uniqueSports.sort((a, b) => {
-                  const idxA = LEAGUES.findIndex((l) => l.name === a);
-                  const idxB = LEAGUES.findIndex((l) => l.name === b);
-                  if (idxA === -1 && idxB === -1) return a.localeCompare(b);
-                  if (idxA === -1) return 1;
-                  if (idxB === -1) return -1;
-                  return idxA - idxB;
+                  const betA = bets.find((bt) => bt.sport === a);
+                  const betB = bets.find((bt) => bt.sport === b);
+                  const idxA = LEAGUES.findIndex(
+                    (l) => l.key === betA?.sportKey,
+                  );
+                  const idxB = LEAGUES.findIndex(
+                    (l) => l.key === betB?.sportKey,
+                  );
+                  if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                  if (idxA !== -1) return -1;
+                  if (idxB !== -1) return 1;
+                  return a.localeCompare(b);
                 });
-                return sortedSports.map((sport) => (
-                  <option key={sport} value={sport}>
-                    {sport}
-                  </option>
-                ));
+                return sortedSports.map((sport) => {
+                  const representativeBet = bets.find((b) => b.sport === sport);
+                  const friendlyName = representativeBet
+                    ? LEAGUES.find((l) => l.key === representativeBet.sportKey)
+                        ?.name || sport
+                    : sport;
+                  return (
+                    <option key={sport} value={sport}>
+                      {friendlyName}
+                    </option>
+                  );
+                });
               })()}
             </select>
             <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
@@ -308,7 +321,7 @@ export const BetHistoryView: React.FC<Props> = ({
               <th className="p-4 font-medium">Selection</th>
               <th className="p-4 font-medium text-right">Timing</th>
               <th className="p-4 font-medium text-right">Odds</th>
-              <th className="p-4 font-medium text-right">Comm</th>
+              <th className="p-4 font-medium text-right">Edge %</th>
               <th className="p-4 font-medium text-right">CLV %</th>
               <th className="p-4 font-medium text-right">Result</th>
               <th className="p-4 font-medium text-right">Action</th>
@@ -342,7 +355,11 @@ export const BetHistoryView: React.FC<Props> = ({
                       <div className="font-semibold text-slate-200">
                         {bet.homeTeam} vs {bet.awayTeam}
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-[10px] text-slate-500 uppercase mt-0.5">
+                        {LEAGUES.find((l) => l.key === bet.sportKey)?.name ||
+                          bet.sport}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
                         {new Date(bet.kickoff).toLocaleString("en-GB", {
                           month: "short",
                           day: "numeric",
@@ -374,11 +391,24 @@ export const BetHistoryView: React.FC<Props> = ({
                       </div>
                     </td>
                     <td className="p-4 text-right">
-                      <span className="text-xs text-slate-400 font-mono">
-                        {bet.commission !== undefined
-                          ? `${bet.commission}%`
-                          : "-"}
+                      <span className="text-emerald-400 font-bold">
+                        +
+                        {(bet.baseNetEdgePercent ?? bet.netEdgePercent).toFixed(
+                          1,
+                        )}
+                        %
                       </span>
+                      {bet.commission !== undefined &&
+                        bet.commission < 2 &&
+                        bet.baseNetEdgePercent !== undefined && (
+                          <span className="text-[10px] text-blue-400 ml-1">
+                            (+
+                            {(
+                              bet.netEdgePercent - bet.baseNetEdgePercent
+                            ).toFixed(1)}
+                            % promo)
+                          </span>
+                        )}
                     </td>
                     <td className="p-4 text-right font-bold">
                       {bet.clvPercent !== undefined ? (

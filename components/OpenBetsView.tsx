@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { TrackedBet } from "../types";
+import { LEAGUES } from "../constants";
 import { calculatePL } from "../services/betSettlement";
 import { fetchClosingLine, fetchMatchResult } from "../services/edgeFinder";
 import {
@@ -257,25 +258,23 @@ export const OpenBetsView: React.FC<Props> = ({
           </p>
         </div>
 
-        {readyToSettle.length > 0 && (
-          <button
-            onClick={handleSettleAll}
-            disabled={settlingAll}
-            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold rounded-lg shadow-lg shadow-emerald-900/20 transition-all flex items-center gap-2"
-          >
-            {settlingAll ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                Settling {settleProgress?.current}/{settleProgress?.total}...
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-4 h-4" />
-                Settle All ({readyToSettle.length})
-              </>
-            )}
-          </button>
-        )}
+        <button
+          onClick={handleSettleAll}
+          disabled={settlingAll || readyToSettle.length === 0}
+          className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg shadow-emerald-900/20 transition-all flex items-center gap-2"
+        >
+          {settlingAll ? (
+            <>
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              Settling {settleProgress?.current}/{settleProgress?.total}...
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="w-4 h-4" />
+              Settle All ({readyToSettle.length})
+            </>
+          )}
+        </button>
       </div>
 
       {/* Ready to Settle */}
@@ -292,11 +291,10 @@ export const OpenBetsView: React.FC<Props> = ({
                   <th className="p-4 font-medium">Match</th>
                   <th className="p-4 font-medium">Selection</th>
                   <th className="p-4 font-medium text-right">Odds</th>
-                  <th className="p-4 font-medium text-right">Edge</th>
+                  <th className="p-4 font-medium text-right">Edge %</th>
                   <th className="p-4 font-medium text-right text-emerald-400">
                     CLV
                   </th>
-                  <th className="p-4 font-medium text-right">Comm</th>
                   <th className="p-4 font-medium text-right">Kickoff</th>
                   <th className="p-4 font-medium text-right">Action</th>
                 </tr>
@@ -336,11 +334,10 @@ export const OpenBetsView: React.FC<Props> = ({
                   <th className="p-4 font-medium">Match</th>
                   <th className="p-4 font-medium">Selection</th>
                   <th className="p-4 font-medium text-right">Odds</th>
-                  <th className="p-4 font-medium text-right">Edge</th>
+                  <th className="p-4 font-medium text-right">Edge %</th>
                   <th className="p-4 font-medium text-right text-emerald-400">
                     CLV
                   </th>
-                  <th className="p-4 font-medium text-right">Comm</th>
                   <th className="p-4 font-medium text-right">Kickoff</th>
                   <th className="p-4 font-medium text-right">Action</th>
                 </tr>
@@ -380,11 +377,10 @@ export const OpenBetsView: React.FC<Props> = ({
                   <th className="p-4 font-medium">Match</th>
                   <th className="p-4 font-medium">Selection</th>
                   <th className="p-4 font-medium text-right">Odds</th>
-                  <th className="p-4 font-medium text-right">Edge</th>
+                  <th className="p-4 font-medium text-right">Edge %</th>
                   <th className="p-4 font-medium text-right text-emerald-400">
                     CLV
                   </th>
-                  <th className="p-4 font-medium text-right">Comm</th>
                   <th className="p-4 font-medium text-right">Kickoff</th>
                   <th className="p-4 font-medium text-right">Action</th>
                 </tr>
@@ -409,11 +405,6 @@ export const OpenBetsView: React.FC<Props> = ({
           </div>
         </div>
       )}
-
-      {/* API cost note */}
-      <p className="text-[10px] text-slate-600 text-center">
-        Settling uses 2 API calls per bet (1 result + 1 CLV).
-      </p>
     </div>
   );
 };
@@ -452,7 +443,7 @@ const BetRow: React.FC<BetRowProps> = ({
           {bet.homeTeam} vs {bet.awayTeam}
         </div>
         <div className="text-[10px] text-slate-500 uppercase mt-0.5">
-          {bet.sport}
+          {LEAGUES.find((l) => l.key === bet.sportKey)?.name || bet.sport}
         </div>
       </td>
       <td className="p-4">
@@ -469,8 +460,16 @@ const BetRow: React.FC<BetRowProps> = ({
       </td>
       <td className="p-4 text-right">
         <span className="text-emerald-400 font-bold">
-          +{bet.netEdgePercent.toFixed(1)}%
+          +{(bet.baseNetEdgePercent ?? bet.netEdgePercent).toFixed(1)}%
         </span>
+        {bet.commission !== undefined &&
+          bet.commission < 2 &&
+          bet.baseNetEdgePercent !== undefined && (
+            <span className="text-[10px] text-blue-400 ml-1">
+              (+{(bet.netEdgePercent - bet.baseNetEdgePercent).toFixed(1)}%
+              promo)
+            </span>
+          )}
       </td>
       <td className="p-4 text-right">
         {bet.clvPercent !== undefined ? (
@@ -481,11 +480,6 @@ const BetRow: React.FC<BetRowProps> = ({
         ) : (
           <span className="text-slate-600">—</span>
         )}
-      </td>
-      <td className="p-4 text-right">
-        <span className="text-xs text-slate-400 font-mono">
-          {bet.commission !== undefined ? `${bet.commission}%` : "-"}
-        </span>
       </td>
       <td className="p-4 text-right">
         <div className="text-xs text-slate-400">

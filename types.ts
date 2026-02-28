@@ -86,6 +86,11 @@ export interface TrackedBet extends BetEdge {
   kellyStake: number;
   kellyPL?: number;
 
+  // Base edge/kelly calculated at permanent 2% commission — used for analysis
+  baseNetEdgePercent?: number;
+  baseKellyPercent?: number;
+  baseKellyStake?: number;
+
   // Commission rate applied to this specific bet (percentage, e.g. 0, 0.75, 2)
   // This is on NET WINNINGS only — you pay nothing on losses
   commission?: number;

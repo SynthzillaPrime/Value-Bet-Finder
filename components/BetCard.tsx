@@ -179,12 +179,6 @@ export const BetCard: React.FC<Props> = ({ bet, onTrack, isTracked }) => {
                     0%
                   </button>
                   <button
-                    onClick={() => handleCommissionSelect(0.75)}
-                    className="px-2.5 py-1.5 text-xs font-bold rounded-md bg-blue-900/30 text-blue-400 border border-blue-500/30 hover:bg-blue-900/50 transition-colors"
-                  >
-                    0.75%
-                  </button>
-                  <button
                     onClick={() => handleCommissionSelect(2)}
                     className="px-2.5 py-1.5 text-xs font-bold rounded-md bg-amber-900/30 text-amber-400 border border-amber-500/30 hover:bg-amber-900/50 transition-colors"
                   >
@@ -195,12 +189,12 @@ export const BetCard: React.FC<Props> = ({ bet, onTrack, isTracked }) => {
                       type="number"
                       min="0"
                       max="100"
-                      step="0.01"
+                      step="1"
                       value={customCommission}
                       onChange={(e) => setCustomCommission(e.target.value)}
                       onKeyDown={handleCustomKeyDown}
                       placeholder="Custom"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       autoFocus
                     />
                     <span className="text-xs text-slate-500">%</span>

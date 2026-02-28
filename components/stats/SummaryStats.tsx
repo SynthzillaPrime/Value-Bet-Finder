@@ -34,7 +34,10 @@ export const SummaryStats: React.FC<Props> = ({ bets }) => {
   // 4. Avg Edge (All bets)
   const avgEdge =
     bets.length > 0
-      ? bets.reduce((acc, b) => acc + (b.netEdgePercent || 0), 0) / bets.length
+      ? bets.reduce(
+          (acc, b) => acc + (b.baseNetEdgePercent ?? b.netEdgePercent ?? 0),
+          0,
+        ) / bets.length
       : 0;
 
   // 5. Avg CLV
@@ -70,6 +73,12 @@ export const SummaryStats: React.FC<Props> = ({ bets }) => {
       label: "Total Bets",
       value: totalCount.toString(),
       subValue: `${settledCount} settled, ${openCount} open`,
+      color: "text-blue-400",
+    },
+    {
+      label: "Total Staked",
+      value: `£${totalFlatStakes.toFixed(2)}`,
+      subValue: `Kelly: £${totalKellyStakes.toFixed(2)} staked`,
       color: "text-blue-400",
     },
     {
@@ -117,7 +126,7 @@ export const SummaryStats: React.FC<Props> = ({ bets }) => {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-8">
       {stats.map((stat, i) => (
         <div
           key={i}

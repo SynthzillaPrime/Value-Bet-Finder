@@ -38,7 +38,10 @@ export const setPin = async (pin: string): Promise<boolean> => {
     key: "pin_hash",
     value: hashed,
   });
-  if (error) { console.error("Failed to set PIN", error); return false; }
+  if (error) {
+    console.error("Failed to set PIN", error);
+    return false;
+  }
   localStorage.setItem(PIN_STORAGE_KEY, hashed);
   return true;
 };
@@ -110,6 +113,9 @@ const betToRow = (bet: TrackedBet): Record<string, any> => ({
   flat_pl: bet.flatPL ?? null,
   kelly_stake: bet.kellyStake,
   kelly_pl: bet.kellyPL ?? null,
+  base_net_edge_percent: bet.baseNetEdgePercent ?? null,
+  base_kelly_percent: bet.baseKellyPercent ?? null,
+  base_kelly_stake: bet.baseKellyStake ?? null,
   commission: bet.commission ?? null,
 });
 
@@ -137,8 +143,10 @@ const rowToBet = (row: any): TrackedBet => ({
   result: row.result || undefined,
   homeScore: row.home_score ?? undefined,
   awayScore: row.away_score ?? undefined,
-  closingRawPrice: row.closing_raw_price != null ? Number(row.closing_raw_price) : undefined,
-  closingFairPrice: row.closing_fair_price != null ? Number(row.closing_fair_price) : undefined,
+  closingRawPrice:
+    row.closing_raw_price != null ? Number(row.closing_raw_price) : undefined,
+  closingFairPrice:
+    row.closing_fair_price != null ? Number(row.closing_fair_price) : undefined,
   clvPercent: row.clv_percent != null ? Number(row.clv_percent) : undefined,
   hoursBeforeKickoff: Number(row.hours_before_kickoff),
   timingBucket: row.timing_bucket,
@@ -147,6 +155,14 @@ const rowToBet = (row: any): TrackedBet => ({
   flatPL: row.flat_pl != null ? Number(row.flat_pl) : undefined,
   kellyStake: Number(row.kelly_stake),
   kellyPL: row.kelly_pl != null ? Number(row.kelly_pl) : undefined,
+  baseNetEdgePercent:
+    row.base_net_edge_percent != null
+      ? Number(row.base_net_edge_percent)
+      : undefined,
+  baseKellyPercent:
+    row.base_kelly_percent != null ? Number(row.base_kelly_percent) : undefined,
+  baseKellyStake:
+    row.base_kelly_stake != null ? Number(row.base_kelly_stake) : undefined,
   commission: row.commission != null ? Number(row.commission) : undefined,
 });
 
@@ -155,20 +171,29 @@ export const fetchAllBets = async (): Promise<TrackedBet[]> => {
     .from("tracked_bets")
     .select("*")
     .order("placed_at", { ascending: false });
-  if (error) { console.error("Failed to fetch bets", error); return []; }
+  if (error) {
+    console.error("Failed to fetch bets", error);
+    return [];
+  }
   return (data || []).map(rowToBet);
 };
 
 export const insertBet = async (bet: TrackedBet): Promise<boolean> => {
   const { error } = await supabase.from("tracked_bets").insert(betToRow(bet));
-  if (error) { console.error("Failed to insert bet", error); return false; }
+  if (error) {
+    console.error("Failed to insert bet", error);
+    return false;
+  }
   return true;
 };
 
 export const insertBets = async (bets: TrackedBet[]): Promise<boolean> => {
   const rows = bets.map(betToRow);
   const { error } = await supabase.from("tracked_bets").insert(rows);
-  if (error) { console.error("Failed to insert bets", error); return false; }
+  if (error) {
+    console.error("Failed to insert bets", error);
+    return false;
+  }
   return true;
 };
 
@@ -177,13 +202,19 @@ export const updateBet = async (bet: TrackedBet): Promise<boolean> => {
     .from("tracked_bets")
     .update(betToRow(bet))
     .eq("id", bet.id);
-  if (error) { console.error("Failed to update bet", error); return false; }
+  if (error) {
+    console.error("Failed to update bet", error);
+    return false;
+  }
   return true;
 };
 
 export const deleteBet = async (id: string): Promise<boolean> => {
   const { error } = await supabase.from("tracked_bets").delete().eq("id", id);
-  if (error) { console.error("Failed to delete bet", error); return false; }
+  if (error) {
+    console.error("Failed to delete bet", error);
+    return false;
+  }
   return true;
 };
 
@@ -211,25 +242,42 @@ const rowToTx = (row: any): BankrollTransaction => ({
   betId: row.bet_id || undefined,
 });
 
-export const fetchAllTransactions = async (): Promise<BankrollTransaction[]> => {
+export const fetchAllTransactions = async (): Promise<
+  BankrollTransaction[]
+> => {
   const { data, error } = await supabase
     .from("bankroll_transactions")
     .select("*")
     .order("timestamp", { ascending: false });
-  if (error) { console.error("Failed to fetch transactions", error); return []; }
+  if (error) {
+    console.error("Failed to fetch transactions", error);
+    return [];
+  }
   return (data || []).map(rowToTx);
 };
 
-export const insertTransaction = async (tx: BankrollTransaction): Promise<boolean> => {
-  const { error } = await supabase.from("bankroll_transactions").insert(txToRow(tx));
-  if (error) { console.error("Failed to insert transaction", error); return false; }
+export const insertTransaction = async (
+  tx: BankrollTransaction,
+): Promise<boolean> => {
+  const { error } = await supabase
+    .from("bankroll_transactions")
+    .insert(txToRow(tx));
+  if (error) {
+    console.error("Failed to insert transaction", error);
+    return false;
+  }
   return true;
 };
 
-export const insertTransactions = async (txs: BankrollTransaction[]): Promise<boolean> => {
+export const insertTransactions = async (
+  txs: BankrollTransaction[],
+): Promise<boolean> => {
   const rows = txs.map(txToRow);
   const { error } = await supabase.from("bankroll_transactions").insert(rows);
-  if (error) { console.error("Failed to insert transactions", error); return false; }
+  if (error) {
+    console.error("Failed to insert transactions", error);
+    return false;
+  }
   return true;
 };
 
@@ -256,13 +304,18 @@ export const migrateLocalStorageToSupabase = async (): Promise<{
         exchangePrice: b.exchangePrice || b.smarketsPrice || 0,
       }));
       if (bets.length > 0) {
-        const { data: existing } = await supabase.from("tracked_bets").select("id").limit(1);
+        const { data: existing } = await supabase
+          .from("tracked_bets")
+          .select("id")
+          .limit(1);
         if (!existing || existing.length === 0) {
           const success = await insertBets(bets);
           if (success) betsMigrated = bets.length;
         }
       }
-    } catch (e) { console.error("Failed to migrate bets", e); }
+    } catch (e) {
+      console.error("Failed to migrate bets", e);
+    }
   }
 
   const storedTx = localStorage.getItem("bankroll_transactions");
@@ -270,13 +323,18 @@ export const migrateLocalStorageToSupabase = async (): Promise<{
     try {
       const txs: BankrollTransaction[] = JSON.parse(storedTx);
       if (txs.length > 0) {
-        const { data: existing } = await supabase.from("bankroll_transactions").select("id").limit(1);
+        const { data: existing } = await supabase
+          .from("bankroll_transactions")
+          .select("id")
+          .limit(1);
         if (!existing || existing.length === 0) {
           const success = await insertTransactions(txs);
           if (success) txMigrated = txs.length;
         }
       }
-    } catch (e) { console.error("Failed to migrate transactions", e); }
+    } catch (e) {
+      console.error("Failed to migrate transactions", e);
+    }
   }
 
   return { bets: betsMigrated, transactions: txMigrated };

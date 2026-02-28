@@ -88,9 +88,7 @@ const App: React.FC = () => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // UI State
-  const [selectedLeagues, setSelectedLeagues] = useState<string[]>(
-    LEAGUES.map((l) => l.key),
-  );
+  const [selectedLeagues, setSelectedLeagues] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [view, setView] = useState<
     "scanner" | "openbets" | "history" | "analysis" | "bankroll"
@@ -178,6 +176,19 @@ const App: React.FC = () => {
 
     const fractionalKellyStake = bankroll * ((kellyPercent / 100) * 0.3);
 
+    // Base edge at permanent 2% rate (for clean analysis)
+    const baseCommissionFraction = 0.02;
+    const baseEffectiveOdds =
+      1 + (bet.exchangePrice - 1) * (1 - baseCommissionFraction);
+    const baseNetEdge = (baseEffectiveOdds / bet.fairPrice - 1) * 100;
+
+    const baseB = baseEffectiveOdds - 1;
+    const baseP = 1 / bet.fairPrice;
+    const baseQ = 1 - baseP;
+    const baseKellyFraction = (baseB * baseP - baseQ) / baseB;
+    const baseKellyPercent = Math.max(0, baseKellyFraction * 100);
+    const baseKellyStake = bankroll * ((baseKellyPercent / 100) * 0.3);
+
     const newTrackedBet: TrackedBet = {
       ...bet,
       placedAt: now,
@@ -190,6 +201,9 @@ const App: React.FC = () => {
       commission, // Store the actual commission rate
       netEdgePercent: actualNetEdge, // Override with commission-adjusted edge
       kellyPercent, // Override with commission-adjusted kelly
+      baseNetEdgePercent: baseNetEdge,
+      baseKellyPercent: baseKellyPercent,
+      baseKellyStake: baseKellyStake,
     };
 
     // Optimistic update
@@ -495,22 +509,55 @@ const App: React.FC = () => {
         )}
 
         {/* Footer info */}
-        <div className="mt-12 text-center text-slate-600 text-sm pb-8">
-          <div className="mb-3 inline-flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-full border border-slate-800 text-xs text-slate-400">
-            <div
-              className={`w-2 h-2 rounded-full ${remainingRequests !== null && remainingRequests < 50 ? "bg-red-500" : "bg-emerald-500"}`}
-            ></div>
-            API Quota:{" "}
-            <span
-              className={
-                remainingRequests !== null && remainingRequests < 50
-                  ? "text-red-400 font-bold"
-                  : "text-slate-300"
-              }
-            >
-              {remainingRequests !== null ? remainingRequests : "—"}
-            </span>{" "}
-            requests remaining
+        <div className="mt-12 pb-8 flex justify-center">
+          <div className="flex flex-col gap-1.5 bg-slate-900 px-6 py-3 rounded-full border border-slate-800 w-64 shadow-lg">
+            <div className="flex justify-center items-center text-xs text-slate-400">
+              <span className="text-slate-300 font-medium">
+                {remainingRequests !== null
+                  ? Math.max(0, 10000 - remainingRequests).toLocaleString()
+                  : "—"}{" "}
+                of 10,000 used
+              </span>
+            </div>
+
+            <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-1000 ${
+                  remainingRequests === null
+                    ? "w-0"
+                    : ((10000 - remainingRequests) / 10000) * 100 >= 90
+                      ? "bg-red-500"
+                      : ((10000 - remainingRequests) / 10000) * 100 >= 70
+                        ? "bg-amber-500"
+                        : "bg-emerald-500"
+                }`}
+                style={{
+                  width: `${
+                    remainingRequests === null
+                      ? 0
+                      : Math.min(
+                          100,
+                          Math.max(
+                            0,
+                            ((10000 - remainingRequests) / 10000) * 100,
+                          ),
+                        )
+                  }%`,
+                }}
+              ></div>
+            </div>
+
+            <div className="text-[10px] text-slate-600 text-center">
+              Resets{" "}
+              {new Date(
+                new Date().getFullYear(),
+                new Date().getMonth() + 1,
+                1,
+              ).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+              })}
+            </div>
           </div>
         </div>
       </div>

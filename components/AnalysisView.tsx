@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { TrackedBet, BankrollTransaction } from "../types";
+import { LEAGUES } from "../constants";
 import { SummaryStats } from "./stats/SummaryStats";
 import {
   XAxis,
@@ -47,33 +48,28 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
       <SummaryStats bets={bets} />
 
       <div className="space-y-12">
-        {/* 1. Bankroll Over Time */}
+        {/* 1. Bankroll Tracker */}
         <section>
           <h3 className="text-lg font-bold text-slate-300 mb-4">
-            Bankroll Over Time
+            Bankroll Tracker
           </h3>
           <div className="space-y-6">
             <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
-                    data={[
-                      ...transactions
-                        .sort((a, b) => a.timestamp - b.timestamp)
-                        .reduce((acc: any[], tx) => {
-                          const prevBankroll =
-                            acc.length > 0 ? acc[acc.length - 1].bankroll : 0;
-                          acc.push({
-                            timestamp: tx.timestamp,
-                            bankroll: Math.max(0, prevBankroll + tx.amount),
-                            label:
-                              tx.type === "bet_win" || tx.type === "bet_loss"
-                                ? "Bet Settlement"
-                                : tx.type,
-                          });
-                          return acc;
-                        }, []),
-                    ]}
+                    data={bets
+                      .filter((b) => b.result !== undefined)
+                      .sort((a, b) => a.placedAt - b.placedAt)
+                      .reduce((acc: any[], bet, idx) => {
+                        const prevBankroll =
+                          acc.length > 0 ? acc[acc.length - 1].bankroll : 0;
+                        acc.push({
+                          betNum: idx + 1,
+                          bankroll: prevBankroll + (bet.flatPL || 0),
+                        });
+                        return acc;
+                      }, [])}
                   >
                     <defs>
                       <linearGradient
@@ -101,18 +97,18 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                       vertical={false}
                     />
                     <XAxis
-                      dataKey="timestamp"
+                      dataKey="betNum"
                       stroke="#64748b"
                       fontSize={10}
                       tickLine={false}
                       axisLine={false}
-                      allowDuplicatedCategory={false}
-                      tickFormatter={(val) =>
-                        new Date(val).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                        })
-                      }
+                      label={{
+                        value: "Bet #",
+                        position: "insideBottom",
+                        offset: -5,
+                        fontSize: 10,
+                        fill: "#64748b",
+                      }}
                     />
                     <YAxis
                       stroke="#64748b"
@@ -130,12 +126,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                         color: "#f8fafc",
                       }}
                       itemStyle={{ color: "#f8fafc" }}
-                      labelFormatter={(val) =>
-                        new Date(val).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                        })
-                      }
+                      labelFormatter={(val) => `Bet #${val}`}
                       formatter={(value: number | undefined) => {
                         if (value === undefined) return null;
                         return [`£${value.toFixed(2)}`, "Bankroll"];
@@ -276,32 +267,25 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
               <div className="h-[350px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={[
-                      ...transactions
-                        .sort((a, b) => a.timestamp - b.timestamp)
-                        .reduce((acc: any[], tx) => {
-                          const prevActual =
-                            acc.length > 0 ? acc[acc.length - 1].actual : 0;
-                          const prevExpected =
-                            acc.length > 0 ? acc[acc.length - 1].expected : 0;
-                          let actualChange = tx.amount;
-                          let expectedChange = 0;
-                          if (tx.type === "bet_win" || tx.type === "bet_loss") {
-                            const bet = bets.find((b) => b.id === tx.betId);
-                            if (bet) {
-                              expectedChange = (bet.netEdgePercent / 100) * 1;
-                            }
-                          } else {
-                            expectedChange = tx.amount;
-                          }
-                          acc.push({
-                            timestamp: tx.timestamp,
-                            actual: prevActual + actualChange,
-                            expected: prevExpected + expectedChange,
-                          });
-                          return acc;
-                        }, []),
-                    ]}
+                    data={bets
+                      .filter((b) => b.result !== undefined)
+                      .sort((a, b) => a.placedAt - b.placedAt)
+                      .reduce((acc: any[], bet, idx) => {
+                        const prevActual =
+                          acc.length > 0 ? acc[acc.length - 1].actual : 0;
+                        const prevExpected =
+                          acc.length > 0 ? acc[acc.length - 1].expected : 0;
+                        const expectedGain =
+                          ((bet.baseNetEdgePercent ?? bet.netEdgePercent ?? 0) /
+                            100) *
+                          bet.flatStake;
+                        acc.push({
+                          betNum: idx + 1,
+                          actual: Math.max(0, prevActual + (bet.flatPL || 0)),
+                          expected: Math.max(0, prevExpected + expectedGain),
+                        });
+                        return acc;
+                      }, [])}
                   >
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -309,14 +293,18 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                       vertical={false}
                     />
                     <XAxis
-                      dataKey="timestamp"
+                      dataKey="betNum"
                       stroke="#64748b"
                       fontSize={10}
                       tickLine={false}
                       axisLine={false}
-                      tickFormatter={(val) =>
-                        new Date(val).toLocaleDateString("en-GB")
-                      }
+                      label={{
+                        value: "Bet #",
+                        position: "insideBottom",
+                        offset: -5,
+                        fontSize: 10,
+                        fill: "#64748b",
+                      }}
                     />
                     <YAxis
                       stroke="#64748b"
@@ -324,6 +312,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={(value) => `£${value}`}
+                      domain={[0, "auto"]}
                     />
                     <Tooltip
                       contentStyle={{
@@ -333,9 +322,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                         color: "#f8fafc",
                       }}
                       itemStyle={{ color: "#f8fafc" }}
-                      labelFormatter={(val) =>
-                        new Date(val).toLocaleDateString("en-GB")
-                      }
+                      labelFormatter={(val) => `Bet #${val}`}
                       formatter={(value: number | undefined) => {
                         if (value === undefined) return null;
                         return [`£${value.toFixed(2)}`];
@@ -379,10 +366,10 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                     <th className="p-4 font-medium">Bet #</th>
                     <th className="p-4 font-medium">Match</th>
                     <th className="p-4 font-medium text-right">Edge %</th>
-                    <th className="p-4 font-medium text-right">Exp. Gain</th>
-                    <th className="p-4 font-medium text-right">Actual P/L</th>
-                    <th className="p-4 font-medium text-right">Exp. Bank</th>
-                    <th className="p-4 font-medium text-right">Act. Bank</th>
+                    <th className="p-4 font-medium text-right">CLV %</th>
+                    <th className="p-4 font-medium text-right">Exp. P/L</th>
+                    <th className="p-4 font-medium text-right">Act. P/L</th>
+                    <th className="p-4 font-medium text-right">Variance</th>
                   </tr>
                 </thead>
                 <tbody className="text-sm text-slate-300">
@@ -395,17 +382,25 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                           acc.length > 0 ? acc[acc.length - 1].actual : 0;
                         const prevExpected =
                           acc.length > 0 ? acc[acc.length - 1].expected : 0;
-                        const expectedGain = (bet.netEdgePercent / 100) * 1;
-                        const currentActual = prevActual + (bet.flatPL || 0);
-                        const currentExpected = prevExpected + expectedGain;
+                        const edge =
+                          bet.baseNetEdgePercent ?? bet.netEdgePercent ?? 0;
+                        const expectedGain = (edge / 100) * bet.flatStake;
+                        const currentActual = Math.max(
+                          0,
+                          prevActual + (bet.flatPL || 0),
+                        );
+                        const currentExpected = Math.max(
+                          0,
+                          prevExpected + expectedGain,
+                        );
                         acc.push({
                           betNum: idx + 1,
                           match: `${bet.homeTeam} vs ${bet.awayTeam}`,
-                          edge: bet.netEdgePercent,
-                          expGain: expectedGain,
-                          actualPL: bet.flatPL || 0,
+                          edge: edge,
+                          clv: bet.clvPercent,
                           expected: currentExpected,
                           actual: currentActual,
+                          variance: currentActual - currentExpected,
                         });
                         return acc;
                       }, [])
@@ -428,22 +423,26 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                           {row.match}
                         </td>
                         <td className="p-4 text-right text-slate-400">
-                          {row.edge.toFixed(2)}%
-                        </td>
-                        <td className="p-4 text-right text-indigo-400 font-mono">
-                          £{row.expGain.toFixed(2)}
+                          {row.edge.toFixed(1)}%
                         </td>
                         <td
-                          className={`p-4 text-right font-mono font-bold ${row.actualPL >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                          className={`p-4 text-right font-mono ${row.clv !== undefined ? (row.clv > 0 ? "text-emerald-400" : "text-red-400") : "text-slate-500"}`}
                         >
-                          {row.actualPL > 0 ? "+" : ""}
-                          {row.actualPL.toFixed(2)}
+                          {row.clv !== undefined
+                            ? `${row.clv > 0 ? "+" : ""}${row.clv.toFixed(1)}%`
+                            : "-"}
                         </td>
                         <td className="p-4 text-right font-mono text-indigo-300">
                           £{row.expected.toFixed(2)}
                         </td>
                         <td className="p-4 text-right font-mono text-slate-200">
                           £{row.actual.toFixed(2)}
+                        </td>
+                        <td
+                          className={`p-4 text-right font-mono font-bold ${row.variance >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                        >
+                          {row.variance > 0 ? "+" : ""}£
+                          {row.variance.toFixed(2)}
                         </td>
                       </tr>
                     ));
@@ -488,11 +487,9 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
           </div>
         </section>
 
-        {/* 3. CLV Over Time */}
+        {/* 3. CLV Tracker */}
         <section>
-          <h3 className="text-lg font-bold text-slate-300 mb-4">
-            CLV Over Time
-          </h3>
+          <h3 className="text-lg font-bold text-slate-300 mb-4">CLV Tracker</h3>
           <div className="space-y-6">
             <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
               <div className="h-[300px] w-full">
@@ -605,6 +602,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   <tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider">
                     <th className="p-4 font-medium">Bet #</th>
                     <th className="p-4 font-medium">Match</th>
+                    <th className="p-4 font-medium text-right">Net Edge %</th>
                     <th className="p-4 font-medium text-right">Your Odds</th>
                     <th className="p-4 font-medium text-right">Closing Odds</th>
                     <th className="p-4 font-medium text-right">CLV %</th>
@@ -619,6 +617,8 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                         id: bet.id,
                         betNum: idx + 1,
                         match: `${bet.homeTeam} vs ${bet.awayTeam}`,
+                        netEdge:
+                          bet.baseNetEdgePercent ?? bet.netEdgePercent ?? 0,
                         odds: bet.exchangePrice,
                         closing: bet.closingFairPrice,
                         clv: bet.clvPercent || 0,
@@ -640,6 +640,9 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                         </td>
                         <td className="p-4 font-medium text-slate-200">
                           {row.match}
+                        </td>
+                        <td className="p-4 text-right font-mono text-slate-400">
+                          {row.netEdge.toFixed(1)}%
                         </td>
                         <td className="p-4 text-right font-mono text-blue-300">
                           {row.odds.toFixed(2)}
@@ -703,8 +706,10 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
           {(() => {
             const competitionsMap: Record<string, TrackedBet[]> = {};
             settled.forEach((b) => {
-              if (!competitionsMap[b.sport]) competitionsMap[b.sport] = [];
-              competitionsMap[b.sport].push(b);
+              const compName =
+                LEAGUES.find((l) => l.key === b.sportKey)?.name || b.sport;
+              if (!competitionsMap[compName]) competitionsMap[compName] = [];
+              competitionsMap[compName].push(b);
             });
 
             const compData = Object.entries(competitionsMap)
@@ -724,6 +729,12 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                     ? clvBets.reduce((s, b) => s + (b.clvPercent || 0), 0) /
                       clvBets.length
                     : 0;
+                const avgEdge =
+                  compBets.reduce(
+                    (sum, b) =>
+                      sum + (b.baseNetEdgePercent ?? b.netEdgePercent ?? 0),
+                    0,
+                  ) / compBets.length;
                 return {
                   name,
                   roi,
@@ -731,6 +742,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   wins,
                   winRate: (wins / compBets.length) * 100,
                   avgClv,
+                  avgEdge,
                 };
               })
               .sort((a, b) => b.roi - a.roi);
@@ -806,6 +818,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                         <th className="p-4 font-medium text-right">Bets</th>
                         <th className="p-4 font-medium text-right">Won</th>
                         <th className="p-4 font-medium text-right">Win Rate</th>
+                        <th className="p-4 font-medium text-right">Avg Edge</th>
                         <th className="p-4 font-medium text-right">Avg CLV</th>
                         <th className="p-4 font-medium text-right">ROI</th>
                       </tr>
@@ -825,6 +838,9 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                             <td className="p-4 text-right">{row.wins}</td>
                             <td className="p-4 text-right">
                               {row.winRate.toFixed(1)}%
+                            </td>
+                            <td className="p-4 text-right text-slate-400">
+                              {row.avgEdge.toFixed(1)}%
                             </td>
                             <td
                               className={`p-4 text-right ${row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"}`}
@@ -1265,6 +1281,14 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   ? clvBets.reduce((s, b) => s + (b.clvPercent || 0), 0) /
                     clvBets.length
                   : 0;
+              const avgEdge =
+                marketBets.length > 0
+                  ? marketBets.reduce(
+                      (sum, b) =>
+                        sum + (b.baseNetEdgePercent ?? b.netEdgePercent ?? 0),
+                      0,
+                    ) / marketBets.length
+                  : 0;
               return {
                 name: mkt,
                 roi,
@@ -1273,6 +1297,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                 winRate:
                   marketBets.length > 0 ? (wins / marketBets.length) * 100 : 0,
                 avgClv,
+                avgEdge,
               };
             });
 
@@ -1339,6 +1364,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                         <th className="p-4 font-medium text-right">Bets</th>
                         <th className="p-4 font-medium text-right">Won</th>
                         <th className="p-4 font-medium text-right">Win Rate</th>
+                        <th className="p-4 font-medium text-right">Avg Edge</th>
                         <th className="p-4 font-medium text-right">Avg CLV</th>
                         <th className="p-4 font-medium text-right">ROI</th>
                       </tr>
@@ -1361,6 +1387,9 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                             <td className="p-4 text-right">{row.wins}</td>
                             <td className="p-4 text-right">
                               {row.winRate.toFixed(1)}%
+                            </td>
+                            <td className="p-4 text-right text-slate-400">
+                              {row.avgEdge.toFixed(1)}%
                             </td>
                             <td
                               className={`p-4 text-right ${row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"}`}
