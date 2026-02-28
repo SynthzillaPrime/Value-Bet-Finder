@@ -30,9 +30,13 @@ export const LEAGUES: LeagueOption[] = [
   { key: "soccer_uefa_europa_conference_league", name: "Conference League" },
 ];
 
+// Commission rates used by the SCANNER for edge calculation display.
+// Actual commission per bet is set by the user at track time.
+// Matchbook: 0% promo (change to 0.02 when promo expires)
+// Smarkets: 2% standard (used as market validator only, not for betting)
 export const EXCHANGES = [
   { key: "smarkets", name: "Smarkets", commission: 0.02 },
-  { key: "matchbook", name: "Matchbook", commission: 0.015 },
+  { key: "matchbook", name: "Matchbook", commission: 0 },
 ];
 
 export const BOOKMAKERS = `pinnacle,${EXCHANGES.map((e) => e.key).join(",")}`;

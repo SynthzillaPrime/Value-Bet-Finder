@@ -86,6 +86,10 @@ export interface TrackedBet extends BetEdge {
   kellyStake: number;
   kellyPL?: number;
 
+  // Commission rate applied to this specific bet (percentage, e.g. 0, 0.75, 2)
+  // This is on NET WINNINGS only — you pay nothing on losses
+  commission?: number;
+
   // Legacy fields for migration
   smarketsPrice?: number;
 }

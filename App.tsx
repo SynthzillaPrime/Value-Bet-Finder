@@ -153,7 +153,7 @@ const App: React.FC = () => {
     setIsChangingKey(false);
   };
 
-  const handleTrackBet = async (bet: BetEdge) => {
+  const handleTrackBet = async (bet: BetEdge, commission: number) => {
     const now = Date.now();
     const hoursBeforeKickoff = (bet.kickoff.getTime() - now) / (1000 * 60 * 60);
     let timingBucket: "48hr+" | "24-48hr" | "12-24hr" | "<12hr" = "<12hr";
@@ -162,7 +162,20 @@ const App: React.FC = () => {
     else if (hoursBeforeKickoff >= 24) timingBucket = "24-48hr";
     else if (hoursBeforeKickoff >= 12) timingBucket = "12-24hr";
 
-    const fractionalKellyStake = bankroll * ((bet.kellyPercent / 100) * 0.3);
+    // Recalculate net edge with the actual commission rate for this bet
+    // effectiveOdds = 1 + (price - 1) * (1 - commission/100)
+    const commissionFraction = commission / 100;
+    const effectiveOdds = 1 + (bet.exchangePrice - 1) * (1 - commissionFraction);
+    const actualNetEdge = (effectiveOdds / bet.fairPrice - 1) * 100;
+
+    // Kelly with actual commission
+    const b = effectiveOdds - 1;
+    const p = 1 / bet.fairPrice;
+    const q = 1 - p;
+    const kellyFraction = (b * p - q) / b;
+    const kellyPercent = Math.max(0, kellyFraction * 100);
+
+    const fractionalKellyStake = bankroll * ((kellyPercent / 100) * 0.3);
 
     const newTrackedBet: TrackedBet = {
       ...bet,
@@ -173,6 +186,9 @@ const App: React.FC = () => {
       timingBucket,
       flatStake: 1,
       kellyStake: fractionalKellyStake,
+      commission, // Store the actual commission rate
+      netEdgePercent: actualNetEdge, // Override with commission-adjusted edge
+      kellyPercent, // Override with commission-adjusted kelly
     };
 
     // Optimistic update
@@ -189,9 +205,9 @@ const App: React.FC = () => {
       oldBet &&
       !oldBet.result &&
       updatedBet.result &&
-      updatedBet.kellyPL !== undefined
+      updatedBet.flatPL !== undefined
     ) {
-      const pl = updatedBet.flatPL !== undefined ? updatedBet.flatPL : 0;
+      const pl = updatedBet.flatPL;
 
       const bankrollKey: keyof ExchangeBankroll = "matchbook";
 

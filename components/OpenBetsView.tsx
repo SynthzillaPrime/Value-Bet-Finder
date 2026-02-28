@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { TrackedBet } from "../types";
-import { EXCHANGES } from "../constants";
+import { calculatePL } from "../services/betSettlement";
 import {
   fetchClosingLineForBet,
   fetchMatchResult,
@@ -116,19 +116,8 @@ export const OpenBetsView: React.FC<Props> = ({
       }
     }
 
-    const exchange = EXCHANGES.find((ex) => ex.key === bet.exchangeKey);
-    const commission = exchange ? exchange.commission : 0;
-
-    let flatPL = 0;
-    let kellyPL = 0;
-
-    if (result === "won") {
-      flatPL = (bet.exchangePrice - 1) * (1 - commission);
-      kellyPL = bet.kellyStake * (bet.exchangePrice - 1) * (1 - commission);
-    } else if (result === "lost") {
-      flatPL = -1;
-      kellyPL = -bet.kellyStake;
-    }
+    // Use per-bet commission for P/L calculation
+    const { flatPL, kellyPL } = calculatePL(bet, result);
 
     // Fetch CLV
     let clvPercent: number | undefined;
@@ -281,6 +270,7 @@ export const OpenBetsView: React.FC<Props> = ({
                   <th className="p-4 font-medium">Selection</th>
                   <th className="p-4 font-medium text-right">Odds</th>
                   <th className="p-4 font-medium text-right">Edge</th>
+                  <th className="p-4 font-medium text-right">Comm</th>
                   <th className="p-4 font-medium text-right">Kickoff</th>
                   <th className="p-4 font-medium text-right">Action</th>
                 </tr>
@@ -319,6 +309,7 @@ export const OpenBetsView: React.FC<Props> = ({
                   <th className="p-4 font-medium">Selection</th>
                   <th className="p-4 font-medium text-right">Odds</th>
                   <th className="p-4 font-medium text-right">Edge</th>
+                  <th className="p-4 font-medium text-right">Comm</th>
                   <th className="p-4 font-medium text-right">Kickoff</th>
                   <th className="p-4 font-medium text-right">Action</th>
                 </tr>
@@ -357,6 +348,7 @@ export const OpenBetsView: React.FC<Props> = ({
                   <th className="p-4 font-medium">Selection</th>
                   <th className="p-4 font-medium text-right">Odds</th>
                   <th className="p-4 font-medium text-right">Edge</th>
+                  <th className="p-4 font-medium text-right">Comm</th>
                   <th className="p-4 font-medium text-right">Kickoff</th>
                   <th className="p-4 font-medium text-right">Action</th>
                 </tr>
@@ -433,6 +425,11 @@ const BetRow: React.FC<BetRowProps> = ({
     <td className="p-4 text-right">
       <span className="text-emerald-400 font-bold">
         +{bet.netEdgePercent.toFixed(1)}%
+      </span>
+    </td>
+    <td className="p-4 text-right">
+      <span className="text-xs text-slate-400 font-mono">
+        {bet.commission !== undefined ? `${bet.commission}%` : "-"}
       </span>
     </td>
     <td className="p-4 text-right">

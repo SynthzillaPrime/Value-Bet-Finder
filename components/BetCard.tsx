@@ -1,14 +1,17 @@
-import React from "react";
+import React, { useState } from "react";
 import { BetEdge } from "../types";
 import { Clock, Check } from "lucide-react";
 
 interface Props {
   bet: BetEdge;
-  onTrack: (bet: BetEdge) => void;
+  onTrack: (bet: BetEdge, commission: number) => void;
   isTracked: boolean;
 }
 
 export const BetCard: React.FC<Props> = ({ bet, onTrack, isTracked }) => {
+  const [showCommissionPicker, setShowCommissionPicker] = useState(false);
+  const [customCommission, setCustomCommission] = useState("");
+
   const borderColor = "border-slate-800";
   const bgGradient = "bg-slate-900";
 
@@ -24,6 +27,30 @@ export const BetCard: React.FC<Props> = ({ bet, onTrack, isTracked }) => {
       hour: "2-digit",
       minute: "2-digit",
     });
+
+  const handleTrackClick = () => {
+    setShowCommissionPicker(true);
+  };
+
+  const handleCommissionSelect = (commission: number) => {
+    onTrack(bet, commission);
+    setShowCommissionPicker(false);
+  };
+
+  const handleCustomSubmit = () => {
+    const val = parseFloat(customCommission);
+    if (!isNaN(val) && val >= 0 && val <= 100) {
+      handleCommissionSelect(val);
+    }
+  };
+
+  const handleCustomKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleCustomSubmit();
+    if (e.key === "Escape") {
+      setShowCommissionPicker(false);
+      setCustomCommission("");
+    }
+  };
 
   return (
     <div
@@ -131,12 +158,66 @@ export const BetCard: React.FC<Props> = ({ bet, onTrack, isTracked }) => {
       {/* Footer Action */}
       <div className="mt-auto">
         {!isTracked ? (
-          <button
-            onClick={() => onTrack(bet)}
-            className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all"
-          >
-            Track Bet
-          </button>
+          <>
+            {!showCommissionPicker ? (
+              <button
+                onClick={handleTrackClick}
+                className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all"
+              >
+                Track Bet
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
+                  Commission rate
+                </p>
+                <div className="flex gap-1.5 items-center">
+                  <button
+                    onClick={() => handleCommissionSelect(0)}
+                    className="px-2.5 py-1.5 text-xs font-bold rounded-md bg-emerald-900/30 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-900/50 transition-colors"
+                  >
+                    0%
+                  </button>
+                  <button
+                    onClick={() => handleCommissionSelect(0.75)}
+                    className="px-2.5 py-1.5 text-xs font-bold rounded-md bg-blue-900/30 text-blue-400 border border-blue-500/30 hover:bg-blue-900/50 transition-colors"
+                  >
+                    0.75%
+                  </button>
+                  <button
+                    onClick={() => handleCommissionSelect(2)}
+                    className="px-2.5 py-1.5 text-xs font-bold rounded-md bg-amber-900/30 text-amber-400 border border-amber-500/30 hover:bg-amber-900/50 transition-colors"
+                  >
+                    2%
+                  </button>
+                  <div className="flex items-center gap-0.5 flex-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={customCommission}
+                      onChange={(e) => setCustomCommission(e.target.value)}
+                      onKeyDown={handleCustomKeyDown}
+                      placeholder="Custom"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none"
+                      autoFocus
+                    />
+                    <span className="text-xs text-slate-500">%</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowCommissionPicker(false);
+                    setCustomCommission("");
+                  }}
+                  className="w-full py-1 text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <div className="w-full py-2 bg-slate-800 text-slate-500 rounded-lg text-sm font-semibold border border-slate-700 text-center">
             Tracked
