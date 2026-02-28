@@ -1,11 +1,5 @@
 import React, { useState } from "react";
-import {
-  Wallet,
-  ArrowUpCircle,
-  History,
-  ChevronDown,
-  Download,
-} from "lucide-react";
+import { ArrowUpCircle, History, ChevronDown, Download } from "lucide-react";
 import { BankrollTransaction, ExchangeBankroll } from "../../types";
 
 interface Props {
@@ -40,8 +34,8 @@ export const BankrollView: React.FC<Props> = ({
   ) => {
     const headers = ["Date", "Time", "Type", "Amount", "Note"];
     const rows = targetTxs.map((t) => [
-      new Date(t.timestamp).toLocaleDateString(),
-      `"${new Date(t.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}"`,
+      new Date(t.timestamp).toLocaleDateString("en-GB"),
+      `"${new Date(t.timestamp).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })}"`,
       t.type.replace("_", " "),
       t.amount.toFixed(2),
       t.note || "",
@@ -104,57 +98,41 @@ export const BankrollView: React.FC<Props> = ({
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Header & Main Balance */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-slate-900/50 p-6 md:p-8 rounded-2xl border border-slate-800 shadow-xl">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <Wallet className="w-6 h-6 text-blue-500" />
-            </div>
-            Bankroll Management
-          </h2>
-          <p className="text-slate-500 text-sm ml-1 md:ml-12">
-            Track deposits, withdrawals, and your total balance.
-          </p>
-        </div>
-
-        <div className="flex flex-col items-end bg-slate-800/40 p-4 px-6 rounded-xl border border-slate-700/50 min-w-[200px] w-full md:w-auto">
-          <span className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-1">
-            Matchbook Balance
+      {/* Stats Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl">
+          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 tracking-tighter">
+            Bankroll
           </span>
-          <span className="text-4xl font-mono font-bold text-emerald-400">
+          <span className="text-lg font-mono font-bold text-white">
             £{balance.toFixed(2)}
           </span>
         </div>
-      </div>
-
-      {/* Stats Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-slate-900/40 border border-slate-800/60 p-4 rounded-xl">
+        <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl">
           <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 tracking-tighter">
             Deposits
           </span>
-          <span className="text-lg font-mono font-bold text-slate-200">
+          <span className="text-lg font-mono font-bold text-white">
             £{deposits.toFixed(2)}
           </span>
         </div>
-        <div className="bg-slate-900/40 border border-slate-800/60 p-4 rounded-xl">
+        <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl">
           <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 tracking-tighter">
             Withdrawals
           </span>
-          <span className="text-lg font-mono font-bold text-slate-200">
+          <span className="text-lg font-mono font-bold text-white">
             £{withdrawals.toFixed(2)}
           </span>
         </div>
-        <div className="bg-slate-900/40 border border-slate-800/60 p-4 rounded-xl">
+        <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl">
           <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 tracking-tighter">
             Adjustments
           </span>
-          <span className="text-lg font-mono font-bold text-slate-200">
+          <span className="text-lg font-mono font-bold text-white">
             £{adjustments.toFixed(2)}
           </span>
         </div>
-        <div className="bg-slate-900/40 border border-slate-800/60 p-4 rounded-xl">
+        <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl">
           <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 tracking-tighter">
             Profit/Loss
           </span>
@@ -204,7 +182,7 @@ export const BankrollView: React.FC<Props> = ({
                   onChange={(e) =>
                     setNewTx({ ...newTx, amount: e.target.value })
                   }
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none placeholder:text-slate-600 transition-all"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none placeholder:text-slate-600 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
 
@@ -321,13 +299,19 @@ export const BankrollView: React.FC<Props> = ({
                         >
                           <td className="px-6 py-4 text-slate-500 whitespace-nowrap">
                             <span className="text-slate-300">
-                              {new Date(t.timestamp).toLocaleDateString()}
+                              {new Date(t.timestamp).toLocaleDateString(
+                                "en-GB",
+                              )}
                             </span>
                             <div className="text-[10px]">
-                              {new Date(t.timestamp).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                              {new Date(t.timestamp).toLocaleTimeString(
+                                "en-GB",
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  hour12: false,
+                                },
+                              )}
                             </div>
                           </td>
                           <td
