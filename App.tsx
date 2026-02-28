@@ -165,7 +165,8 @@ const App: React.FC = () => {
     // Recalculate net edge with the actual commission rate for this bet
     // effectiveOdds = 1 + (price - 1) * (1 - commission/100)
     const commissionFraction = commission / 100;
-    const effectiveOdds = 1 + (bet.exchangePrice - 1) * (1 - commissionFraction);
+    const effectiveOdds =
+      1 + (bet.exchangePrice - 1) * (1 - commissionFraction);
     const actualNetEdge = (effectiveOdds / bet.fairPrice - 1) * 100;
 
     // Kelly with actual commission
@@ -495,24 +496,22 @@ const App: React.FC = () => {
 
         {/* Footer info */}
         <div className="mt-12 text-center text-slate-600 text-sm pb-8">
-          {remainingRequests !== null && (
-            <div className="mb-3 inline-flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-full border border-slate-800 text-xs text-slate-400">
-              <div
-                className={`w-2 h-2 rounded-full ${remainingRequests < 50 ? "bg-red-500" : "bg-emerald-500"}`}
-              ></div>
-              API Quota:{" "}
-              <span
-                className={
-                  remainingRequests < 50
-                    ? "text-red-400 font-bold"
-                    : "text-slate-300"
-                }
-              >
-                {remainingRequests}
-              </span>{" "}
-              requests remaining
-            </div>
-          )}
+          <div className="mb-3 inline-flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-full border border-slate-800 text-xs text-slate-400">
+            <div
+              className={`w-2 h-2 rounded-full ${remainingRequests !== null && remainingRequests < 50 ? "bg-red-500" : "bg-emerald-500"}`}
+            ></div>
+            API Quota:{" "}
+            <span
+              className={
+                remainingRequests !== null && remainingRequests < 50
+                  ? "text-red-400 font-bold"
+                  : "text-slate-300"
+              }
+            >
+              {remainingRequests !== null ? remainingRequests : "—"}
+            </span>{" "}
+            requests remaining
+          </div>
         </div>
       </div>
     </div>
