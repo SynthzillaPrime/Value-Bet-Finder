@@ -242,21 +242,23 @@ export const scanForEdges = async (
   return { bets, remainingRequests };
 };
 
-interface ClosingLineResult {
-  rawPrice: number;
-  fairPrice: number;
+export interface ClosingLineResult {
+  closingRawPrice: number;
+  closingFairPrice: number;
+  clvPercent: number;
 }
 
 /**
  * Fetches the closing line from history and calculates the Fair Closing Price
  * (Pinnacle No-Vig)
  */
-export const fetchClosingLineForBet = async (
+export const fetchClosingLine = async (
   apiKey: string,
-  bet: BetEdge,
+  bet: TrackedBet | BetEdge,
 ): Promise<ClosingLineResult | null> => {
   // ISO string is required for the date param
-  const dateStr = bet.kickoff.toISOString().split(".")[0] + "Z";
+  const kickoffDate = new Date(bet.kickoff);
+  const dateStr = kickoffDate.toISOString().split(".")[0] + "Z";
 
   const url = `https://api.the-odds-api.com/v4/sports/${bet.sportKey}/odds-history?apiKey=${apiKey}&regions=eu,uk&markets=${MARKETS}&date=${dateStr}&bookmakers=pinnacle`;
 
@@ -301,9 +303,13 @@ export const fetchClosingLineForBet = async (
     const fairPrices = stripVig(market.outcomes);
     if (!fairPrices || !fairPrices[outcome.name]) return null;
 
+    const closingFairPrice = fairPrices[outcome.name];
+    const clvPercent = (bet.exchangePrice / closingFairPrice - 1) * 100;
+
     return {
-      rawPrice: outcome.price,
-      fairPrice: fairPrices[outcome.name],
+      closingRawPrice: outcome.price,
+      closingFairPrice: closingFairPrice,
+      clvPercent,
     };
   } catch (e) {
     console.error("Error fetching closing line", e);

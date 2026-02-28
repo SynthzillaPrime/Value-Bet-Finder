@@ -2,10 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { TrackedBet } from "../types";
 import { calculatePL } from "../services/betSettlement";
 import { LEAGUES } from "../constants";
-import {
-  fetchClosingLineForBet,
-  fetchMatchResult,
-} from "../services/edgeFinder";
+import { fetchClosingLine, fetchMatchResult } from "../services/edgeFinder";
 import { RefreshCw, Trophy, Trash2, ChevronDown } from "lucide-react";
 
 interface Props {
@@ -62,16 +59,15 @@ export const BetHistoryView: React.FC<Props> = ({
     }
 
     setLoadingId(bet.id);
-    const result = await fetchClosingLineForBet(apiKey, bet);
+    const result = await fetchClosingLine(apiKey, bet);
     setLoadingId(null);
 
     if (result) {
-      const clv = (bet.exchangePrice / result.fairPrice - 1) * 100;
       onUpdateBet({
         ...bet,
-        closingRawPrice: result.rawPrice,
-        closingFairPrice: result.fairPrice,
-        clvPercent: clv,
+        closingRawPrice: result.closingRawPrice,
+        closingFairPrice: result.closingFairPrice,
+        clvPercent: result.clvPercent,
         status: "closed",
       });
     }
@@ -379,7 +375,9 @@ export const BetHistoryView: React.FC<Props> = ({
                     </td>
                     <td className="p-4 text-right">
                       <span className="text-xs text-slate-400 font-mono">
-                        {bet.commission !== undefined ? `${bet.commission}%` : "-"}
+                        {bet.commission !== undefined
+                          ? `${bet.commission}%`
+                          : "-"}
                       </span>
                     </td>
                     <td className="p-4 text-right font-bold">

@@ -1,10 +1,7 @@
 import React, { useState, useRef } from "react";
 import { TrackedBet } from "../types";
 import { calculatePL } from "../services/betSettlement";
-import {
-  fetchClosingLineForBet,
-  fetchMatchResult,
-} from "../services/edgeFinder";
+import { fetchClosingLine, fetchMatchResult } from "../services/edgeFinder";
 import {
   RefreshCw,
   Clock,
@@ -29,6 +26,30 @@ export const OpenBetsView: React.FC<Props> = ({
   const [settlingId, setSettlingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [fetchingCLVId, setFetchingCLVId] = useState<string | null>(null);
+
+  const handleFetchCLV = async (bet: TrackedBet) => {
+    if (new Date() < new Date(bet.kickoff)) {
+      return;
+    }
+
+    setFetchingCLVId(bet.id);
+    try {
+      const result = await fetchClosingLine(apiKey, bet);
+      if (result) {
+        onUpdateBet({
+          ...bet,
+          closingRawPrice: result.closingRawPrice,
+          closingFairPrice: result.closingFairPrice,
+          clvPercent: result.clvPercent,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching CLV:", error);
+    } finally {
+      setFetchingCLVId(null);
+    }
+  };
 
   const handleDeleteClick = (id: string) => {
     if (confirmDeleteId === id) {
@@ -119,16 +140,18 @@ export const OpenBetsView: React.FC<Props> = ({
     // Use per-bet commission for P/L calculation
     const { flatPL, kellyPL } = calculatePL(bet, result);
 
-    // Fetch CLV
-    let clvPercent: number | undefined;
-    let closingRawPrice: number | undefined;
-    let closingFairPrice: number | undefined;
+    // Fetch CLV (reuse if already fetched)
+    let clvPercent = bet.clvPercent;
+    let closingRawPrice = bet.closingRawPrice;
+    let closingFairPrice = bet.closingFairPrice;
 
-    const clvResult = await fetchClosingLineForBet(apiKey, bet);
-    if (clvResult) {
-      closingRawPrice = clvResult.rawPrice;
-      closingFairPrice = clvResult.fairPrice;
-      clvPercent = (bet.exchangePrice / clvResult.fairPrice - 1) * 100;
+    if (clvPercent === undefined) {
+      const clvResult = await fetchClosingLine(apiKey, bet);
+      if (clvResult) {
+        closingRawPrice = clvResult.closingRawPrice;
+        closingFairPrice = clvResult.closingFairPrice;
+        clvPercent = clvResult.clvPercent;
+      }
     }
 
     onUpdateBet({
@@ -270,6 +293,9 @@ export const OpenBetsView: React.FC<Props> = ({
                   <th className="p-4 font-medium">Selection</th>
                   <th className="p-4 font-medium text-right">Odds</th>
                   <th className="p-4 font-medium text-right">Edge</th>
+                  <th className="p-4 font-medium text-right text-emerald-400">
+                    CLV
+                  </th>
                   <th className="p-4 font-medium text-right">Comm</th>
                   <th className="p-4 font-medium text-right">Kickoff</th>
                   <th className="p-4 font-medium text-right">Action</th>
@@ -284,6 +310,8 @@ export const OpenBetsView: React.FC<Props> = ({
                     formatKickoff={formatKickoff}
                     settling={settlingId === bet.id || settlingAll}
                     onSettle={() => handleSettleSingle(bet)}
+                    fetchingCLV={fetchingCLVId === bet.id}
+                    onFetchCLV={() => handleFetchCLV(bet)}
                     isConfirming={confirmDeleteId === bet.id}
                     onDelete={() => handleDeleteClick(bet.id)}
                   />
@@ -309,6 +337,9 @@ export const OpenBetsView: React.FC<Props> = ({
                   <th className="p-4 font-medium">Selection</th>
                   <th className="p-4 font-medium text-right">Odds</th>
                   <th className="p-4 font-medium text-right">Edge</th>
+                  <th className="p-4 font-medium text-right text-emerald-400">
+                    CLV
+                  </th>
                   <th className="p-4 font-medium text-right">Comm</th>
                   <th className="p-4 font-medium text-right">Kickoff</th>
                   <th className="p-4 font-medium text-right">Action</th>
@@ -323,6 +354,8 @@ export const OpenBetsView: React.FC<Props> = ({
                     formatKickoff={formatKickoff}
                     settling={false}
                     onSettle={null}
+                    fetchingCLV={fetchingCLVId === bet.id}
+                    onFetchCLV={() => handleFetchCLV(bet)}
                     isConfirming={confirmDeleteId === bet.id}
                     onDelete={() => handleDeleteClick(bet.id)}
                   />
@@ -348,6 +381,9 @@ export const OpenBetsView: React.FC<Props> = ({
                   <th className="p-4 font-medium">Selection</th>
                   <th className="p-4 font-medium text-right">Odds</th>
                   <th className="p-4 font-medium text-right">Edge</th>
+                  <th className="p-4 font-medium text-right text-emerald-400">
+                    CLV
+                  </th>
                   <th className="p-4 font-medium text-right">Comm</th>
                   <th className="p-4 font-medium text-right">Kickoff</th>
                   <th className="p-4 font-medium text-right">Action</th>
@@ -362,6 +398,8 @@ export const OpenBetsView: React.FC<Props> = ({
                     formatKickoff={formatKickoff}
                     settling={false}
                     onSettle={null}
+                    fetchingCLV={fetchingCLVId === bet.id}
+                    onFetchCLV={() => handleFetchCLV(bet)}
                     isConfirming={confirmDeleteId === bet.id}
                     onDelete={() => handleDeleteClick(bet.id)}
                   />
@@ -388,6 +426,8 @@ interface BetRowProps {
   formatKickoff: (d: Date) => string;
   settling: boolean;
   onSettle: (() => void) | null;
+  fetchingCLV?: boolean;
+  onFetchCLV?: () => void;
   onDelete: () => void;
   isConfirming: boolean;
 }
@@ -398,72 +438,103 @@ const BetRow: React.FC<BetRowProps> = ({
   formatKickoff,
   settling,
   onSettle,
+  fetchingCLV,
+  onFetchCLV,
   onDelete,
   isConfirming,
-}) => (
-  <tr className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
-    <td className="p-4">
-      <div className="font-semibold text-slate-200">
-        {bet.homeTeam} vs {bet.awayTeam}
-      </div>
-      <div className="text-[10px] text-slate-500 uppercase mt-0.5">
-        {bet.sport}
-      </div>
-    </td>
-    <td className="p-4">
-      <div>{bet.selection}</div>
-      <div className="text-[10px] text-slate-500 uppercase">{bet.market}</div>
-    </td>
-    <td className="p-4 text-right">
-      <div className="font-mono text-blue-300 font-bold">
-        {bet.exchangePrice.toFixed(2)}
-      </div>
-      <div className="text-[10px] text-slate-500 uppercase">
-        {bet.exchangeName}
-      </div>
-    </td>
-    <td className="p-4 text-right">
-      <span className="text-emerald-400 font-bold">
-        +{bet.netEdgePercent.toFixed(1)}%
-      </span>
-    </td>
-    <td className="p-4 text-right">
-      <span className="text-xs text-slate-400 font-mono">
-        {bet.commission !== undefined ? `${bet.commission}%` : "-"}
-      </span>
-    </td>
-    <td className="p-4 text-right">
-      <div className="text-xs text-slate-400">{formatKickoff(bet.kickoff)}</div>
-      <div className={`text-[10px] font-bold mt-0.5 ${timeStatus.color}`}>
-        {timeStatus.label}
-      </div>
-    </td>
-    <td className="p-4 text-right">
-      <div className="flex items-center justify-end gap-2">
-        {onSettle && (
-          <button
-            onClick={onSettle}
-            disabled={settling}
-            className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
-          >
-            {settling ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              "Settle"
-            )}
-          </button>
+}) => {
+  const hasStarted = new Date() >= new Date(bet.kickoff);
+
+  return (
+    <tr className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
+      <td className="p-4">
+        <div className="font-semibold text-slate-200">
+          {bet.homeTeam} vs {bet.awayTeam}
+        </div>
+        <div className="text-[10px] text-slate-500 uppercase mt-0.5">
+          {bet.sport}
+        </div>
+      </td>
+      <td className="p-4">
+        <div>{bet.selection}</div>
+        <div className="text-[10px] text-slate-500 uppercase">{bet.market}</div>
+      </td>
+      <td className="p-4 text-right">
+        <div className="font-mono text-blue-300 font-bold">
+          {bet.exchangePrice.toFixed(2)}
+        </div>
+        <div className="text-[10px] text-slate-500 uppercase">
+          {bet.exchangeName}
+        </div>
+      </td>
+      <td className="p-4 text-right">
+        <span className="text-emerald-400 font-bold">
+          +{bet.netEdgePercent.toFixed(1)}%
+        </span>
+      </td>
+      <td className="p-4 text-right">
+        {bet.clvPercent !== undefined ? (
+          <span className="text-emerald-400 font-mono font-bold">
+            {bet.clvPercent > 0 ? "+" : ""}
+            {bet.clvPercent.toFixed(1)}%
+          </span>
+        ) : (
+          <span className="text-slate-600">—</span>
         )}
-        <button
-          onClick={onDelete}
-          className={`transition-all rounded ${
-            isConfirming
-              ? "px-2 py-1 bg-red-900/40 text-red-400 text-[10px] font-bold uppercase tracking-wider"
-              : "p-1.5 text-slate-600 hover:text-red-400 hover:bg-red-900/20"
-          }`}
-        >
-          {isConfirming ? "Confirm?" : <Trash2 className="w-3.5 h-3.5" />}
-        </button>
-      </div>
-    </td>
-  </tr>
-);
+      </td>
+      <td className="p-4 text-right">
+        <span className="text-xs text-slate-400 font-mono">
+          {bet.commission !== undefined ? `${bet.commission}%` : "-"}
+        </span>
+      </td>
+      <td className="p-4 text-right">
+        <div className="text-xs text-slate-400">
+          {formatKickoff(bet.kickoff)}
+        </div>
+        <div className={`text-[10px] font-bold mt-0.5 ${timeStatus.color}`}>
+          {timeStatus.label}
+        </div>
+      </td>
+      <td className="p-4 text-right">
+        <div className="flex items-center justify-end gap-2">
+          {bet.clvPercent === undefined && hasStarted && onFetchCLV && (
+            <button
+              onClick={onFetchCLV}
+              disabled={fetchingCLV}
+              className="px-2 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {fetchingCLV ? (
+                <RefreshCw className="w-3 h-3 animate-spin" />
+              ) : (
+                "Fetch CLV"
+              )}
+            </button>
+          )}
+          {onSettle && (
+            <button
+              onClick={onSettle}
+              disabled={settling}
+              className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+            >
+              {settling ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                "Settle"
+              )}
+            </button>
+          )}
+          <button
+            onClick={onDelete}
+            className={`transition-all rounded ${
+              isConfirming
+                ? "px-2 py-1 bg-red-900/40 text-red-400 text-[10px] font-bold uppercase tracking-wider"
+                : "p-1.5 text-slate-600 hover:text-red-400 hover:bg-red-900/20"
+            }`}
+          >
+            {isConfirming ? "Confirm?" : <Trash2 className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+};
