@@ -31,6 +31,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
   const [oddsPage, setOddsPage] = useState(1);
   const [timingPage, setTimingPage] = useState(1);
   const [marketPage, setMarketPage] = useState(1);
+  const [kellyPage, setKellyPage] = useState(1);
   const pageSize = 10;
 
   const settled = bets.filter(
@@ -1462,73 +1463,203 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                 val >= 0 ? "text-emerald-400" : "text-rose-400";
 
               return (
-                <div className="max-w-2xl">
-                  <div className="grid grid-cols-3 gap-y-8 gap-x-4">
-                    {/* Header Row */}
-                    <div className="flex items-center text-xs uppercase text-slate-500 tracking-wider"></div>
-                    <div className="text-xs uppercase text-slate-500 tracking-wider text-center">
-                      Flat Stake
-                    </div>
-                    <div className="text-xs uppercase text-slate-500 tracking-wider text-center">
-                      Kelly Stake
-                    </div>
+                <>
+                  <div className="max-w-2xl">
+                    <div className="grid grid-cols-3 gap-y-8 gap-x-4">
+                      {/* Header Row */}
+                      <div className="flex items-center text-xs uppercase text-slate-500 tracking-wider"></div>
+                      <div className="text-xs uppercase text-slate-500 tracking-wider text-center">
+                        Flat Stake
+                      </div>
+                      <div className="text-xs uppercase text-slate-500 tracking-wider text-center">
+                        Kelly Stake
+                      </div>
 
-                    {/* Avg Stake Row */}
-                    <div className="text-slate-400 font-medium flex items-center">
-                      Avg Stake
-                    </div>
-                    <div className="text-lg font-bold font-mono text-slate-200 text-center">
-                      £1.00
-                    </div>
-                    <div className="text-lg font-bold font-mono text-slate-200 text-center">
-                      £{avgKellyStake.toFixed(2)}
-                    </div>
+                      {/* Avg Stake Row */}
+                      <div className="text-slate-400 font-medium flex items-center">
+                        Avg Stake
+                      </div>
+                      <div className="text-lg font-bold font-mono text-slate-200 text-center">
+                        £1.00
+                      </div>
+                      <div className="text-lg font-bold font-mono text-slate-200 text-center">
+                        £{avgKellyStake.toFixed(2)}
+                      </div>
 
-                    {/* Total P/L Row */}
-                    <div className="text-slate-400 font-medium flex items-center">
-                      Total P/L
-                    </div>
-                    <div
-                      className={`text-lg font-bold font-mono text-center ${getPLColor(
-                        totalFlatPL,
-                      )}`}
-                    >
-                      {formatPL(totalFlatPL)}
-                    </div>
-                    <div
-                      className={`text-lg font-bold font-mono text-center ${getPLColor(
-                        totalKellyPL,
-                      )}`}
-                    >
-                      {formatPL(totalKellyPL)}
-                    </div>
+                      {/* Total P/L Row */}
+                      <div className="text-slate-400 font-medium flex items-center">
+                        Total P/L
+                      </div>
+                      <div
+                        className={`text-lg font-bold font-mono text-center ${getPLColor(
+                          totalFlatPL,
+                        )}`}
+                      >
+                        {formatPL(totalFlatPL)}
+                      </div>
+                      <div
+                        className={`text-lg font-bold font-mono text-center ${getPLColor(
+                          totalKellyPL,
+                        )}`}
+                      >
+                        {formatPL(totalKellyPL)}
+                      </div>
 
-                    {/* ROI Row */}
-                    <div className="text-slate-400 font-medium flex items-center">
-                      ROI
+                      {/* ROI Row */}
+                      <div className="text-slate-400 font-medium flex items-center">
+                        ROI
+                      </div>
+                      <div
+                        className={`text-lg font-bold font-mono text-center ${getPLColor(
+                          flatROI,
+                        )}`}
+                      >
+                        {flatROI >= 0 ? "+" : "-"}
+                        {Math.abs(flatROI).toFixed(1)}%
+                      </div>
+                      <div
+                        className={`text-lg font-bold font-mono text-center ${getPLColor(
+                          kellyROI,
+                        )}`}
+                      >
+                        {kellyROI >= 0 ? "+" : "-"}
+                        {Math.abs(kellyROI).toFixed(1)}%
+                      </div>
                     </div>
-                    <div
-                      className={`text-lg font-bold font-mono text-center ${getPLColor(
-                        flatROI,
-                      )}`}
-                    >
-                      {flatROI >= 0 ? "+" : "-"}
-                      {Math.abs(flatROI).toFixed(1)}%
-                    </div>
-                    <div
-                      className={`text-lg font-bold font-mono text-center ${getPLColor(
-                        kellyROI,
-                      )}`}
-                    >
-                      {kellyROI >= 0 ? "+" : "-"}
-                      {Math.abs(kellyROI).toFixed(1)}%
+                    <p className="text-xs text-slate-600 italic mt-8">
+                      Kelly stakes are theoretical — calculated from bankroll ×
+                      edge at time of bet
+                    </p>
+                  </div>
+
+                  {/* Per-Bet Kelly Stakes Table */}
+                  <div className="mt-12 space-y-4">
+                    <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                      Per-Bet Comparison
+                    </h4>
+                    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden shadow-xl">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="text-slate-500 border-b border-slate-800 text-[10px] uppercase tracking-wider bg-slate-900/20">
+                              <th className="px-4 py-3 font-medium">Bet #</th>
+                              <th className="px-4 py-3 font-medium">Match</th>
+                              <th className="px-4 py-3 font-medium">Odds</th>
+                              <th className="px-4 py-3 font-medium">Edge %</th>
+                              <th className="px-4 py-3 font-medium text-right">
+                                Flat Stake
+                              </th>
+                              <th className="px-4 py-3 font-medium text-right">
+                                Kelly Stake
+                              </th>
+                              <th className="px-4 py-3 font-medium text-right">
+                                Flat P/L
+                              </th>
+                              <th className="px-4 py-3 font-medium text-right">
+                                Kelly P/L
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="text-xs text-slate-300">
+                            {(() => {
+                              const sortedKelly = [...settledBets].sort(
+                                (a, b) => a.placedAt - b.placedAt,
+                              );
+                              const reversedKelly = [...sortedKelly].reverse();
+                              const paginatedKelly = reversedKelly.slice(
+                                (kellyPage - 1) * pageSize,
+                                kellyPage * pageSize,
+                              );
+
+                              return paginatedKelly.map((b) => {
+                                const originalIndex =
+                                  sortedKelly.findIndex(
+                                    (sb) => sb.id === b.id,
+                                  ) + 1;
+                                return (
+                                  <tr
+                                    key={b.id}
+                                    className="border-b border-slate-800/50 hover:bg-slate-800/50 transition-colors"
+                                  >
+                                    <td className="px-4 py-3 text-slate-500 font-mono">
+                                      #{originalIndex}
+                                    </td>
+                                    <td className="px-4 py-3 font-medium text-slate-200">
+                                      {b.homeTeam} v {b.awayTeam}
+                                    </td>
+                                    <td className="px-4 py-3 font-mono text-slate-400">
+                                      {b.exchangePrice.toFixed(2)}
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-400">
+                                      {b.netEdgePercent.toFixed(1)}%
+                                    </td>
+                                    <td className="px-4 py-3 text-right text-slate-500">
+                                      £1.00
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-mono text-white">
+                                      £{(b.kellyStake || 0).toFixed(2)}
+                                    </td>
+                                    <td
+                                      className={`px-4 py-3 text-right font-mono font-bold ${getPLColor(
+                                        b.flatPL || 0,
+                                      )}`}
+                                    >
+                                      {formatPL(b.flatPL || 0)}
+                                    </td>
+                                    <td
+                                      className={`px-4 py-3 text-right font-mono font-bold ${getPLColor(
+                                        b.kellyPL || 0,
+                                      )}`}
+                                    >
+                                      {formatPL(b.kellyPL || 0)}
+                                    </td>
+                                  </tr>
+                                );
+                              });
+                            })()}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination */}
+                      {(() => {
+                        const totalPages = Math.ceil(
+                          settledBets.length / pageSize,
+                        );
+                        if (totalPages <= 1) return null;
+                        return (
+                          <div className="px-4 py-3 border-t border-slate-800 bg-slate-900/20 flex items-center justify-between">
+                            <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+                              Page {kellyPage} of {totalPages}
+                            </span>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() =>
+                                  setKellyPage(Math.max(1, kellyPage - 1))
+                                }
+                                disabled={kellyPage === 1}
+                                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded text-[10px] uppercase font-bold transition-colors border border-slate-700"
+                              >
+                                Previous
+                              </button>
+                              <button
+                                onClick={() =>
+                                  setKellyPage(
+                                    Math.min(totalPages, kellyPage + 1),
+                                  )
+                                }
+                                disabled={kellyPage === totalPages}
+                                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded text-[10px] uppercase font-bold transition-colors border border-slate-700"
+                              >
+                                Next
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
-                  <p className="text-xs text-slate-600 italic mt-8">
-                    Kelly stakes are theoretical — calculated from bankroll ×
-                    edge at time of bet
-                  </p>
-                </div>
+                </>
               );
             })()}
           </div>
