@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { TrackedBet, BankrollTransaction } from "../types";
+import { TrackedBet } from "../types";
 import { LEAGUES } from "../constants";
 import { SummaryStats } from "./stats/SummaryStats";
 import {
@@ -21,10 +21,9 @@ import {
 
 interface Props {
   bets: TrackedBet[];
-  transactions: BankrollTransaction[];
 }
 
-export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
+export const AnalysisView: React.FC<Props> = ({ bets }) => {
   const [bankrollPage, setBankrollPage] = useState(1);
   const [expectedPage, setExpectedPage] = useState(1);
   const [clvPage, setClvPage] = useState(1);

@@ -29,7 +29,7 @@ import {
   ExchangeBankroll,
   BankrollTransaction,
 } from "./types";
-import { LEAGUES, HARDCODED_API_KEY } from "./constants";
+import { HARDCODED_API_KEY } from "./constants";
 import {
   RefreshCw,
   AlertTriangle,
@@ -499,7 +499,7 @@ const App: React.FC = () => {
             onDeleteBet={handleDeleteTrackedBet}
           />
         ) : view === "analysis" ? (
-          <AnalysisView bets={trackedBets} transactions={transactions} />
+          <AnalysisView bets={trackedBets} />
         ) : (
           <BankrollView
             transactions={transactions}
