@@ -152,7 +152,7 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                     <th className="p-4 font-medium">Date</th>
                     <th className="p-4 font-medium">Match</th>
                     <th className="p-4 font-medium">Result</th>
-                    <th className="p-4 font-medium text-right">P/L (Flat)</th>
+                    <th className="p-4 font-medium text-right">P/L</th>
                     <th className="p-4 font-medium text-right">Bankroll</th>
                   </tr>
                 </thead>
@@ -1447,7 +1447,7 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
           })()}
         </section>
 
-        {/* Flat vs Kelly Comparison */}
+        {/* Kelly Comparison Analysis */}
       </div>
     </div>
   );

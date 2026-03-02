@@ -179,7 +179,7 @@ export const BetTracker: React.FC<Props> = ({
                 <th className="p-4 font-medium">Selection</th>
                 <th className="p-4 font-medium text-right">Odds</th>
                 <th className="p-4 font-medium text-right">Result</th>
-                <th className="p-4 font-medium text-right">Flat P/L</th>
+                <th className="p-4 font-medium text-right">P/L</th>
                 <th className="p-4 font-medium text-right">Action</th>
               </tr>
             </thead>
@@ -239,12 +239,12 @@ export const BetTracker: React.FC<Props> = ({
                       )}
                     </td>
                     <td className="p-4 text-right">
-                      {bet.flatPL !== undefined ? (
+                      {bet.kellyPL !== undefined ? (
                         <div
-                          className={`font-mono font-bold ${bet.flatPL >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                          className={`font-mono font-bold ${bet.kellyPL >= 0 ? "text-emerald-400" : "text-red-400"}`}
                         >
-                          {bet.flatPL > 0 ? "+" : ""}
-                          {bet.flatPL.toFixed(2)}
+                          {bet.kellyPL > 0 ? "+" : ""}
+                          {bet.kellyPL.toFixed(2)}
                         </div>
                       ) : (
                         <span className="text-slate-600">-</span>

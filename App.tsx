@@ -95,7 +95,6 @@ const App: React.FC = () => {
   const [view, setView] = useState<
     "scanner" | "openbets" | "history" | "analysis" | "bankroll"
   >("scanner");
-  const [exchangeFilter, setExchangeFilter] = useState("All Exchanges");
 
   // Check auth on mount
   useEffect(() => {
@@ -337,19 +336,11 @@ const App: React.FC = () => {
     }
   }, [apiKey, selectedLeagues]);
 
-  // 2. Processing Data (Memoized to run when matches or filter changes)
+  // 2. Processing Data (Memoized to run when matches change)
   const bets = useMemo(() => {
     if (rawMatches.length === 0) return [];
-    const allBets = calculateEdges(rawMatches);
-
-    if (exchangeFilter === "All Exchanges") return allBets;
-
-    return allBets.filter((bet) =>
-      bet.offers.some(
-        (o) => o.exchangeName.toLowerCase() === exchangeFilter.toLowerCase(),
-      ),
-    );
-  }, [rawMatches, exchangeFilter]);
+    return calculateEdges(rawMatches);
+  }, [rawMatches]);
 
   // --- Auth Views ---
 
@@ -466,16 +457,6 @@ const App: React.FC = () => {
                     onChange={setSelectedLeagues}
                     disabled={status === "loading"}
                   />
-                  <select
-                    value={exchangeFilter}
-                    onChange={(e) => setExchangeFilter(e.target.value)}
-                    disabled={status === "loading"}
-                    className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer min-w-[140px]"
-                  >
-                    <option>All Exchanges</option>
-                    <option>Matchbook</option>
-                    <option>Smarkets</option>
-                  </select>
                 </div>
                 <button
                   onClick={runScan}
