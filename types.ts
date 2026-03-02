@@ -55,6 +55,7 @@ export interface BetEdge {
   exchangeKey: string;
   exchangeName: string;
   exchangePrice: number;
+  bestExchange: string; // 'matchbook' or 'smarkets'
 
   // All offers for this selection
   offers: ExchangeOffer[];
@@ -74,17 +75,17 @@ export interface TrackedBet extends BetEdge {
   closingFairPrice?: number; // Pinnacle no-vig price at kickoff
   clvPercent?: number; // (MyOdds / ClosingFairPrice - 1) * 100
   status: "open" | "closed";
-  result?: "won" | "lost" | "void";
+  result?: "won" | "lost" | "void" | "push";
   homeScore?: number;
   awayScore?: number;
 
   hoursBeforeKickoff: number;
   timingBucket: "48hr+" | "24-48hr" | "12-24hr" | "<12hr";
   notes?: string;
-  flatStake: number;
-  flatPL?: number;
+
   kellyStake: number;
   kellyPL?: number;
+  flatPL?: number;
 
   // Base edge/kelly calculated at permanent 2% commission — used for analysis
   baseNetEdgePercent?: number;
@@ -101,18 +102,20 @@ export interface TrackedBet extends BetEdge {
 
 export interface ExchangeBankroll {
   matchbook: number;
+  smarkets: number;
 }
 
 export interface BankrollTransaction {
   id: string;
   timestamp: number;
-  exchange: "matchbook";
+  exchange: "matchbook" | "smarkets";
   type:
     | "deposit"
     | "withdrawal"
     | "bet_win"
     | "bet_loss"
     | "bet_void"
+    | "bet_placed"
     | "adjustment";
   amount: number; // positive for deposits/wins, negative for withdrawals/losses
   note?: string;

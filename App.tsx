@@ -71,15 +71,17 @@ const App: React.FC = () => {
   const [dataLoaded, setDataLoaded] = useState(false);
 
   const exchangeBankrolls = useMemo(() => {
-    const totals: ExchangeBankroll = { matchbook: 0 };
+    const totals: ExchangeBankroll = { matchbook: 0, smarkets: 0 };
     transactions.forEach((t) => {
-      totals[t.exchange] += t.amount;
+      if (totals[t.exchange] !== undefined) {
+        totals[t.exchange] += t.amount;
+      }
     });
     return totals;
   }, [transactions]);
 
   const bankroll = useMemo(() => {
-    return exchangeBankrolls.matchbook;
+    return exchangeBankrolls.matchbook + exchangeBankrolls.smarkets;
   }, [exchangeBankrolls]);
 
   const [remainingRequests, setRemainingRequests] = useState<number | null>(
@@ -93,6 +95,7 @@ const App: React.FC = () => {
   const [view, setView] = useState<
     "scanner" | "openbets" | "history" | "analysis" | "bankroll"
   >("scanner");
+  const [exchangeFilter, setExchangeFilter] = useState("All Exchanges");
 
   // Check auth on mount
   useEffect(() => {
@@ -151,7 +154,11 @@ const App: React.FC = () => {
     setIsChangingKey(false);
   };
 
-  const handleTrackBet = async (bet: BetEdge, commission: number) => {
+  const handleTrackBet = async (
+    bet: BetEdge,
+    commission: number,
+    selectedExchange: string,
+  ) => {
     const now = Date.now();
     const hoursBeforeKickoff = (bet.kickoff.getTime() - now) / (1000 * 60 * 60);
     let timingBucket: "48hr+" | "24-48hr" | "12-24hr" | "<12hr" = "<12hr";
@@ -160,11 +167,15 @@ const App: React.FC = () => {
     else if (hoursBeforeKickoff >= 24) timingBucket = "24-48hr";
     else if (hoursBeforeKickoff >= 12) timingBucket = "12-24hr";
 
+    // Find the offer for the selected exchange
+    const offer =
+      bet.offers.find((o) => o.exchangeKey === selectedExchange) ||
+      bet.offers[0];
+
     // Recalculate net edge with the actual commission rate for this bet
     // effectiveOdds = 1 + (price - 1) * (1 - commission/100)
     const commissionFraction = commission / 100;
-    const effectiveOdds =
-      1 + (bet.exchangePrice - 1) * (1 - commissionFraction);
+    const effectiveOdds = 1 + (offer.price - 1) * (1 - commissionFraction);
     const actualNetEdge = (effectiveOdds / bet.fairPrice - 1) * 100;
 
     // Kelly with actual commission
@@ -176,10 +187,21 @@ const App: React.FC = () => {
 
     const fractionalKellyStake = bankroll * ((kellyPercent / 100) * 0.3);
 
+    // Create a transaction to subtract the stake immediately
+    const stakeTransaction: BankrollTransaction = {
+      id: `stake-${bet.id}-${now}`,
+      timestamp: now,
+      exchange: selectedExchange as "matchbook" | "smarkets",
+      type: "bet_placed",
+      amount: -fractionalKellyStake,
+      betId: bet.id,
+      note: `Stake for ${bet.match} on ${offer.exchangeName}`,
+    };
+
     // Base edge at permanent 2% rate (for clean analysis)
     const baseCommissionFraction = 0.02;
     const baseEffectiveOdds =
-      1 + (bet.exchangePrice - 1) * (1 - baseCommissionFraction);
+      1 + (offer.price - 1) * (1 - baseCommissionFraction);
     const baseNetEdge = (baseEffectiveOdds / bet.fairPrice - 1) * 100;
 
     const baseB = baseEffectiveOdds - 1;
@@ -191,12 +213,14 @@ const App: React.FC = () => {
 
     const newTrackedBet: TrackedBet = {
       ...bet,
+      exchangeKey: offer.exchangeKey,
+      exchangeName: offer.exchangeName,
+      exchangePrice: offer.price,
       placedAt: now,
       fairPriceAtBet: bet.fairPrice,
       status: "open",
       hoursBeforeKickoff,
       timingBucket,
-      flatStake: 1,
       kellyStake: fractionalKellyStake,
       commission, // Store the actual commission rate
       netEdgePercent: actualNetEdge, // Override with commission-adjusted edge
@@ -208,8 +232,13 @@ const App: React.FC = () => {
 
     // Optimistic update
     setTrackedBets((prev) => [...prev, newTrackedBet]);
+    setTransactions((prev) => [...prev, stakeTransaction]);
+
     // Persist to Supabase
-    await insertBet(newTrackedBet);
+    await Promise.all([
+      insertBet(newTrackedBet),
+      insertTransaction(stakeTransaction),
+    ]);
   };
 
   const handleUpdateTrackedBet = async (updatedBet: TrackedBet) => {
@@ -220,22 +249,26 @@ const App: React.FC = () => {
       oldBet &&
       !oldBet.result &&
       updatedBet.result &&
-      updatedBet.flatPL !== undefined
+      updatedBet.kellyPL !== undefined
     ) {
-      const pl = updatedBet.flatPL;
+      // Settlement P/L logic: add back stake + P/L
+      // Since stake was subtracted on track, adding (stake + PL) results in net PL.
+      const amount = updatedBet.kellyStake + updatedBet.kellyPL;
 
-      const bankrollKey: keyof ExchangeBankroll = "matchbook";
+      const bankrollKey: keyof ExchangeBankroll =
+        (updatedBet.exchangeKey as keyof ExchangeBankroll) || "matchbook";
 
       let type: BankrollTransaction["type"] = "bet_win";
       if (updatedBet.result === "lost") type = "bet_loss";
-      else if (updatedBet.result === "void") type = "bet_void";
+      else if (updatedBet.result === "void" || updatedBet.result === "push")
+        type = "bet_void";
 
       const transaction: BankrollTransaction = {
-        id: `bet-${updatedBet.id}-${Date.now()}`,
+        id: `settle-${updatedBet.id}-${Date.now()}`,
         timestamp: Date.now(),
         exchange: bankrollKey,
         type,
-        amount: pl,
+        amount: amount,
         betId: updatedBet.id,
       };
 
@@ -307,8 +340,16 @@ const App: React.FC = () => {
   // 2. Processing Data (Memoized to run when matches or filter changes)
   const bets = useMemo(() => {
     if (rawMatches.length === 0) return [];
-    return calculateEdges(rawMatches);
-  }, [rawMatches]);
+    const allBets = calculateEdges(rawMatches);
+
+    if (exchangeFilter === "All Exchanges") return allBets;
+
+    return allBets.filter((bet) =>
+      bet.offers.some(
+        (o) => o.exchangeName.toLowerCase() === exchangeFilter.toLowerCase(),
+      ),
+    );
+  }, [rawMatches, exchangeFilter]);
 
   // --- Auth Views ---
 
@@ -419,11 +460,23 @@ const App: React.FC = () => {
             {/* Controls */}
             <div className="mb-6 space-y-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <LeagueSelector
-                  selected={selectedLeagues}
-                  onChange={setSelectedLeagues}
-                  disabled={status === "loading"}
-                />
+                <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                  <LeagueSelector
+                    selected={selectedLeagues}
+                    onChange={setSelectedLeagues}
+                    disabled={status === "loading"}
+                  />
+                  <select
+                    value={exchangeFilter}
+                    onChange={(e) => setExchangeFilter(e.target.value)}
+                    disabled={status === "loading"}
+                    className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer min-w-[140px]"
+                  >
+                    <option>All Exchanges</option>
+                    <option>Matchbook</option>
+                    <option>Smarkets</option>
+                  </select>
+                </div>
                 <button
                   onClick={runScan}
                   disabled={
@@ -479,6 +532,8 @@ const App: React.FC = () => {
                     bet={bet}
                     onTrack={handleTrackBet}
                     isTracked={trackedBets.some((tb) => tb.id === bet.id)}
+                    bankroll={bankroll}
+                    exchangeBankrolls={exchangeBankrolls}
                   />
                 ))}
               </div>

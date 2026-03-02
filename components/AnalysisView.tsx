@@ -31,11 +31,11 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
   const [oddsPage, setOddsPage] = useState(1);
   const [timingPage, setTimingPage] = useState(1);
   const [marketPage, setMarketPage] = useState(1);
-  const [kellyPage, setKellyPage] = useState(1);
+
   const pageSize = 10;
 
   const settled = bets.filter(
-    (b) => b.result !== undefined && b.result !== "void",
+    (b) => b.result !== undefined && b.result !== "void" && b.result !== "push",
   );
 
   return (
@@ -65,7 +65,7 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                           acc.length > 0 ? acc[acc.length - 1].bankroll : 0;
                         acc.push({
                           betNum: idx + 1,
-                          bankroll: prevBankroll + (bet.flatPL || 0),
+                          bankroll: prevBankroll + (bet.kellyPL || 0),
                         });
                         return acc;
                       }, [])}
@@ -165,7 +165,7 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                         const prevBankroll =
                           acc.length > 0 ? acc[acc.length - 1].bankroll : 0;
                         const currentBankroll =
-                          prevBankroll + (bet.flatPL || 0);
+                          prevBankroll + (bet.kellyPL || 0);
                         acc.push({
                           betNum: idx + 1,
                           date: new Date(bet.placedAt).toLocaleDateString(
@@ -173,7 +173,7 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                           ),
                           match: `${bet.homeTeam} vs ${bet.awayTeam}`,
                           result: bet.result,
-                          pl: bet.flatPL || 0,
+                          pl: bet.kellyPL || 0,
                           bankroll: currentBankroll,
                         });
                         return acc;
@@ -277,11 +277,11 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                         const expectedGain =
                           ((bet.baseNetEdgePercent ?? bet.netEdgePercent ?? 0) /
                             100) *
-                          bet.flatStake;
+                          bet.kellyStake;
                         acc.push({
                           betNum: idx + 1,
-                          actual: Math.max(0, prevActual + (bet.flatPL || 0)),
-                          expected: Math.max(0, prevExpected + expectedGain),
+                          actual: prevActual + (bet.kellyPL || 0),
+                          expected: prevExpected + expectedGain,
                         });
                         return acc;
                       }, [])}
@@ -366,9 +366,9 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                     <th className="p-4 font-medium">Match</th>
                     <th className="p-4 font-medium text-right">Edge %</th>
                     <th className="p-4 font-medium text-right">CLV %</th>
+                    <th className="p-4 font-medium text-right">Kelly Stake</th>
                     <th className="p-4 font-medium text-right">Exp. P/L</th>
                     <th className="p-4 font-medium text-right">Act. P/L</th>
-                    <th className="p-4 font-medium text-right">Variance</th>
                   </tr>
                 </thead>
                 <tbody className="text-sm text-slate-300">
@@ -376,33 +376,21 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                     const allRows = bets
                       .filter((b) => b.result !== undefined)
                       .sort((a, b) => a.placedAt - b.placedAt)
-                      .reduce((acc: any[], bet, idx) => {
-                        const prevActual =
-                          acc.length > 0 ? acc[acc.length - 1].actual : 0;
-                        const prevExpected =
-                          acc.length > 0 ? acc[acc.length - 1].expected : 0;
+                      .map((bet, idx) => {
                         const edge =
                           bet.baseNetEdgePercent ?? bet.netEdgePercent ?? 0;
-                        const expectedGain = (edge / 100) * bet.flatStake;
-                        const currentActual = Math.max(
-                          0,
-                          prevActual + (bet.flatPL || 0),
-                        );
-                        const currentExpected = Math.max(
-                          0,
-                          prevExpected + expectedGain,
-                        );
-                        acc.push({
+                        const expectedGain = (edge / 100) * bet.kellyStake;
+                        const actualGain = bet.kellyPL || 0;
+                        return {
                           betNum: idx + 1,
                           match: `${bet.homeTeam} vs ${bet.awayTeam}`,
                           edge: edge,
+                          stake: bet.kellyStake,
                           clv: bet.clvPercent,
-                          expected: currentExpected,
-                          actual: currentActual,
-                          variance: currentActual - currentExpected,
-                        });
-                        return acc;
-                      }, [])
+                          expected: expectedGain,
+                          actual: actualGain,
+                        };
+                      })
                       .reverse();
 
                     const paginatedRows = allRows.slice(
@@ -429,19 +417,20 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                         >
                           {row.clv !== undefined
                             ? `${row.clv > 0 ? "+" : ""}${row.clv.toFixed(1)}%`
-                            : "-"}
+                            : "—"}
                         </td>
-                        <td className="p-4 text-right font-mono text-indigo-300">
-                          £{row.expected.toFixed(2)}
-                        </td>
-                        <td className="p-4 text-right font-mono text-slate-200">
-                          £{row.actual.toFixed(2)}
+                        <td className="p-4 text-right text-slate-200 font-mono">
+                          £{row.stake.toFixed(2)}
                         </td>
                         <td
-                          className={`p-4 text-right font-mono font-bold ${row.variance >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                          className={`p-4 text-right font-mono ${row.expected >= 0 ? "text-emerald-400" : "text-red-400"}`}
                         >
-                          {row.variance > 0 ? "+" : ""}£
-                          {row.variance.toFixed(2)}
+                          £{row.expected.toFixed(2)}
+                        </td>
+                        <td
+                          className={`p-4 text-right font-mono font-bold ${row.actual >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                        >
+                          {row.actual > 0 ? "+" : ""}£{row.actual.toFixed(2)}
                         </td>
                       </tr>
                     ));
@@ -714,11 +703,14 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
             const compData = Object.entries(competitionsMap)
               .map(([name, compBets]) => {
                 const totalPL = compBets.reduce(
-                  (sum, b) => sum + (b.flatPL || 0),
+                  (sum, b) => sum + (b.kellyPL || 0),
                   0,
                 );
-                const roi =
-                  compBets.length > 0 ? (totalPL / compBets.length) * 100 : 0;
+                const totalStaked = compBets.reduce(
+                  (acc, b) => acc + (b.kellyStake || 0),
+                  0,
+                );
+                const roi = totalStaked > 0 ? (totalPL / totalStaked) * 100 : 0;
                 const wins = compBets.filter((b) => b.result === "won").length;
                 const clvBets = compBets.filter(
                   (b) => b.clvPercent !== undefined,
@@ -917,11 +909,14 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                 return b.exchangePrice >= 6.0 && b.exchangePrice <= 10.0;
               });
               const totalPL = bandBets.reduce(
-                (sum, b) => sum + (b.flatPL || 0),
+                (sum, b) => sum + (b.kellyPL || 0),
                 0,
               );
-              const roi =
-                bandBets.length > 0 ? (totalPL / bandBets.length) * 100 : 0;
+              const totalStaked = bandBets.reduce(
+                (acc, b) => acc + (b.kellyStake || 0),
+                0,
+              );
+              const roi = totalStaked > 0 ? (totalPL / totalStaked) * 100 : 0;
               const wins = bandBets.filter((b) => b.result === "won").length;
               const clvBets = bandBets.filter(
                 (b) => b.clvPercent !== undefined,
@@ -1091,11 +1086,14 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                 (b) => b.timingBucket === bucket,
               );
               const totalPL = bucketBets.reduce(
-                (sum, b) => sum + (b.flatPL || 0),
+                (sum, b) => sum + (b.kellyPL || 0),
                 0,
               );
-              const roi =
-                bucketBets.length > 0 ? (totalPL / bucketBets.length) * 100 : 0;
+              const totalStaked = bucketBets.reduce(
+                (acc, b) => acc + (b.kellyStake || 0),
+                0,
+              );
+              const roi = totalStaked > 0 ? (totalPL / totalStaked) * 100 : 0;
               const wins = bucketBets.filter((b) => b.result === "won").length;
               const clvBets = bucketBets.filter(
                 (b) => b.clvPercent !== undefined,
@@ -1266,11 +1264,14 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
             const marketData = markets.map((mkt) => {
               const marketBets = settled.filter((b) => b.market === mkt);
               const totalPL = marketBets.reduce(
-                (sum, b) => sum + (b.flatPL || 0),
+                (sum, b) => sum + (b.kellyPL || 0),
                 0,
               );
-              const roi =
-                marketBets.length > 0 ? (totalPL / marketBets.length) * 100 : 0;
+              const totalStaked = marketBets.reduce(
+                (acc, b) => acc + (b.kellyStake || 0),
+                0,
+              );
+              const roi = totalStaked > 0 ? (totalPL / totalStaked) * 100 : 0;
               const wins = marketBets.filter((b) => b.result === "won").length;
               const clvBets = marketBets.filter(
                 (b) => b.clvPercent !== undefined,
@@ -1447,251 +1448,6 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
         </section>
 
         {/* Flat vs Kelly Comparison */}
-        <section className="mb-12">
-          <h3 className="text-lg font-bold text-slate-300 mb-4">
-            Flat vs Kelly
-          </h3>
-          <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
-            {(() => {
-              const settledBets = bets.filter((b) => b.result !== undefined);
-              if (settledBets.length === 0) {
-                return (
-                  <div className="text-center py-8 text-slate-500 italic">
-                    No settled bets to compare yet.
-                  </div>
-                );
-              }
-
-              const totalFlatPL = settledBets.reduce(
-                (sum, b) => sum + (b.flatPL || 0),
-                0,
-              );
-              const totalKellyPL = settledBets.reduce(
-                (sum, b) => sum + (b.kellyPL || 0),
-                0,
-              );
-              const totalKellyStakes = settledBets.reduce(
-                (sum, b) => sum + (b.kellyStake || 0),
-                0,
-              );
-              const avgKellyStake = totalKellyStakes / settledBets.length;
-
-              const flatROI = (totalFlatPL / settledBets.length) * 100;
-              const kellyROI =
-                totalKellyStakes > 0
-                  ? (totalKellyPL / totalKellyStakes) * 100
-                  : 0;
-
-              const formatPL = (val: number) => {
-                const sign = val >= 0 ? "+" : "-";
-                return `${sign}£${Math.abs(val).toFixed(2)}`;
-              };
-
-              const getPLColor = (val: number) =>
-                val >= 0 ? "text-emerald-400" : "text-rose-400";
-
-              return (
-                <>
-                  <div className="max-w-2xl">
-                    <div className="grid grid-cols-3 gap-y-8 gap-x-4">
-                      {/* Header Row */}
-                      <div className="flex items-center text-xs uppercase text-slate-500 tracking-wider"></div>
-                      <div className="text-xs uppercase text-slate-500 tracking-wider text-center">
-                        Flat Stake
-                      </div>
-                      <div className="text-xs uppercase text-slate-500 tracking-wider text-center">
-                        Kelly Stake
-                      </div>
-
-                      {/* Avg Stake Row */}
-                      <div className="text-slate-400 font-medium flex items-center">
-                        Avg Stake
-                      </div>
-                      <div className="text-lg font-bold font-mono text-slate-200 text-center">
-                        £1.00
-                      </div>
-                      <div className="text-lg font-bold font-mono text-slate-200 text-center">
-                        £{avgKellyStake.toFixed(2)}
-                      </div>
-
-                      {/* Total P/L Row */}
-                      <div className="text-slate-400 font-medium flex items-center">
-                        Total P/L
-                      </div>
-                      <div
-                        className={`text-lg font-bold font-mono text-center ${getPLColor(
-                          totalFlatPL,
-                        )}`}
-                      >
-                        {formatPL(totalFlatPL)}
-                      </div>
-                      <div
-                        className={`text-lg font-bold font-mono text-center ${getPLColor(
-                          totalKellyPL,
-                        )}`}
-                      >
-                        {formatPL(totalKellyPL)}
-                      </div>
-
-                      {/* ROI Row */}
-                      <div className="text-slate-400 font-medium flex items-center">
-                        ROI
-                      </div>
-                      <div
-                        className={`text-lg font-bold font-mono text-center ${getPLColor(
-                          flatROI,
-                        )}`}
-                      >
-                        {flatROI >= 0 ? "+" : "-"}
-                        {Math.abs(flatROI).toFixed(1)}%
-                      </div>
-                      <div
-                        className={`text-lg font-bold font-mono text-center ${getPLColor(
-                          kellyROI,
-                        )}`}
-                      >
-                        {kellyROI >= 0 ? "+" : "-"}
-                        {Math.abs(kellyROI).toFixed(1)}%
-                      </div>
-                    </div>
-                    <p className="text-xs text-slate-600 italic mt-8">
-                      Kelly stakes are theoretical — calculated from bankroll ×
-                      edge at time of bet
-                    </p>
-                  </div>
-
-                  {/* Per-Bet Kelly Stakes Table */}
-                  <div className="mt-12 space-y-4">
-                    <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-                      Per-Bet Comparison
-                    </h4>
-                    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden shadow-xl">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                          <thead>
-                            <tr className="text-slate-500 border-b border-slate-800 text-[10px] uppercase tracking-wider bg-slate-900/20">
-                              <th className="px-4 py-3 font-medium">Bet #</th>
-                              <th className="px-4 py-3 font-medium">Match</th>
-                              <th className="px-4 py-3 font-medium">Odds</th>
-                              <th className="px-4 py-3 font-medium">Edge %</th>
-                              <th className="px-4 py-3 font-medium text-right">
-                                Flat Stake
-                              </th>
-                              <th className="px-4 py-3 font-medium text-right">
-                                Kelly Stake
-                              </th>
-                              <th className="px-4 py-3 font-medium text-right">
-                                Flat P/L
-                              </th>
-                              <th className="px-4 py-3 font-medium text-right">
-                                Kelly P/L
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="text-xs text-slate-300">
-                            {(() => {
-                              const sortedKelly = [...settledBets].sort(
-                                (a, b) => a.placedAt - b.placedAt,
-                              );
-                              const reversedKelly = [...sortedKelly].reverse();
-                              const paginatedKelly = reversedKelly.slice(
-                                (kellyPage - 1) * pageSize,
-                                kellyPage * pageSize,
-                              );
-
-                              return paginatedKelly.map((b) => {
-                                const originalIndex =
-                                  sortedKelly.findIndex(
-                                    (sb) => sb.id === b.id,
-                                  ) + 1;
-                                return (
-                                  <tr
-                                    key={b.id}
-                                    className="border-b border-slate-800/50 hover:bg-slate-800/50 transition-colors"
-                                  >
-                                    <td className="px-4 py-3 text-slate-500 font-mono">
-                                      #{originalIndex}
-                                    </td>
-                                    <td className="px-4 py-3 font-medium text-slate-200">
-                                      {b.homeTeam} v {b.awayTeam}
-                                    </td>
-                                    <td className="px-4 py-3 font-mono text-slate-400">
-                                      {b.exchangePrice.toFixed(2)}
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-400">
-                                      {b.netEdgePercent.toFixed(1)}%
-                                    </td>
-                                    <td className="px-4 py-3 text-right text-slate-500">
-                                      £1.00
-                                    </td>
-                                    <td className="px-4 py-3 text-right font-mono text-white">
-                                      £{(b.kellyStake || 0).toFixed(2)}
-                                    </td>
-                                    <td
-                                      className={`px-4 py-3 text-right font-mono font-bold ${getPLColor(
-                                        b.flatPL || 0,
-                                      )}`}
-                                    >
-                                      {formatPL(b.flatPL || 0)}
-                                    </td>
-                                    <td
-                                      className={`px-4 py-3 text-right font-mono font-bold ${getPLColor(
-                                        b.kellyPL || 0,
-                                      )}`}
-                                    >
-                                      {formatPL(b.kellyPL || 0)}
-                                    </td>
-                                  </tr>
-                                );
-                              });
-                            })()}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Pagination */}
-                      {(() => {
-                        const totalPages = Math.ceil(
-                          settledBets.length / pageSize,
-                        );
-                        if (totalPages <= 1) return null;
-                        return (
-                          <div className="px-4 py-3 border-t border-slate-800 bg-slate-900/20 flex items-center justify-between">
-                            <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
-                              Page {kellyPage} of {totalPages}
-                            </span>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() =>
-                                  setKellyPage(Math.max(1, kellyPage - 1))
-                                }
-                                disabled={kellyPage === 1}
-                                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded text-[10px] uppercase font-bold transition-colors border border-slate-700"
-                              >
-                                Previous
-                              </button>
-                              <button
-                                onClick={() =>
-                                  setKellyPage(
-                                    Math.min(totalPages, kellyPage + 1),
-                                  )
-                                }
-                                disabled={kellyPage === totalPages}
-                                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded text-[10px] uppercase font-bold transition-colors border border-slate-700"
-                              >
-                                Next
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </section>
       </div>
     </div>
   );

@@ -20,7 +20,9 @@ export const SummaryStats: React.FC<Props> = ({ bets }) => {
   // 2. Win Rate & Required Win Rate
   const wins = decisiveBets.filter((b) => b.result === "won").length;
   const losses = decisiveBets.filter((b) => b.result === "lost").length;
-  const voidCount = settledBets.filter((b) => b.result === "void").length;
+  const voidCount = settledBets.filter(
+    (b) => b.result === "void" || b.result === "push",
+  ).length;
   const winRate =
     decisiveBets.length > 0 ? (wins / decisiveBets.length) * 100 : 0;
 
@@ -50,13 +52,7 @@ export const SummaryStats: React.FC<Props> = ({ bets }) => {
   const beatCloseRate =
     clvBets.length > 0 ? (beatCloseCount / clvBets.length) * 100 : 0;
 
-  // 6. Flat ROI
-  const totalFlatPL = settledBets.reduce((acc, b) => acc + (b.flatPL || 0), 0);
-  const totalFlatStakes = settledBets.length; // Assuming flat stake of 1 unit per bet
-  const flatROI =
-    totalFlatStakes > 0 ? (totalFlatPL / totalFlatStakes) * 100 : 0;
-
-  // 7. Kelly ROI
+  // 6. Kelly Stats
   const totalKellyPL = settledBets.reduce(
     (acc, b) => acc + (b.kellyPL || 0),
     0,
@@ -77,8 +73,8 @@ export const SummaryStats: React.FC<Props> = ({ bets }) => {
     },
     {
       label: "Total Staked",
-      value: `£${totalFlatStakes.toFixed(2)}`,
-      subValue: `Kelly: £${totalKellyStakes.toFixed(2)} staked`,
+      value: `£${totalKellyStakes.toFixed(2)}`,
+      subValue: "30% Kelly Staking",
       color: "text-blue-400",
     },
     {
@@ -90,7 +86,7 @@ export const SummaryStats: React.FC<Props> = ({ bets }) => {
     {
       label: "Avg Odds",
       value: avgOddsDecisive.toFixed(2),
-      subValue: `${wins}W ${losses}L${voidCount > 0 ? ` ${voidCount}V` : ""}`,
+      subValue: `${wins}W ${losses}L${voidCount > 0 ? ` ${voidCount}V/P` : ""}`,
       color: "text-blue-400",
     },
     {
@@ -106,13 +102,7 @@ export const SummaryStats: React.FC<Props> = ({ bets }) => {
       color: avgClv >= 0 ? "text-emerald-400" : "text-red-400",
     },
     {
-      label: "Flat ROI",
-      value: `${flatROI >= 0 ? "+" : ""}${flatROI.toFixed(1)}%`,
-      subValue: `${totalFlatPL >= 0 ? "+" : "-"}£${Math.abs(totalFlatPL).toFixed(2)} total P/L`,
-      color: flatROI >= 0 ? "text-emerald-400" : "text-red-400",
-    },
-    {
-      label: "Kelly ROI",
+      label: "ROI",
       value: isKellyStaked
         ? `${kellyROI >= 0 ? "+" : ""}${kellyROI.toFixed(1)}%`
         : "N/A",
@@ -126,7 +116,7 @@ export const SummaryStats: React.FC<Props> = ({ bets }) => {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-8">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
       {stats.map((stat, i) => (
         <div
           key={i}

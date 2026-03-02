@@ -14,7 +14,7 @@ export const BankrollView: React.FC<Props> = ({
   onAddTransaction,
 }) => {
   const [newTx, setNewTx] = useState<{
-    exchange: "matchbook";
+    exchange: "matchbook" | "smarkets";
     type: "deposit" | "withdrawal" | "adjustment";
     amount: string;
     note: string;
@@ -26,16 +26,18 @@ export const BankrollView: React.FC<Props> = ({
   });
 
   const [typeFilter, setTypeFilter] = useState("All Types");
+  const [exchangeFilter, setExchangeFilter] = useState("All Exchanges");
 
-  const balance = exchangeBankrolls.matchbook;
+  const totalBalance = exchangeBankrolls.matchbook + exchangeBankrolls.smarkets;
 
   const exportTransactionsToCSV = (
     targetTxs: BankrollTransaction[] = transactions,
   ) => {
-    const headers = ["Date", "Time", "Type", "Amount", "Note"];
+    const headers = ["Date", "Time", "Exchange", "Type", "Amount", "Note"];
     const rows = targetTxs.map((t) => [
       new Date(t.timestamp).toLocaleDateString("en-GB"),
       `"${new Date(t.timestamp).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })}"`,
+      t.exchange,
       t.type.replace("_", " "),
       t.amount.toFixed(2),
       t.note || "",
@@ -62,7 +64,7 @@ export const BankrollView: React.FC<Props> = ({
     onAddTransaction({
       id: `tx-${Date.now()}`,
       timestamp: Date.now(),
-      exchange: "matchbook",
+      exchange: newTx.exchange,
       type: newTx.type,
       amount: newTx.type === "withdrawal" ? -Math.abs(amount) : amount,
       note: newTx.note,
@@ -77,7 +79,10 @@ export const BankrollView: React.FC<Props> = ({
       const matchType =
         typeFilter === "All Types" ||
         t.type.replace("_", " ").toLowerCase() === typeFilter.toLowerCase();
-      return matchType;
+      const matchExchange =
+        exchangeFilter === "All Exchanges" ||
+        t.exchange.toLowerCase() === exchangeFilter.toLowerCase();
+      return matchType && matchExchange;
     });
 
   // Calculate Matchbook statistics
@@ -99,48 +104,69 @@ export const BankrollView: React.FC<Props> = ({
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Stats Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl">
-          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 tracking-tighter">
-            Bankroll
-          </span>
-          <span className="text-lg font-mono font-bold text-white">
-            £{balance.toFixed(2)}
-          </span>
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl">
+            <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 tracking-tighter">
+              Matchbook Balance
+            </span>
+            <span className="text-lg font-mono font-bold text-white">
+              £{exchangeBankrolls.matchbook.toFixed(2)}
+            </span>
+          </div>
+          <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl">
+            <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 tracking-tighter">
+              Smarkets Balance
+            </span>
+            <span className="text-lg font-mono font-bold text-white">
+              £{exchangeBankrolls.smarkets.toFixed(2)}
+            </span>
+          </div>
+          <div className="bg-blue-600/20 border border-blue-500/30 p-4 rounded-xl shadow-lg shadow-blue-900/10">
+            <span className="text-[10px] uppercase font-bold text-blue-400 block mb-1 tracking-tighter">
+              Total Bankroll
+            </span>
+            <span className="text-lg font-mono font-bold text-white">
+              £{totalBalance.toFixed(2)}
+            </span>
+          </div>
         </div>
-        <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl">
-          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 tracking-tighter">
-            Deposits
-          </span>
-          <span className="text-lg font-mono font-bold text-white">
-            £{deposits.toFixed(2)}
-          </span>
-        </div>
-        <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl">
-          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 tracking-tighter">
-            Withdrawals
-          </span>
-          <span className="text-lg font-mono font-bold text-white">
-            £{withdrawals.toFixed(2)}
-          </span>
-        </div>
-        <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl">
-          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 tracking-tighter">
-            Adjustments
-          </span>
-          <span className="text-lg font-mono font-bold text-white">
-            £{adjustments.toFixed(2)}
-          </span>
-        </div>
-        <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl">
-          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 tracking-tighter">
-            Profit/Loss
-          </span>
-          <span
-            className={`text-lg font-mono font-bold ${pl >= 0 ? "text-emerald-400" : "text-red-400"}`}
-          >
-            {pl >= 0 ? "+" : "-"}£{Math.abs(pl).toFixed(2)}
-          </span>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl">
+            <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 tracking-tighter">
+              Total Deposits
+            </span>
+            <span className="text-lg font-mono font-bold text-white">
+              £{deposits.toFixed(2)}
+            </span>
+          </div>
+          <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl">
+            <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 tracking-tighter">
+              Total Withdrawals
+            </span>
+            <span className="text-lg font-mono font-bold text-white">
+              £{withdrawals.toFixed(2)}
+            </span>
+          </div>
+          <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl">
+            <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 tracking-tighter">
+              Total Adjustments
+            </span>
+            <span className="text-lg font-mono font-bold text-white">
+              £{adjustments.toFixed(2)}
+            </span>
+          </div>
+          <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl">
+            <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 tracking-tighter">
+              Total Profit/Loss
+            </span>
+            <span
+              className={`text-lg font-mono font-bold ${pl >= 0 ? "text-emerald-400" : "text-red-400"}`}
+            >
+              {pl >= 0 ? "+" : "-"}£{Math.abs(pl).toFixed(2)}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -154,6 +180,27 @@ export const BankrollView: React.FC<Props> = ({
             </h3>
 
             <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-500 uppercase">
+                  Exchange
+                </label>
+                <div className="flex gap-2">
+                  {(["matchbook", "smarkets"] as const).map((ex) => (
+                    <button
+                      key={ex}
+                      onClick={() => setNewTx({ ...newTx, exchange: ex })}
+                      className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${
+                        newTx.exchange === ex
+                          ? "bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-900/20"
+                          : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500"
+                      }`}
+                    >
+                      {ex}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-500 uppercase">
                   Transaction Type
@@ -219,12 +266,24 @@ export const BankrollView: React.FC<Props> = ({
                 <History className="w-4 h-4 text-slate-400" />
                 Transaction History
               </h3>
-              <div className="flex gap-2 w-full sm:w-auto">
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:flex-none">
+                  <select
+                    value={exchangeFilter}
+                    onChange={(e) => setExchangeFilter(e.target.value)}
+                    className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8 min-w-[130px]"
+                  >
+                    <option>All Exchanges</option>
+                    <option>Matchbook</option>
+                    <option>Smarkets</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 top-2.5 w-3 h-3 text-slate-500 pointer-events-none" />
+                </div>
                 <div className="relative flex-1 sm:flex-none">
                   <select
                     value={typeFilter}
                     onChange={(e) => setTypeFilter(e.target.value)}
-                    className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8 min-w-[140px]"
+                    className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8 min-w-[130px]"
                   >
                     <option>All Types</option>
                     <option>Deposit</option>
@@ -263,6 +322,7 @@ export const BankrollView: React.FC<Props> = ({
                 <thead>
                   <tr className="text-slate-500 border-b border-slate-800 text-[10px] uppercase tracking-wider bg-slate-800/10">
                     <th className="px-6 py-3 font-medium">Date & Time</th>
+                    <th className="px-6 py-3 font-medium">Exchange</th>
                     <th className="px-6 py-3 font-medium">Type</th>
                     <th className="px-6 py-3 font-medium">Note</th>
                     <th className="px-6 py-3 font-medium text-right">Amount</th>
@@ -272,7 +332,7 @@ export const BankrollView: React.FC<Props> = ({
                   {sortedTransactions.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={4}
+                        colSpan={5}
                         className="px-6 py-12 text-center text-slate-600 italic"
                       >
                         No transactions found.
@@ -313,6 +373,9 @@ export const BankrollView: React.FC<Props> = ({
                                 },
                               )}
                             </div>
+                          </td>
+                          <td className="px-6 py-4 text-slate-300 font-medium uppercase text-[10px] whitespace-nowrap">
+                            {t.exchange}
                           </td>
                           <td
                             className={`px-6 py-4 font-bold uppercase text-[10px] ${typeColor} whitespace-nowrap`}

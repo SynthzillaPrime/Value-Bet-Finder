@@ -1,15 +1,31 @@
 import React, { useState } from "react";
-import { BetEdge } from "../types";
+import { BetEdge, ExchangeBankroll } from "../types";
 import { Clock, Check } from "lucide-react";
 
 interface Props {
   bet: BetEdge;
-  onTrack: (bet: BetEdge, commission: number) => void;
+  onTrack: (bet: BetEdge, commission: number, selectedExchange: string) => void;
   isTracked: boolean;
+  bankroll: number;
+  exchangeBankrolls?: ExchangeBankroll;
 }
 
-export const BetCard: React.FC<Props> = ({ bet, onTrack, isTracked }) => {
+export const BetCard: React.FC<Props> = ({
+  bet,
+  onTrack,
+  isTracked,
+  bankroll,
+  exchangeBankrolls,
+}) => {
   const [showCommissionPicker, setShowCommissionPicker] = useState(false);
+  const [selectedExchangeKey, setSelectedExchangeKey] = useState(
+    bet.bestExchange,
+  );
+
+  const selectedOffer =
+    bet.offers.find((o) => o.exchangeKey === selectedExchangeKey) ||
+    bet.offers[0];
+  const kellyStake = bankroll * (selectedOffer.kellyPercent / 100) * 0.3;
   const [customCommission, setCustomCommission] = useState("");
 
   const borderColor = "border-slate-800";
@@ -33,7 +49,7 @@ export const BetCard: React.FC<Props> = ({ bet, onTrack, isTracked }) => {
   };
 
   const handleCommissionSelect = (commission: number) => {
-    onTrack(bet, commission);
+    onTrack(bet, commission, selectedExchangeKey);
     setShowCommissionPicker(false);
   };
 
@@ -155,17 +171,78 @@ export const BetCard: React.FC<Props> = ({ bet, onTrack, isTracked }) => {
         </div>
       </div>
 
+      {/* Stake Info */}
+      <div className="mb-4 px-1 flex justify-between items-end">
+        <div>
+          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold block mb-1">
+            Suggested Stake
+          </span>
+          <div className="flex flex-col">
+            <span className="text-2xl font-black text-white">
+              £{kellyStake.toFixed(2)}
+            </span>
+            <div className="flex flex-col gap-0.5">
+              {exchangeBankrolls && (
+                <span className="text-[10px] text-slate-400 italic">
+                  {selectedOffer.exchangeName} balance: £
+                  {exchangeBankrolls[
+                    selectedOffer.exchangeKey as keyof ExchangeBankroll
+                  ]?.toFixed(2) || "0.00"}
+                </span>
+              )}
+              {bankroll <= 0 && (
+                <span className="text-[10px] text-amber-500/80 italic">
+                  Set bankroll first
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="text-right">
+          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold block mb-1">
+            Staking Method
+          </span>
+          <span className="text-xs font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+            30% Kelly
+          </span>
+        </div>
+      </div>
+
       {/* Footer Action */}
       <div className="mt-auto">
         {!isTracked ? (
           <>
             {!showCommissionPicker ? (
-              <button
-                onClick={handleTrackClick}
-                className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all"
-              >
-                Track Bet
-              </button>
+              <div className="space-y-3">
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">
+                    Select Exchange
+                  </span>
+                  <div className="flex gap-2">
+                    {bet.offers.map((offer) => (
+                      <button
+                        key={offer.exchangeKey}
+                        onClick={() =>
+                          setSelectedExchangeKey(offer.exchangeKey)
+                        }
+                        className={`flex-1 py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-wider border transition-all ${
+                          selectedExchangeKey === offer.exchangeKey
+                            ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/20"
+                            : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500"
+                        }`}
+                      >
+                        {offer.exchangeName}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={handleTrackClick}
+                  className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all"
+                >
+                  Track Bet
+                </button>
+              </div>
             ) : (
               <div className="space-y-2">
                 <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">

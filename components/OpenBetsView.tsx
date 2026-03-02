@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { TrackedBet } from "../types";
-import { LEAGUES } from "../constants";
+
 import { calculatePL } from "../services/betSettlement";
 import { fetchClosingLine, fetchMatchResult } from "../services/edgeFinder";
 import {
@@ -139,7 +139,7 @@ export const OpenBetsView: React.FC<Props> = ({
     }
 
     // Use per-bet commission for P/L calculation
-    const { flatPL, kellyPL } = calculatePL(bet, result);
+    const { kellyPL } = calculatePL(bet, result);
 
     // Fetch CLV (reuse if already fetched)
     let clvPercent = bet.clvPercent;
@@ -160,7 +160,6 @@ export const OpenBetsView: React.FC<Props> = ({
       result,
       homeScore,
       awayScore,
-      flatPL,
       kellyPL,
       closingRawPrice,
       closingFairPrice,
@@ -289,13 +288,12 @@ export const OpenBetsView: React.FC<Props> = ({
               <thead>
                 <tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider">
                   <th className="p-4 font-medium">Match</th>
-                  <th className="p-4 font-medium">Selection</th>
+                  <th className="p-4 font-medium text-right">Exchange</th>
                   <th className="p-4 font-medium text-right">Odds</th>
                   <th className="p-4 font-medium text-right">Edge %</th>
-                  <th className="p-4 font-medium text-right text-emerald-400">
-                    CLV
-                  </th>
-                  <th className="p-4 font-medium text-right">Kickoff</th>
+                  <th className="p-4 font-medium text-right">Kelly Stake</th>
+                  <th className="p-4 font-medium text-right">Comm.</th>
+                  <th className="p-4 font-medium text-right">Date</th>
                   <th className="p-4 font-medium text-right">Action</th>
                 </tr>
               </thead>
@@ -332,13 +330,12 @@ export const OpenBetsView: React.FC<Props> = ({
               <thead>
                 <tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider">
                   <th className="p-4 font-medium">Match</th>
-                  <th className="p-4 font-medium">Selection</th>
+                  <th className="p-4 font-medium text-right">Exchange</th>
                   <th className="p-4 font-medium text-right">Odds</th>
                   <th className="p-4 font-medium text-right">Edge %</th>
-                  <th className="p-4 font-medium text-right text-emerald-400">
-                    CLV
-                  </th>
-                  <th className="p-4 font-medium text-right">Kickoff</th>
+                  <th className="p-4 font-medium text-right">Kelly Stake</th>
+                  <th className="p-4 font-medium text-right">Comm.</th>
+                  <th className="p-4 font-medium text-right">Date</th>
                   <th className="p-4 font-medium text-right">Action</th>
                 </tr>
               </thead>
@@ -375,13 +372,12 @@ export const OpenBetsView: React.FC<Props> = ({
               <thead>
                 <tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider">
                   <th className="p-4 font-medium">Match</th>
-                  <th className="p-4 font-medium">Selection</th>
+                  <th className="p-4 font-medium text-right">Exchange</th>
                   <th className="p-4 font-medium text-right">Odds</th>
                   <th className="p-4 font-medium text-right">Edge %</th>
-                  <th className="p-4 font-medium text-right text-emerald-400">
-                    CLV
-                  </th>
-                  <th className="p-4 font-medium text-right">Kickoff</th>
+                  <th className="p-4 font-medium text-right">Kelly Stake</th>
+                  <th className="p-4 font-medium text-right">Comm.</th>
+                  <th className="p-4 font-medium text-right">Date</th>
                   <th className="p-4 font-medium text-right">Action</th>
                 </tr>
               </thead>
@@ -443,43 +439,29 @@ const BetRow: React.FC<BetRowProps> = ({
           {bet.homeTeam} vs {bet.awayTeam}
         </div>
         <div className="text-[10px] text-slate-500 uppercase mt-0.5">
-          {LEAGUES.find((l) => l.key === bet.sportKey)?.name || bet.sport}
+          {bet.selection} ({bet.market})
         </div>
       </td>
-      <td className="p-4">
-        <div>{bet.selection}</div>
-        <div className="text-[10px] text-slate-500 uppercase">{bet.market}</div>
+      <td className="p-4 text-right">
+        <div className="text-xs text-slate-400 font-medium">
+          {bet.exchangeName}
+        </div>
       </td>
       <td className="p-4 text-right">
         <div className="font-mono text-blue-300 font-bold">
           {bet.exchangePrice.toFixed(2)}
-        </div>
-        <div className="text-[10px] text-slate-500 uppercase">
-          {bet.exchangeName}
         </div>
       </td>
       <td className="p-4 text-right">
         <span className="text-emerald-400 font-bold">
           +{(bet.baseNetEdgePercent ?? bet.netEdgePercent).toFixed(1)}%
         </span>
-        {bet.commission !== undefined &&
-          bet.commission < 2 &&
-          bet.baseNetEdgePercent !== undefined && (
-            <span className="text-[10px] text-blue-400 ml-1">
-              (+{(bet.netEdgePercent - bet.baseNetEdgePercent).toFixed(1)}%
-              promo)
-            </span>
-          )}
       </td>
       <td className="p-4 text-right">
-        {bet.clvPercent !== undefined ? (
-          <span className="text-emerald-400 font-mono font-bold">
-            {bet.clvPercent > 0 ? "+" : ""}
-            {bet.clvPercent.toFixed(1)}%
-          </span>
-        ) : (
-          <span className="text-slate-600">—</span>
-        )}
+        <div className="font-bold text-white">£{bet.kellyStake.toFixed(2)}</div>
+      </td>
+      <td className="p-4 text-right">
+        <div className="text-xs text-slate-400">{bet.commission ?? 0}%</div>
       </td>
       <td className="p-4 text-right">
         <div className="text-xs text-slate-400">

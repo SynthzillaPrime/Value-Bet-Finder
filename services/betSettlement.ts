@@ -16,28 +16,25 @@ export const getCommissionRate = (bet: TrackedBet): number => {
 };
 
 /**
- * Calculate flat and kelly P/L for a settled bet.
+ * Calculate Kelly P/L for a settled bet.
  * Commission is on NET WINNINGS only — you pay nothing on losses.
  */
 export const calculatePL = (
   bet: TrackedBet,
-  result: "won" | "lost" | "void",
-): { flatPL: number; kellyPL: number } => {
+  result: "won" | "lost" | "void" | "push",
+): { kellyPL: number } => {
   const commissionRate = getCommissionRate(bet);
 
-  let flatPL = 0;
   let kellyPL = 0;
 
   if (result === "won") {
     // Profit = (odds - 1), commission on profit only
     const grossProfit = bet.exchangePrice - 1;
-    flatPL = grossProfit * (1 - commissionRate);
     kellyPL = bet.kellyStake * grossProfit * (1 - commissionRate);
   } else if (result === "lost") {
-    flatPL = -1;
     kellyPL = -bet.kellyStake;
   }
-  // void = 0 for both
+  // void = 0
 
-  return { flatPL, kellyPL };
+  return { kellyPL };
 };

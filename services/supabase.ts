@@ -91,6 +91,7 @@ const betToRow = (bet: TrackedBet): Record<string, any> => ({
   exchange_key: bet.exchangeKey,
   exchange_name: bet.exchangeName,
   exchange_price: bet.exchangePrice,
+  best_exchange: bet.bestExchange,
   fair_price: bet.fairPrice,
   fair_price_at_bet: bet.fairPriceAtBet,
   edge_percent: bet.edgePercent,
@@ -109,8 +110,7 @@ const betToRow = (bet: TrackedBet): Record<string, any> => ({
   hours_before_kickoff: bet.hoursBeforeKickoff,
   timing_bucket: bet.timingBucket,
   notes: bet.notes || null,
-  flat_stake: bet.flatStake,
-  flat_pl: bet.flatPL ?? null,
+
   kelly_stake: bet.kellyStake,
   kelly_pl: bet.kellyPL ?? null,
   base_net_edge_percent: bet.baseNetEdgePercent ?? null,
@@ -131,6 +131,7 @@ const rowToBet = (row: any): TrackedBet => ({
   exchangeKey: row.exchange_key,
   exchangeName: row.exchange_name,
   exchangePrice: Number(row.exchange_price),
+  bestExchange: row.best_exchange || row.exchange_key,
   fairPrice: Number(row.fair_price),
   fairPriceAtBet: Number(row.fair_price_at_bet),
   edgePercent: Number(row.edge_percent),
@@ -151,8 +152,7 @@ const rowToBet = (row: any): TrackedBet => ({
   hoursBeforeKickoff: Number(row.hours_before_kickoff),
   timingBucket: row.timing_bucket,
   notes: row.notes || undefined,
-  flatStake: Number(row.flat_stake),
-  flatPL: row.flat_pl != null ? Number(row.flat_pl) : undefined,
+
   kellyStake: Number(row.kelly_stake),
   kellyPL: row.kelly_pl != null ? Number(row.kelly_pl) : undefined,
   baseNetEdgePercent:
@@ -235,7 +235,7 @@ const txToRow = (tx: BankrollTransaction): Record<string, any> => ({
 const rowToTx = (row: any): BankrollTransaction => ({
   id: row.id,
   timestamp: Number(row.timestamp),
-  exchange: row.exchange,
+  exchange: row.exchange || "matchbook",
   type: row.type,
   amount: Number(row.amount),
   note: row.note || undefined,
@@ -302,6 +302,7 @@ export const migrateLocalStorageToSupabase = async (): Promise<{
         exchangeName: b.exchangeName || "Smarkets",
         exchangeKey: b.exchangeKey || "smarkets",
         exchangePrice: b.exchangePrice || b.smarketsPrice || 0,
+        bestExchange: b.bestExchange || b.exchangeKey || "smarkets",
       }));
       if (bets.length > 0) {
         const { data: existing } = await supabase

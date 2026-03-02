@@ -210,6 +210,7 @@ export const calculateEdges = (matches: MatchResponse[]): BetEdge[] => {
             exchangeKey: bestOffer.exchangeKey,
             exchangeName: bestOffer.exchangeName,
             exchangePrice: bestOffer.price,
+            bestExchange: bestOffer.exchangeKey,
 
             offers: offers, // Store all offers for display
 

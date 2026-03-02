@@ -130,14 +130,13 @@ export const BetHistoryView: React.FC<Props> = ({
     }
 
     // Use per-bet commission for P/L calculation
-    const { flatPL, kellyPL } = calculatePL(bet, result);
+    const { kellyPL } = calculatePL(bet, result);
 
     onUpdateBet({
       ...bet,
       result,
       homeScore,
       awayScore,
-      flatPL,
       kellyPL,
       status: "closed",
     });
@@ -171,6 +170,7 @@ export const BetHistoryView: React.FC<Props> = ({
       if (resultFilter === "Won" && res !== "won") return false;
       if (resultFilter === "Lost" && res !== "lost") return false;
       if (resultFilter === "Void" && res !== "void") return false;
+      if (resultFilter === "Push" && res !== "push") return false;
     }
     return true;
   });
@@ -184,14 +184,6 @@ export const BetHistoryView: React.FC<Props> = ({
     (page - 1) * ITEMS_PER_PAGE,
     page * ITEMS_PER_PAGE,
   );
-
-  const formatTimePlaced = (bet: TrackedBet) => {
-    const hoursBefore =
-      (new Date(bet.kickoff).getTime() - bet.placedAt) / (1000 * 60 * 60);
-    if (hoursBefore > 48) return `${Math.floor(hoursBefore / 24)}d out`;
-    if (hoursBefore > 1) return `${Math.floor(hoursBefore)}h out`;
-    return `<1h out`;
-  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -306,6 +298,7 @@ export const BetHistoryView: React.FC<Props> = ({
               <option>Won</option>
               <option>Lost</option>
               <option>Void</option>
+              <option>Push</option>
               <option>Open</option>
             </select>
             <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
@@ -317,13 +310,15 @@ export const BetHistoryView: React.FC<Props> = ({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="text-slate-400 border-b border-slate-700 text-xs uppercase tracking-wider">
-              <th className="p-4 font-medium">Event</th>
-              <th className="p-4 font-medium">Selection</th>
-              <th className="p-4 font-medium text-right">Timing</th>
+              <th className="p-4 font-medium">Match</th>
+              <th className="p-4 font-medium text-right">Exchange</th>
+              <th className="p-4 font-medium text-right">Result</th>
               <th className="p-4 font-medium text-right">Odds</th>
               <th className="p-4 font-medium text-right">Edge %</th>
-              <th className="p-4 font-medium text-right">CLV %</th>
-              <th className="p-4 font-medium text-right">Result</th>
+              <th className="p-4 font-medium text-right">Stake (Kelly)</th>
+              <th className="p-4 font-medium text-right">P/L (Kelly)</th>
+              <th className="p-4 font-medium text-right">Comm.</th>
+              <th className="p-4 font-medium text-right">Date</th>
               <th className="p-4 font-medium text-right">Action</th>
             </tr>
           </thead>
@@ -331,7 +326,7 @@ export const BetHistoryView: React.FC<Props> = ({
             {sortedBets.length === 0 ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={10}
                   className="p-12 text-center text-slate-600 italic"
                 >
                   {bets.length === 0
@@ -342,10 +337,6 @@ export const BetHistoryView: React.FC<Props> = ({
             ) : (
               paginatedBets.map((bet) => {
                 const hasStarted = new Date() > new Date(bet.kickoff);
-                const clvColor =
-                  (bet.clvPercent || 0) > 0
-                    ? "text-emerald-400"
-                    : "text-red-400";
                 return (
                   <tr
                     key={bet.id}
@@ -356,71 +347,13 @@ export const BetHistoryView: React.FC<Props> = ({
                         {bet.homeTeam} vs {bet.awayTeam}
                       </div>
                       <div className="text-[10px] text-slate-500 uppercase mt-0.5">
-                        {LEAGUES.find((l) => l.key === bet.sportKey)?.name ||
-                          bet.sport}
-                      </div>
-                      <div className="text-xs text-slate-500 mt-0.5">
-                        {new Date(bet.kickoff).toLocaleString("en-GB", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div>{bet.selection}</div>
-                      <div className="text-[10px] text-slate-500 uppercase">
-                        {bet.market}
+                        {bet.selection} ({bet.market})
                       </div>
                     </td>
                     <td className="p-4 text-right">
-                      <div className="text-xs font-medium text-slate-400 bg-slate-700/30 px-1.5 py-0.5 rounded inline-block">
-                        {bet.timingBucket}
-                      </div>
-                      <div className="text-[10px] text-slate-500 mt-1">
-                        {formatTimePlaced(bet)}
-                      </div>
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="font-mono text-blue-300 font-bold">
-                        {bet.exchangePrice.toFixed(2)}
-                      </div>
-                      <div className="text-[10px] text-slate-500 uppercase">
+                      <div className="text-xs text-slate-400 font-medium">
                         {bet.exchangeName}
                       </div>
-                    </td>
-                    <td className="p-4 text-right">
-                      <span className="text-emerald-400 font-bold">
-                        +
-                        {(bet.baseNetEdgePercent ?? bet.netEdgePercent).toFixed(
-                          1,
-                        )}
-                        %
-                      </span>
-                      {bet.commission !== undefined &&
-                        bet.commission < 2 &&
-                        bet.baseNetEdgePercent !== undefined && (
-                          <span className="text-[10px] text-blue-400 ml-1">
-                            (+
-                            {(
-                              bet.netEdgePercent - bet.baseNetEdgePercent
-                            ).toFixed(1)}
-                            % promo)
-                          </span>
-                        )}
-                    </td>
-                    <td className="p-4 text-right font-bold">
-                      {bet.clvPercent !== undefined ? (
-                        <div
-                          className={`flex items-center justify-end gap-1 ${clvColor}`}
-                        >
-                          {bet.clvPercent > 0 ? "+" : ""}
-                          {bet.clvPercent.toFixed(2)}%
-                        </div>
-                      ) : (
-                        <span className="text-slate-600">-</span>
-                      )}
                     </td>
                     <td className="p-4 text-right">
                       {bet.result === "won" && (
@@ -438,11 +371,62 @@ export const BetHistoryView: React.FC<Props> = ({
                           Void
                         </span>
                       )}
+                      {bet.result === "push" && (
+                        <span className="text-slate-400 font-bold uppercase text-xs">
+                          Push
+                        </span>
+                      )}
                       {!bet.result && (
                         <span className="text-slate-600 text-xs italic">
                           Open
                         </span>
                       )}
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="font-mono text-blue-300 font-bold">
+                        {bet.exchangePrice.toFixed(2)}
+                      </div>
+                    </td>
+                    <td className="p-4 text-right">
+                      <span className="text-emerald-400 font-bold">
+                        +
+                        {(bet.baseNetEdgePercent ?? bet.netEdgePercent).toFixed(
+                          1,
+                        )}
+                        %
+                      </span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="font-bold text-white">
+                        £{bet.kellyStake.toFixed(2)}
+                      </div>
+                    </td>
+                    <td className="p-4 text-right">
+                      {bet.kellyPL !== undefined ? (
+                        <div
+                          className={`font-bold ${bet.kellyPL >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                        >
+                          {bet.kellyPL >= 0 ? "+" : ""}£
+                          {Math.abs(bet.kellyPL).toFixed(2)}
+                        </div>
+                      ) : (
+                        <span className="text-slate-600">—</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="text-xs text-slate-400">
+                        {bet.commission ?? 0}%
+                      </div>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="text-xs text-slate-400">
+                        {new Date(bet.kickoff).toLocaleString("en-GB", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
