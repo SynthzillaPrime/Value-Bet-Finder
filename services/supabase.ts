@@ -171,10 +171,11 @@ export const fetchAllBets = async (): Promise<TrackedBet[]> => {
     .from("tracked_bets")
     .select("*")
     .order("placed_at", { ascending: false });
+
   if (error) {
-    console.error("Failed to fetch bets", error);
-    return [];
+    throw new Error("Failed to fetch bets: " + error.message);
   }
+
   return (data || []).map(rowToBet);
 };
 
@@ -239,10 +240,11 @@ export const fetchAllTransactions = async (): Promise<
     .from("bankroll_transactions")
     .select("*")
     .order("timestamp", { ascending: false });
+
   if (error) {
-    console.error("Failed to fetch transactions", error);
-    return [];
+    throw new Error("Failed to fetch transactions: " + error.message);
   }
+
   return (data || []).map(rowToTx);
 };
 

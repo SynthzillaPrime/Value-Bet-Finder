@@ -1,4 +1,47 @@
 import { TrackedBet } from "../types";
+
+/**
+ * Shared Kelly stake calculation logic.
+ * Computes effective odds (post-commission), net edge, Kelly percentage, and recommended stake.
+ */
+export const calculateBetStake = (params: {
+  price: number; // exchange odds
+  fairPrice: number; // Pinnacle no-vig fair price
+  bankroll: number; // total bankroll
+  commission: number; // actual commission percentage (e.g. 0, 2)
+  kellyFraction: number; // fractional Kelly multiplier (e.g. 0.3 for 30%)
+}): {
+  effectiveOdds: number;
+  netEdgePercent: number;
+  kellyPercent: number;
+  kellyStake: number;
+} => {
+  const { price, fairPrice, bankroll, commission, kellyFraction } = params;
+
+  // Calculate effectiveOdds = 1 + (price - 1) * (1 - commission / 100)
+  const effectiveOdds = 1 + (price - 1) * (1 - commission / 100);
+
+  // Calculate netEdgePercent = (effectiveOdds / fairPrice - 1) * 100
+  const netEdgePercent = (effectiveOdds / fairPrice - 1) * 100;
+
+  // Calculate Kelly fraction: b = effectiveOdds - 1, p = 1 / fairPrice, q = 1 - p
+  const b = effectiveOdds - 1;
+  const p = 1 / fairPrice;
+  const q = 1 - p;
+
+  // kellyPercent = Math.max(0, ((b * p - q) / b) * 100)
+  const kellyPercent = Math.max(0, ((b * p - q) / b) * 100);
+
+  // Calculate kellyStake = bankroll * (kellyPercent / 100) * kellyFraction
+  const kellyStake = bankroll * (kellyPercent / 100) * kellyFraction;
+
+  return {
+    effectiveOdds,
+    netEdgePercent,
+    kellyPercent,
+    kellyStake,
+  };
+};
 import { EXCHANGES } from "../constants";
 
 /**

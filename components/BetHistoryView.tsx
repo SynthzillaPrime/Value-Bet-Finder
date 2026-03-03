@@ -1,22 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
 import { TrackedBet } from "../types";
-import { calculatePL, determineBetResult } from "../services/betSettlement";
 import { LEAGUES } from "../constants";
-import { fetchClosingLine, fetchMatchResult } from "../services/edgeFinder";
 import { RefreshCw, Trophy, Trash2, ChevronDown, Download } from "lucide-react";
 
 interface Props {
   bets: TrackedBet[];
-  apiKey: string;
-  onUpdateBet: (bet: TrackedBet) => Promise<void>;
   onDeleteBet: (id: string) => Promise<void>;
+  onSettleBet: (
+    betId: string,
+    forceResult?: "won" | "lost" | "void",
+  ) => Promise<void>;
 }
 
 export const BetHistoryView: React.FC<Props> = ({
   bets,
-  apiKey,
-  onUpdateBet,
   onDeleteBet,
+  onSettleBet,
 }) => {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -115,57 +114,6 @@ export const BetHistoryView: React.FC<Props> = ({
   useEffect(() => {
     setPage(1);
   }, [compFilter, timingFilter, oddsFilter, clvFilter, resultFilter]);
-
-  const checkClosingLine = async (bet: TrackedBet) => {
-    if (new Date() < new Date(bet.kickoff)) {
-      alert("Match hasn't started yet.");
-      return;
-    }
-
-    setLoadingId(bet.id);
-    const result = await fetchClosingLine(apiKey, bet);
-    setLoadingId(null);
-
-    if (result) {
-      await onUpdateBet({
-        ...bet,
-        closingRawPrice: result.closingRawPrice,
-        closingFairPrice: result.closingFairPrice,
-        clvPercent: result.clvPercent,
-        status: "closed",
-      });
-    }
-  };
-
-  const checkBetResult = async (bet: TrackedBet) => {
-    if (new Date() < new Date(bet.kickoff)) {
-      alert("Match hasn't started yet.");
-      return;
-    }
-
-    setLoadingId(bet.id + "-result");
-    const scoreResult = await fetchMatchResult(apiKey, bet);
-    setLoadingId(null);
-
-    if (!scoreResult || !scoreResult.completed) return;
-
-    const { homeScore, awayScore } = scoreResult;
-    if (homeScore === undefined || awayScore === undefined) return;
-
-    const result = determineBetResult(bet, homeScore, awayScore);
-
-    // Use per-bet commission for P/L calculation
-    const { kellyPL } = calculatePL(bet, result);
-
-    await onUpdateBet({
-      ...bet,
-      result,
-      homeScore,
-      awayScore,
-      kellyPL,
-      status: "closed",
-    });
-  };
 
   const filteredBets = bets.filter((bet) => {
     if (compFilter !== "All Competitions" && bet.sport !== compFilter)
@@ -471,30 +419,63 @@ export const BetHistoryView: React.FC<Props> = ({
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {bet.status === "open" && (
-                          <>
+                        <div className="flex items-center gap-1 mr-2 bg-slate-900/50 p-1 rounded-lg border border-slate-700/30">
+                          {(["won", "lost", "void"] as const).map((res) => (
                             <button
-                              onClick={() => checkClosingLine(bet)}
-                              disabled={!hasStarted || loadingId === bet.id}
-                              className="p-2 text-blue-400 hover:bg-slate-700 rounded disabled:opacity-30"
+                              key={res}
+                              onClick={() => onSettleBet(bet.id, res)}
+                              className={`w-6 h-6 flex items-center justify-center rounded text-[10px] font-bold uppercase transition-colors ${
+                                bet.result === res
+                                  ? res === "won"
+                                    ? "bg-emerald-500 text-slate-950"
+                                    : res === "lost"
+                                      ? "bg-red-500 text-slate-950"
+                                      : "bg-slate-500 text-slate-950"
+                                  : "bg-slate-800 text-slate-500 hover:bg-slate-700 hover:text-slate-300"
+                              }`}
+                              title={`Manual ${res}`}
                             >
-                              <RefreshCw
-                                className={`w-4 h-4 ${loadingId === bet.id ? "animate-spin" : ""}`}
-                              />
+                              {res[0]}
                             </button>
-                            <button
-                              onClick={() => checkBetResult(bet)}
-                              disabled={
-                                !hasStarted || loadingId === bet.id + "-result"
-                              }
-                              className="p-2 text-emerald-400 hover:bg-slate-700 rounded disabled:opacity-30"
-                            >
-                              <Trophy
-                                className={`w-4 h-4 ${loadingId === bet.id + "-result" ? "animate-pulse" : ""}`}
-                              />
-                            </button>
-                          </>
-                        )}
+                          ))}
+                        </div>
+
+                        <button
+                          onClick={async () => {
+                            setLoadingId(bet.id);
+                            try {
+                              await onSettleBet(bet.id);
+                            } finally {
+                              setLoadingId(null);
+                            }
+                          }}
+                          disabled={!hasStarted || loadingId === bet.id}
+                          className="p-2 text-blue-400 hover:bg-slate-700 rounded disabled:opacity-30"
+                          title="Fetch CLV"
+                        >
+                          <RefreshCw
+                            className={`w-4 h-4 ${loadingId === bet.id ? "animate-spin" : ""}`}
+                          />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            setLoadingId(bet.id + "-result");
+                            try {
+                              await onSettleBet(bet.id);
+                            } finally {
+                              setLoadingId(null);
+                            }
+                          }}
+                          disabled={
+                            !hasStarted || loadingId === bet.id + "-result"
+                          }
+                          className="p-2 text-emerald-400 hover:bg-slate-700 rounded disabled:opacity-30"
+                          title="Check/Re-check Result"
+                        >
+                          <Trophy
+                            className={`w-4 h-4 ${loadingId === bet.id + "-result" ? "animate-pulse" : ""}`}
+                          />
+                        </button>
                         <button
                           onClick={() => handleDeleteClick(bet.id)}
                           className={`transition-all rounded ${

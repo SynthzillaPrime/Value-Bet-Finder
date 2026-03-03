@@ -11,11 +11,18 @@ import {
   deleteBet as supabaseDeleteBet,
   fetchAllBets,
 } from "../services/supabase";
+import {
+  calculateBetStake,
+  determineBetResult,
+  calculatePL,
+} from "../services/betSettlement";
+import { fetchClosingLine, fetchMatchResult } from "../services/edgeFinder";
 
 export const useTrackedBets = (
   bankroll: number,
   addTransactionDirect: (t: BankrollTransaction) => Promise<void>,
   onError: (msg: string) => void,
+  apiKey: string,
 ) => {
   const [trackedBets, setTrackedBets] = useState<TrackedBet[]>([]);
 
@@ -45,18 +52,17 @@ export const useTrackedBets = (
       bet.offers[0];
 
     // Recalculate net edge with the actual commission rate for this bet
-    const commissionFraction = commission / 100;
-    const effectiveOdds = 1 + (offer.price - 1) * (1 - commissionFraction);
-    const actualNetEdge = (effectiveOdds / bet.fairPrice - 1) * 100;
-
-    // Kelly with actual commission
-    const b = effectiveOdds - 1;
-    const p = 1 / bet.fairPrice;
-    const q = 1 - p;
-    const kellyFraction = (b * p - q) / b;
-    const kellyPercent = Math.max(0, kellyFraction * 100);
-
-    const fractionalKellyStake = bankroll * ((kellyPercent / 100) * 0.3);
+    const {
+      netEdgePercent: actualNetEdge,
+      kellyPercent,
+      kellyStake: fractionalKellyStake,
+    } = calculateBetStake({
+      price: offer.price,
+      fairPrice: bet.fairPrice,
+      bankroll,
+      commission,
+      kellyFraction: 0.3,
+    });
 
     // Create a transaction to subtract the stake immediately
     const stakeTransaction: BankrollTransaction = {
@@ -70,17 +76,17 @@ export const useTrackedBets = (
     };
 
     // Base edge at permanent 2% rate (for clean analysis)
-    const baseCommissionFraction = 0.02;
-    const baseEffectiveOdds =
-      1 + (offer.price - 1) * (1 - baseCommissionFraction);
-    const baseNetEdge = (baseEffectiveOdds / bet.fairPrice - 1) * 100;
-
-    const baseB = baseEffectiveOdds - 1;
-    const baseP = 1 / bet.fairPrice;
-    const baseQ = 1 - baseP;
-    const baseKellyFraction = (baseB * baseP - baseQ) / baseB;
-    const baseKellyPercent = Math.max(0, baseKellyFraction * 100);
-    const baseKellyStake = bankroll * ((baseKellyPercent / 100) * 0.3);
+    const {
+      netEdgePercent: baseNetEdge,
+      kellyPercent: baseKellyPercent,
+      kellyStake: baseKellyStake,
+    } = calculateBetStake({
+      price: offer.price,
+      fairPrice: bet.fairPrice,
+      bankroll,
+      commission: 2,
+      kellyFraction: 0.3,
+    });
 
     const newTrackedBet: TrackedBet = {
       ...bet,
@@ -174,6 +180,84 @@ export const useTrackedBets = (
     }
   };
 
+  const settleBet = async (
+    betId: string,
+    forceResult?: "won" | "lost" | "void",
+  ): Promise<void> => {
+    const bet = trackedBets.find((b) => b.id === betId);
+    if (!bet) return;
+
+    if (bet.result && !forceResult) return;
+
+    let clvData = {
+      closingRawPrice: bet.closingRawPrice,
+      closingFairPrice: bet.closingFairPrice,
+      clvPercent: bet.clvPercent,
+    };
+
+    // Fetch CLV if missing
+    if (clvData.clvPercent === undefined) {
+      const result = await fetchClosingLine(apiKey, bet);
+      if (result) {
+        clvData = {
+          closingRawPrice: result.closingRawPrice,
+          closingFairPrice: result.closingFairPrice,
+          clvPercent: result.clvPercent,
+        };
+      }
+    }
+
+    let result: "won" | "lost" | "void" | undefined = forceResult;
+    let homeScore = bet.homeScore;
+    let awayScore = bet.awayScore;
+
+    if (!result) {
+      const scoreResult = await fetchMatchResult(apiKey, bet);
+      if (!scoreResult || !scoreResult.completed) return;
+
+      homeScore = scoreResult.homeScore;
+      awayScore = scoreResult.awayScore;
+      if (homeScore === undefined || awayScore === undefined) return;
+
+      result = determineBetResult(bet, homeScore, awayScore);
+    }
+
+    if (!result) return;
+
+    const { kellyPL } = calculatePL(bet, result);
+
+    await handleUpdateTrackedBet({
+      ...bet,
+      result,
+      kellyPL,
+      homeScore,
+      awayScore,
+      ...clvData,
+      status: "closed",
+    });
+  };
+
+  const settleAll = async (): Promise<{ settled: number; failed: number }> => {
+    const betsToSettle = trackedBets.filter((b) => !b.result);
+    let settled = 0;
+    let failed = 0;
+
+    for (const bet of betsToSettle) {
+      try {
+        await settleBet(bet.id);
+        settled++;
+        // Small delay to avoid API rate limits
+        if (settled < betsToSettle.length) {
+          await new Promise((r) => setTimeout(r, 500));
+        }
+      } catch (e) {
+        console.error(`Failed to settle bet ${bet.id}:`, e);
+        failed++;
+      }
+    }
+    return { settled, failed };
+  };
+
   return {
     trackedBets,
     setTrackedBets,
@@ -181,5 +265,7 @@ export const useTrackedBets = (
     handleTrackBet,
     handleUpdateTrackedBet,
     handleDeleteTrackedBet,
+    settleBet,
+    settleAll,
   };
 };

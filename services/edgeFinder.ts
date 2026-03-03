@@ -6,6 +6,7 @@ import {
   ExchangeOffer,
   TrackedBet,
 } from "../types";
+import { calculateBetStake } from "./betSettlement";
 
 /**
  * Removes the vigorish (margin) from a set of odds to find the "fair" probability/price.
@@ -159,18 +160,14 @@ export const calculateEdges = (matches: MatchResponse[]): BetEdge[] => {
           );
           if (!exOutcome) continue;
 
-          // Calculate Net Edge considering commission
-          // Effective Odds = 1 + (DecimalOdds - 1) * (1 - CommissionRate)
-          const effectiveOdds =
-            1 + (exOutcome.price - 1) * (1 - exConfig.commission);
-          const netEdge = (effectiveOdds / fairPrice - 1) * 100;
-
-          // Kelly Criterion
-          const b = effectiveOdds - 1;
-          const p = 1 / fairPrice;
-          const q = 1 - p;
-          const kellyFraction = (b * p - q) / b;
-          const kellyPercent = Math.max(0, kellyFraction * 100);
+          // Calculate Net Edge and Kelly considering commission
+          const { netEdgePercent: netEdge, kellyPercent } = calculateBetStake({
+            price: exOutcome.price,
+            fairPrice,
+            bankroll: 0,
+            commission: exConfig.commission * 100,
+            kellyFraction: 0.3,
+          });
 
           offers.push({
             exchangeKey: exConfig.key,

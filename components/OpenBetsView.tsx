@@ -1,8 +1,6 @@
 import React, { useState, useRef } from "react";
 import { TrackedBet } from "../types";
 
-import { calculatePL, determineBetResult } from "../services/betSettlement";
-import { fetchClosingLine, fetchMatchResult } from "../services/edgeFinder";
 import {
   RefreshCw,
   Clock,
@@ -13,16 +11,16 @@ import {
 
 interface Props {
   bets: TrackedBet[];
-  apiKey: string;
-  onUpdateBet: (bet: TrackedBet) => Promise<void>;
   onDeleteBet: (id: string) => Promise<void>;
+  onSettleBet: (betId: string) => Promise<void>;
+  onSettleAll: () => Promise<{ settled: number; failed: number }>;
 }
 
 export const OpenBetsView: React.FC<Props> = ({
   bets,
-  apiKey,
-  onUpdateBet,
   onDeleteBet,
+  onSettleBet,
+  onSettleAll,
 }) => {
   const [settlingId, setSettlingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -34,19 +32,10 @@ export const OpenBetsView: React.FC<Props> = ({
       return;
     }
 
+    if (bet.clvPercent !== undefined) return;
     setFetchingCLVId(bet.id);
     try {
-      const result = await fetchClosingLine(apiKey, bet);
-      if (result) {
-        await onUpdateBet({
-          ...bet,
-          closingRawPrice: result.closingRawPrice,
-          closingFairPrice: result.closingFairPrice,
-          clvPercent: result.clvPercent,
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching CLV:", error);
+      await onSettleBet(bet.id);
     } finally {
       setFetchingCLVId(null);
     }
@@ -89,56 +78,10 @@ export const OpenBetsView: React.FC<Props> = ({
     (b) => new Date(b.kickoff).getTime() > now.getTime(),
   );
 
-  const settleBet = async (bet: TrackedBet): Promise<boolean> => {
-    // Fetch result
-    const scoreResult = await fetchMatchResult(apiKey, bet);
-    if (!scoreResult || !scoreResult.completed) return false;
-
-    const { homeScore, awayScore } = scoreResult;
-    if (homeScore === undefined || awayScore === undefined) return false;
-
-    const result = determineBetResult(bet, homeScore, awayScore);
-
-    // Use per-bet commission for P/L calculation
-    const { kellyPL } = calculatePL(bet, result);
-
-    // Fetch CLV (reuse if already fetched)
-    let clvPercent = bet.clvPercent;
-    let closingRawPrice = bet.closingRawPrice;
-    let closingFairPrice = bet.closingFairPrice;
-
-    if (clvPercent === undefined) {
-      const clvResult = await fetchClosingLine(apiKey, bet);
-      if (clvResult) {
-        closingRawPrice = clvResult.closingRawPrice;
-        closingFairPrice = clvResult.closingFairPrice;
-        clvPercent = clvResult.clvPercent;
-      }
-    }
-
-    try {
-      await onUpdateBet({
-        ...bet,
-        result,
-        homeScore,
-        awayScore,
-        kellyPL,
-        closingRawPrice,
-        closingFairPrice,
-        clvPercent,
-        status: "closed",
-      });
-      return true;
-    } catch (error) {
-      console.error("Failed to settle bet:", error);
-      return false;
-    }
-  };
-
   const handleSettleSingle = async (bet: TrackedBet) => {
     setSettlingId(bet.id);
     try {
-      await settleBet(bet);
+      await onSettleBet(bet.id);
     } finally {
       setSettlingId(null);
     }
@@ -150,13 +93,9 @@ export const OpenBetsView: React.FC<Props> = ({
     setSettleProgress({ current: 0, total: readyToSettle.length });
 
     try {
-      for (let i = 0; i < readyToSettle.length; i++) {
-        setSettleProgress({ current: i + 1, total: readyToSettle.length });
-        await settleBet(readyToSettle[i]);
-        // Small delay to avoid hammering the API
-        if (i < readyToSettle.length - 1) {
-          await new Promise((r) => setTimeout(r, 500));
-        }
+      const { settled, failed } = await onSettleAll();
+      if (failed > 0) {
+        alert(`Settlement complete: ${settled} succeeded, ${failed} failed.`);
       }
     } finally {
       setSettlingAll(false);

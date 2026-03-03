@@ -69,7 +69,14 @@ const App: React.FC = () => {
     handleTrackBet,
     handleUpdateTrackedBet,
     handleDeleteTrackedBet,
-  } = useTrackedBets(bankroll, addTransactionDirect, setErrorMessage);
+    settleBet,
+    settleAll,
+  } = useTrackedBets(
+    bankroll,
+    addTransactionDirect,
+    setErrorMessage,
+    apiKey || "",
+  );
 
   // Authentication check on mount
   useEffect(() => {
@@ -285,19 +292,18 @@ const App: React.FC = () => {
         ) : view === "openbets" ? (
           <ErrorBoundary key="openbets" fallbackLabel="Open Bets">
             <OpenBetsView
-              apiKey={apiKey || ""}
               bets={trackedBets}
-              onUpdateBet={handleUpdateTrackedBet}
               onDeleteBet={handleDeleteTrackedBet}
+              onSettleBet={settleBet}
+              onSettleAll={settleAll}
             />
           </ErrorBoundary>
         ) : view === "history" ? (
           <ErrorBoundary key="history" fallbackLabel="History">
             <BetHistoryView
-              apiKey={apiKey || ""}
               bets={trackedBets}
-              onUpdateBet={handleUpdateTrackedBet}
               onDeleteBet={handleDeleteTrackedBet}
+              onSettleBet={settleBet}
             />
           </ErrorBoundary>
         ) : view === "analysis" ? (
