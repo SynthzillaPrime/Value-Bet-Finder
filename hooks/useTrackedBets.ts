@@ -183,11 +183,11 @@ export const useTrackedBets = (
   const settleBet = async (
     betId: string,
     forceResult?: "won" | "lost" | "void",
-  ): Promise<void> => {
+  ): Promise<boolean> => {
     const bet = trackedBets.find((b) => b.id === betId);
-    if (!bet) return;
+    if (!bet) return false;
 
-    if (bet.result && !forceResult) return;
+    if (bet.result && !forceResult) return true;
 
     let clvData = {
       closingRawPrice: bet.closingRawPrice,
@@ -213,28 +213,34 @@ export const useTrackedBets = (
 
     if (!result) {
       const scoreResult = await fetchMatchResult(apiKey, bet);
-      if (!scoreResult || !scoreResult.completed) return;
+      if (!scoreResult || !scoreResult.completed) return false;
 
       homeScore = scoreResult.homeScore;
       awayScore = scoreResult.awayScore;
-      if (homeScore === undefined || awayScore === undefined) return;
+      if (homeScore === undefined || awayScore === undefined) return false;
 
       result = determineBetResult(bet, homeScore, awayScore);
     }
 
-    if (!result) return;
+    if (!result) return false;
 
     const { kellyPL } = calculatePL(bet, result);
 
-    await handleUpdateTrackedBet({
-      ...bet,
-      result,
-      kellyPL,
-      homeScore,
-      awayScore,
-      ...clvData,
-      status: "closed",
-    });
+    try {
+      await handleUpdateTrackedBet({
+        ...bet,
+        result,
+        kellyPL,
+        homeScore,
+        awayScore,
+        ...clvData,
+        status: "closed",
+      });
+      return true;
+    } catch (e) {
+      console.error(`Failed to settle bet ${betId}:`, e);
+      return false;
+    }
   };
 
   const settleAll = async (): Promise<{ settled: number; failed: number }> => {
@@ -243,16 +249,16 @@ export const useTrackedBets = (
     let failed = 0;
 
     for (const bet of betsToSettle) {
-      try {
-        await settleBet(bet.id);
+      const success = await settleBet(bet.id);
+      if (success) {
         settled++;
-        // Small delay to avoid API rate limits
-        if (settled < betsToSettle.length) {
-          await new Promise((r) => setTimeout(r, 500));
-        }
-      } catch (e) {
-        console.error(`Failed to settle bet ${bet.id}:`, e);
+      } else {
         failed++;
+      }
+
+      // Small delay to avoid API rate limits
+      if (settled + failed < betsToSettle.length) {
+        await new Promise((r) => setTimeout(r, 500));
       }
     }
     return { settled, failed };

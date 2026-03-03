@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { MatchResponse, FetchStatus, BetEdge } from "../types";
+import { MatchResponse, FetchStatus } from "../types";
 import { fetchOddsData, calculateEdges } from "../services/edgeFinder";
 import { HARDCODED_API_KEY } from "../constants";
 
@@ -61,7 +61,8 @@ export const useScanner = () => {
       console.error("Scan failed:", error);
       setStatus("error");
       setErrorMessage(
-        error.message || "Failed to fetch odds. Check your API key or connection.",
+        error.message ||
+          "Failed to fetch odds. Check your API key or connection.",
       );
     }
   }, [apiKey, selectedLeagues]);

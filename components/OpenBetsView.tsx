@@ -12,7 +12,7 @@ import {
 interface Props {
   bets: TrackedBet[];
   onDeleteBet: (id: string) => Promise<void>;
-  onSettleBet: (betId: string) => Promise<void>;
+  onSettleBet: (betId: string) => Promise<boolean>;
   onSettleAll: () => Promise<{ settled: number; failed: number }>;
 }
 

@@ -67,7 +67,6 @@ const App: React.FC = () => {
     trackedBets,
     loadTrackedBets,
     handleTrackBet,
-    handleUpdateTrackedBet,
     handleDeleteTrackedBet,
     settleBet,
     settleAll,
