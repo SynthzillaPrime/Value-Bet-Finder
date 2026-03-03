@@ -24,7 +24,7 @@ export const BetCard: React.FC<Props> = ({
   const [showCommissionPicker, setShowCommissionPicker] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
   const [selectedExchangeKey, setSelectedExchangeKey] = useState(
-    bet.bestExchange,
+    bet.exchangeKey,
   );
 
   const selectedOffer =

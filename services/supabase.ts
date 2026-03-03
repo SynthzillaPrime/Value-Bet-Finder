@@ -88,10 +88,10 @@ const betToRow = (bet: TrackedBet): Record<string, any> => ({
   sport_key: bet.sportKey,
   selection: bet.selection,
   market: bet.market,
+  exchange: bet.exchangeKey,
   exchange_key: bet.exchangeKey,
   exchange_name: bet.exchangeName,
   exchange_price: bet.exchangePrice,
-  best_exchange: bet.bestExchange,
   fair_price: bet.fairPrice,
   fair_price_at_bet: bet.fairPriceAtBet,
   edge_percent: bet.edgePercent,
@@ -111,6 +111,7 @@ const betToRow = (bet: TrackedBet): Record<string, any> => ({
   timing_bucket: bet.timingBucket,
   notes: bet.notes || null,
 
+  flat_stake: bet.flatStake ?? 1,
   kelly_stake: bet.kellyStake,
   kelly_pl: bet.kellyPL ?? null,
   base_net_edge_percent: bet.baseNetEdgePercent ?? null,
@@ -128,10 +129,9 @@ const rowToBet = (row: any): TrackedBet => ({
   sportKey: row.sport_key,
   selection: row.selection,
   market: row.market,
-  exchangeKey: row.exchange_key,
+  exchangeKey: row.exchange_key || row.exchange,
   exchangeName: row.exchange_name,
   exchangePrice: Number(row.exchange_price),
-  bestExchange: row.best_exchange || row.exchange_key,
   fairPrice: Number(row.fair_price),
   fairPriceAtBet: Number(row.fair_price_at_bet),
   edgePercent: Number(row.edge_percent),
@@ -153,6 +153,7 @@ const rowToBet = (row: any): TrackedBet => ({
   timingBucket: row.timing_bucket,
   notes: row.notes || undefined,
 
+  flatStake: Number(row.flat_stake ?? 1),
   kellyStake: Number(row.kelly_stake),
   kellyPL: row.kelly_pl != null ? Number(row.kelly_pl) : undefined,
   baseNetEdgePercent:
@@ -244,11 +245,13 @@ export const fetchAllTransactions = async (): Promise<
 
 export const insertTransaction = async (
   tx: BankrollTransaction,
-): Promise<void> => {
+): Promise<boolean> => {
   const { error } = await supabase
     .from("bankroll_transactions")
     .insert(txToRow(tx));
   if (error) {
-    throw new Error("Failed to insert transaction: " + error.message);
+    console.error("Failed to insert transaction:", error);
+    return false;
   }
+  return true;
 };

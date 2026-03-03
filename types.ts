@@ -55,7 +55,6 @@ export interface BetEdge {
   exchangeKey: string;
   exchangeName: string;
   exchangePrice: number;
-  bestExchange: string; // 'matchbook' or 'smarkets'
 
   // All offers for this selection
   offers: ExchangeOffer[];
@@ -83,6 +82,7 @@ export interface TrackedBet extends BetEdge {
   timingBucket: "48hr+" | "24-48hr" | "12-24hr" | "<12hr";
   notes?: string;
 
+  flatStake: number;
   kellyStake: number;
   kellyPL?: number;
 

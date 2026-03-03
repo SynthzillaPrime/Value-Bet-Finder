@@ -98,6 +98,7 @@ export const useTrackedBets = (
       status: "open",
       hoursBeforeKickoff,
       timingBucket,
+      flatStake: 1,
       kellyStake: fractionalKellyStake,
       commission,
       netEdgePercent: actualNetEdge,
@@ -112,8 +113,8 @@ export const useTrackedBets = (
       await insertBet(newTrackedBet);
       await addTransactionDirect(stakeTransaction);
 
-      // Update local state
-      setTrackedBets((prev) => [...prev, newTrackedBet]);
+      // Update local state - add to top of list as it's the most recent
+      setTrackedBets((prev) => [newTrackedBet, ...prev]);
     } catch (error) {
       console.error("Failed to save bet:", error);
       onError("Failed to track bet. Please try again.");
