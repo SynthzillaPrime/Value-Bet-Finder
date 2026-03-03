@@ -20,9 +20,7 @@ export const SummaryStats: React.FC<Props> = ({ bets }) => {
   // 2. Win Rate & Required Win Rate
   const wins = decisiveBets.filter((b) => b.result === "won").length;
   const losses = decisiveBets.filter((b) => b.result === "lost").length;
-  const voidCount = settledBets.filter(
-    (b) => b.result === "void" || b.result === "push",
-  ).length;
+  const voidCount = settledBets.filter((b) => b.result === "void").length;
   const winRate =
     decisiveBets.length > 0 ? (wins / decisiveBets.length) * 100 : 0;
 
@@ -86,7 +84,7 @@ export const SummaryStats: React.FC<Props> = ({ bets }) => {
     {
       label: "Avg Odds",
       value: avgOddsDecisive.toFixed(2),
-      subValue: `${wins}W ${losses}L${voidCount > 0 ? ` ${voidCount}V/P` : ""}`,
+      subValue: `${wins}W ${losses}L${voidCount > 0 ? ` ${voidCount} Void` : ""}`,
       color: "text-blue-400",
     },
     {

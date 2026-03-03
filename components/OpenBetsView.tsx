@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { TrackedBet } from "../types";
 
-import { calculatePL } from "../services/betSettlement";
+import { calculatePL, determineBetResult } from "../services/betSettlement";
 import { fetchClosingLine, fetchMatchResult } from "../services/edgeFinder";
 import {
   RefreshCw,
@@ -14,8 +14,8 @@ import {
 interface Props {
   bets: TrackedBet[];
   apiKey: string;
-  onUpdateBet: (bet: TrackedBet) => void;
-  onDeleteBet: (id: string) => void;
+  onUpdateBet: (bet: TrackedBet) => Promise<void>;
+  onDeleteBet: (id: string) => Promise<void>;
 }
 
 export const OpenBetsView: React.FC<Props> = ({
@@ -38,7 +38,7 @@ export const OpenBetsView: React.FC<Props> = ({
     try {
       const result = await fetchClosingLine(apiKey, bet);
       if (result) {
-        onUpdateBet({
+        await onUpdateBet({
           ...bet,
           closingRawPrice: result.closingRawPrice,
           closingFairPrice: result.closingFairPrice,
@@ -97,46 +97,7 @@ export const OpenBetsView: React.FC<Props> = ({
     const { homeScore, awayScore } = scoreResult;
     if (homeScore === undefined || awayScore === undefined) return false;
 
-    let result: "won" | "lost" | "void" = "lost";
-
-    if (bet.market === "Match Result") {
-      if (bet.selection === bet.homeTeam) {
-        if (homeScore > awayScore) result = "won";
-      } else if (bet.selection === bet.awayTeam) {
-        if (awayScore > homeScore) result = "won";
-      } else if (bet.selection.toLowerCase() === "draw") {
-        if (homeScore === awayScore) result = "won";
-      }
-    } else if (bet.market === "Over/Under") {
-      const parts = bet.selection.split(" ");
-      const type = parts[0];
-      const line = parseFloat(parts[1]);
-      const total = homeScore + awayScore;
-      if (type === "Over") {
-        if (total > line) result = "won";
-        else if (total < line) result = "lost";
-        else result = "void";
-      } else if (type === "Under") {
-        if (total < line) result = "won";
-        else if (total > line) result = "lost";
-        else result = "void";
-      }
-    } else if (bet.market === "Handicap") {
-      const parts = bet.selection.split(" ");
-      const point = parseFloat(parts[parts.length - 1]);
-      const team = parts.slice(0, -1).join(" ");
-      if (team === bet.homeTeam) {
-        const adjusted = homeScore + point;
-        if (adjusted > awayScore) result = "won";
-        else if (adjusted < awayScore) result = "lost";
-        else result = "void";
-      } else if (team === bet.awayTeam) {
-        const adjusted = awayScore + point;
-        if (adjusted > homeScore) result = "won";
-        else if (adjusted < homeScore) result = "lost";
-        else result = "void";
-      }
-    }
+    const result = determineBetResult(bet, homeScore, awayScore);
 
     // Use per-bet commission for P/L calculation
     const { kellyPL } = calculatePL(bet, result);
@@ -155,25 +116,32 @@ export const OpenBetsView: React.FC<Props> = ({
       }
     }
 
-    onUpdateBet({
-      ...bet,
-      result,
-      homeScore,
-      awayScore,
-      kellyPL,
-      closingRawPrice,
-      closingFairPrice,
-      clvPercent,
-      status: "closed",
-    });
-
-    return true;
+    try {
+      await onUpdateBet({
+        ...bet,
+        result,
+        homeScore,
+        awayScore,
+        kellyPL,
+        closingRawPrice,
+        closingFairPrice,
+        clvPercent,
+        status: "closed",
+      });
+      return true;
+    } catch (error) {
+      console.error("Failed to settle bet:", error);
+      return false;
+    }
   };
 
   const handleSettleSingle = async (bet: TrackedBet) => {
     setSettlingId(bet.id);
-    await settleBet(bet);
-    setSettlingId(null);
+    try {
+      await settleBet(bet);
+    } finally {
+      setSettlingId(null);
+    }
   };
 
   const handleSettleAll = async () => {
@@ -181,17 +149,19 @@ export const OpenBetsView: React.FC<Props> = ({
     setSettlingAll(true);
     setSettleProgress({ current: 0, total: readyToSettle.length });
 
-    for (let i = 0; i < readyToSettle.length; i++) {
-      setSettleProgress({ current: i + 1, total: readyToSettle.length });
-      await settleBet(readyToSettle[i]);
-      // Small delay to avoid hammering the API
-      if (i < readyToSettle.length - 1) {
-        await new Promise((r) => setTimeout(r, 500));
+    try {
+      for (let i = 0; i < readyToSettle.length; i++) {
+        setSettleProgress({ current: i + 1, total: readyToSettle.length });
+        await settleBet(readyToSettle[i]);
+        // Small delay to avoid hammering the API
+        if (i < readyToSettle.length - 1) {
+          await new Promise((r) => setTimeout(r, 500));
+        }
       }
+    } finally {
+      setSettlingAll(false);
+      setSettleProgress(null);
     }
-
-    setSettlingAll(false);
-    setSettleProgress(null);
   };
 
   const formatKickoff = (kickoff: Date) => {

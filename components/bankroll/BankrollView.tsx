@@ -1,11 +1,12 @@
 import React, { useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { ArrowUpCircle, History, ChevronDown, Download } from "lucide-react";
 import { BankrollTransaction, ExchangeBankroll } from "../../types";
 
 interface Props {
   transactions: BankrollTransaction[];
   exchangeBankrolls: ExchangeBankroll;
-  onAddTransaction: (tx: BankrollTransaction) => void;
+  onAddTransaction: (t: BankrollTransaction) => Promise<void>;
 }
 
 export const BankrollView: React.FC<Props> = ({
@@ -13,6 +14,7 @@ export const BankrollView: React.FC<Props> = ({
   exchangeBankrolls,
   onAddTransaction,
 }) => {
+  const [isAdding, setIsAdding] = useState(false);
   const [newTx, setNewTx] = useState<{
     exchange: "matchbook" | "smarkets";
     type: "deposit" | "withdrawal" | "adjustment";
@@ -57,20 +59,27 @@ export const BankrollView: React.FC<Props> = ({
     link.click();
   };
 
-  const handleAddTx = () => {
+  const handleAddTx = async () => {
     const amount = parseFloat(newTx.amount);
-    if (isNaN(amount) || amount === 0) return;
+    if (isNaN(amount) || amount === 0 || isAdding) return;
 
-    onAddTransaction({
-      id: `tx-${Date.now()}`,
-      timestamp: Date.now(),
-      exchange: newTx.exchange,
-      type: newTx.type,
-      amount: newTx.type === "withdrawal" ? -Math.abs(amount) : amount,
-      note: newTx.note,
-    });
+    setIsAdding(true);
+    try {
+      await onAddTransaction({
+        id: `tx-${Date.now()}`,
+        timestamp: Date.now(),
+        exchange: newTx.exchange,
+        type: newTx.type,
+        amount: newTx.type === "withdrawal" ? -Math.abs(amount) : amount,
+        note: newTx.note,
+      });
 
-    setNewTx({ ...newTx, amount: "", note: "" });
+      setNewTx({ ...newTx, amount: "", note: "" });
+    } catch (error) {
+      console.error("Failed to add transaction:", error);
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   const sortedTransactions = [...transactions]
@@ -249,10 +258,19 @@ export const BankrollView: React.FC<Props> = ({
 
               <button
                 onClick={handleAddTx}
-                disabled={!newTx.amount || parseFloat(newTx.amount) <= 0}
+                disabled={
+                  isAdding || !newTx.amount || parseFloat(newTx.amount) <= 0
+                }
                 className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-900/20 transition-all flex items-center justify-center gap-2"
               >
-                Apply Transaction
+                {isAdding ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Apply Transaction"
+                )}
               </button>
             </div>
           </div>

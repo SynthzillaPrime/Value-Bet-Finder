@@ -187,16 +187,6 @@ export const insertBet = async (bet: TrackedBet): Promise<boolean> => {
   return true;
 };
 
-export const insertBets = async (bets: TrackedBet[]): Promise<boolean> => {
-  const rows = bets.map(betToRow);
-  const { error } = await supabase.from("tracked_bets").insert(rows);
-  if (error) {
-    console.error("Failed to insert bets", error);
-    return false;
-  }
-  return true;
-};
-
 export const updateBet = async (bet: TrackedBet): Promise<boolean> => {
   const { error } = await supabase
     .from("tracked_bets")
@@ -267,76 +257,4 @@ export const insertTransaction = async (
     return false;
   }
   return true;
-};
-
-export const insertTransactions = async (
-  txs: BankrollTransaction[],
-): Promise<boolean> => {
-  const rows = txs.map(txToRow);
-  const { error } = await supabase.from("bankroll_transactions").insert(rows);
-  if (error) {
-    console.error("Failed to insert transactions", error);
-    return false;
-  }
-  return true;
-};
-
-// ============================================
-// Migration: localStorage → Supabase
-// ============================================
-
-export const migrateLocalStorageToSupabase = async (): Promise<{
-  bets: number;
-  transactions: number;
-}> => {
-  let betsMigrated = 0;
-  let txMigrated = 0;
-
-  const storedBets = localStorage.getItem("tracked_bets");
-  if (storedBets) {
-    try {
-      const parsed = JSON.parse(storedBets);
-      const bets: TrackedBet[] = parsed.map((b: any) => ({
-        ...b,
-        kickoff: new Date(b.kickoff),
-        exchangeName: b.exchangeName || "Smarkets",
-        exchangeKey: b.exchangeKey || "smarkets",
-        exchangePrice: b.exchangePrice || b.smarketsPrice || 0,
-        bestExchange: b.bestExchange || b.exchangeKey || "smarkets",
-      }));
-      if (bets.length > 0) {
-        const { data: existing } = await supabase
-          .from("tracked_bets")
-          .select("id")
-          .limit(1);
-        if (!existing || existing.length === 0) {
-          const success = await insertBets(bets);
-          if (success) betsMigrated = bets.length;
-        }
-      }
-    } catch (e) {
-      console.error("Failed to migrate bets", e);
-    }
-  }
-
-  const storedTx = localStorage.getItem("bankroll_transactions");
-  if (storedTx) {
-    try {
-      const txs: BankrollTransaction[] = JSON.parse(storedTx);
-      if (txs.length > 0) {
-        const { data: existing } = await supabase
-          .from("bankroll_transactions")
-          .select("id")
-          .limit(1);
-        if (!existing || existing.length === 0) {
-          const success = await insertTransactions(txs);
-          if (success) txMigrated = txs.length;
-        }
-      }
-    } catch (e) {
-      console.error("Failed to migrate transactions", e);
-    }
-  }
-
-  return { bets: betsMigrated, transactions: txMigrated };
 };

@@ -35,7 +35,7 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
   const pageSize = 10;
 
   const settled = bets.filter(
-    (b) => b.result !== undefined && b.result !== "void" && b.result !== "push",
+    (b) => b.result !== undefined && b.result !== "void",
   );
 
   return (

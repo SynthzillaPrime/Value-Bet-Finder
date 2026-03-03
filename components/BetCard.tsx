@@ -1,10 +1,14 @@
 import React, { useState } from "react";
 import { BetEdge, ExchangeBankroll } from "../types";
-import { Clock, Check } from "lucide-react";
+import { Clock, Check, RefreshCw } from "lucide-react";
 
 interface Props {
   bet: BetEdge;
-  onTrack: (bet: BetEdge, commission: number, selectedExchange: string) => void;
+  onTrack: (
+    bet: BetEdge,
+    commission: number,
+    selectedExchange: string,
+  ) => Promise<void>;
   isTracked: boolean;
   bankroll: number;
   exchangeBankrolls?: ExchangeBankroll;
@@ -18,6 +22,7 @@ export const BetCard: React.FC<Props> = ({
   exchangeBankrolls,
 }) => {
   const [showCommissionPicker, setShowCommissionPicker] = useState(false);
+  const [isTracking, setIsTracking] = useState(false);
   const [selectedExchangeKey, setSelectedExchangeKey] = useState(
     bet.bestExchange,
   );
@@ -25,7 +30,8 @@ export const BetCard: React.FC<Props> = ({
   const selectedOffer =
     bet.offers.find((o) => o.exchangeKey === selectedExchangeKey) ||
     bet.offers[0];
-  const kellyStake = bankroll * (selectedOffer.kellyPercent / 100) * 0.3;
+  const kellyStake =
+    Math.max(0, bankroll) * (selectedOffer.kellyPercent / 100) * 0.3;
   const [customCommission, setCustomCommission] = useState("");
 
   const borderColor = "border-slate-800";
@@ -48,12 +54,20 @@ export const BetCard: React.FC<Props> = ({
     setShowCommissionPicker(true);
   };
 
-  const handleCommissionSelect = (commission: number) => {
-    onTrack(bet, commission, selectedExchangeKey);
-    setShowCommissionPicker(false);
+  const handleCommissionSelect = async (commission: number) => {
+    setIsTracking(true);
+    try {
+      await onTrack(bet, commission, selectedExchangeKey);
+      setShowCommissionPicker(false);
+    } catch (error) {
+      console.error("Tracking failed:", error);
+    } finally {
+      setIsTracking(false);
+    }
   };
 
   const handleCustomSubmit = () => {
+    if (isTracking) return;
     const val = parseFloat(customCommission);
     if (!isNaN(val) && val >= 0 && val <= 100) {
       handleCommissionSelect(val);
@@ -61,6 +75,7 @@ export const BetCard: React.FC<Props> = ({
   };
 
   const handleCustomKeyDown = (e: React.KeyboardEvent) => {
+    if (isTracking) return;
     if (e.key === "Enter") handleCustomSubmit();
     if (e.key === "Escape") {
       setShowCommissionPicker(false);
@@ -192,7 +207,7 @@ export const BetCard: React.FC<Props> = ({
               )}
               {bankroll <= 0 && (
                 <span className="text-[10px] text-amber-500/80 italic">
-                  Set bankroll first
+                  Deposit funds to continue
                 </span>
               )}
             </div>
@@ -222,6 +237,7 @@ export const BetCard: React.FC<Props> = ({
                     {bet.offers.map((offer) => (
                       <button
                         key={offer.exchangeKey}
+                        disabled={isTracking}
                         onClick={() =>
                           setSelectedExchangeKey(offer.exchangeKey)
                         }
@@ -238,9 +254,10 @@ export const BetCard: React.FC<Props> = ({
                 </div>
                 <button
                   onClick={handleTrackClick}
-                  className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all"
+                  disabled={bankroll <= 0}
+                  className="w-full py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed disabled:shadow-none text-white rounded-lg text-sm font-semibold shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all"
                 >
-                  Track Bet
+                  {bankroll <= 0 ? "Insufficient bankroll" : "Track Bet"}
                 </button>
               </div>
             ) : (
@@ -250,20 +267,23 @@ export const BetCard: React.FC<Props> = ({
                 </p>
                 <div className="flex gap-1.5 items-center">
                   <button
+                    disabled={isTracking}
                     onClick={() => handleCommissionSelect(0)}
-                    className="px-2.5 py-1.5 text-xs font-bold rounded-md bg-emerald-900/30 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-900/50 transition-colors"
+                    className="px-2.5 py-1.5 text-xs font-bold rounded-md bg-emerald-900/30 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-900/50 transition-colors disabled:opacity-50"
                   >
                     0%
                   </button>
                   <button
+                    disabled={isTracking}
                     onClick={() => handleCommissionSelect(2)}
-                    className="px-2.5 py-1.5 text-xs font-bold rounded-md bg-amber-900/30 text-amber-400 border border-amber-500/30 hover:bg-amber-900/50 transition-colors"
+                    className="px-2.5 py-1.5 text-xs font-bold rounded-md bg-amber-900/30 text-amber-400 border border-amber-500/30 hover:bg-amber-900/50 transition-colors disabled:opacity-50"
                   >
                     2%
                   </button>
                   <div className="flex items-center gap-0.5 flex-1">
                     <input
                       type="number"
+                      disabled={isTracking}
                       min="0"
                       max="100"
                       step="1"
@@ -271,21 +291,28 @@ export const BetCard: React.FC<Props> = ({
                       onChange={(e) => setCustomCommission(e.target.value)}
                       onKeyDown={handleCustomKeyDown}
                       placeholder="Custom"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none disabled:opacity-50"
                       autoFocus
                     />
                     <span className="text-xs text-slate-500">%</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => {
-                    setShowCommissionPicker(false);
-                    setCustomCommission("");
-                  }}
-                  className="w-full py-1 text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
-                >
-                  Cancel
-                </button>
+                {isTracking ? (
+                  <div className="flex items-center justify-center gap-2 py-2 text-blue-400 text-[10px] font-bold uppercase">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    Tracking...
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setShowCommissionPicker(false);
+                      setCustomCommission("");
+                    }}
+                    className="w-full py-1 text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                )}
               </div>
             )}
           </>

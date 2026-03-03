@@ -21,7 +21,7 @@ export const getCommissionRate = (bet: TrackedBet): number => {
  */
 export const calculatePL = (
   bet: TrackedBet,
-  result: "won" | "lost" | "void" | "push",
+  result: "won" | "lost" | "void",
 ): { kellyPL: number } => {
   const commissionRate = getCommissionRate(bet);
 
@@ -38,3 +38,56 @@ export const calculatePL = (
 
   return { kellyPL };
 };
+
+/**
+ * Determines the result of a bet based on the final scores.
+ * Handles Match Result, Over/Under, and Handicap markets.
+ */
+export function determineBetResult(
+  bet: TrackedBet,
+  homeScore: number,
+  awayScore: number,
+): "won" | "lost" | "void" {
+  if (bet.market === "Match Result") {
+    if (bet.selection === bet.homeTeam) {
+      return homeScore > awayScore ? "won" : "lost";
+    } else if (bet.selection === bet.awayTeam) {
+      return awayScore > homeScore ? "won" : "lost";
+    } else if (bet.selection.toLowerCase() === "draw") {
+      return homeScore === awayScore ? "won" : "lost";
+    }
+  } else if (bet.market === "Over/Under") {
+    const parts = bet.selection.split(" ");
+    const type = parts[0]; // "Over" or "Under"
+    const line = parseFloat(parts[1]);
+    const total = homeScore + awayScore;
+
+    if (type === "Over") {
+      if (total > line) return "won";
+      if (total < line) return "lost";
+      return "void";
+    } else if (type === "Under") {
+      if (total < line) return "won";
+      if (total > line) return "lost";
+      return "void";
+    }
+  } else if (bet.market === "Handicap") {
+    const parts = bet.selection.split(" ");
+    const point = parseFloat(parts[parts.length - 1]);
+    const team = parts.slice(0, -1).join(" ");
+
+    if (team === bet.homeTeam) {
+      const adjusted = homeScore + point;
+      if (adjusted > awayScore) return "won";
+      if (adjusted < awayScore) return "lost";
+      return "void";
+    } else if (team === bet.awayTeam) {
+      const adjusted = awayScore + point;
+      if (adjusted > homeScore) return "won";
+      if (adjusted < homeScore) return "lost";
+      return "void";
+    }
+  }
+
+  return "lost";
+}

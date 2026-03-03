@@ -19,7 +19,6 @@ import {
   updateBet as supabaseUpdateBet,
   deleteBet as supabaseDeleteBet,
   insertTransaction,
-  migrateLocalStorageToSupabase,
 } from "./services/supabase";
 import {
   BetEdge,
@@ -120,14 +119,6 @@ const App: React.FC = () => {
     if (authState !== "unlocked" || dataLoaded) return;
 
     const loadData = async () => {
-      // Try migration first (one-time, only runs if Supabase is empty)
-      const migration = await migrateLocalStorageToSupabase();
-      if (migration.bets > 0 || migration.transactions > 0) {
-        console.log(
-          `Migrated ${migration.bets} bets and ${migration.transactions} transactions to Supabase`,
-        );
-      }
-
       // Load from Supabase
       const [bets, txs] = await Promise.all([
         fetchAllBets(),
@@ -158,6 +149,7 @@ const App: React.FC = () => {
     commission: number,
     selectedExchange: string,
   ) => {
+    if (bankroll <= 0) return;
     const now = Date.now();
     const hoursBeforeKickoff = (bet.kickoff.getTime() - now) / (1000 * 60 * 60);
     let timingBucket: "48hr+" | "24-48hr" | "12-24hr" | "<12hr" = "<12hr";
@@ -229,19 +221,26 @@ const App: React.FC = () => {
       baseKellyStake: baseKellyStake,
     };
 
-    // Optimistic update
-    setTrackedBets((prev) => [...prev, newTrackedBet]);
-    setTransactions((prev) => [...prev, stakeTransaction]);
+    try {
+      // Persist to Supabase first
+      await Promise.all([
+        insertBet(newTrackedBet),
+        insertTransaction(stakeTransaction),
+      ]);
 
-    // Persist to Supabase
-    await Promise.all([
-      insertBet(newTrackedBet),
-      insertTransaction(stakeTransaction),
-    ]);
+      // Only if successful: update local state
+      setTrackedBets((prev) => [...prev, newTrackedBet]);
+      setTransactions((prev) => [...prev, stakeTransaction]);
+    } catch (error) {
+      console.error("Failed to save bet:", error);
+      setErrorMessage("Failed to track bet. Please try again.");
+      throw error;
+    }
   };
 
   const handleUpdateTrackedBet = async (updatedBet: TrackedBet) => {
     const oldBet = trackedBets.find((b) => b.id === updatedBet.id);
+    let transaction: BankrollTransaction | null = null;
 
     // If the bet just settled, create a bankroll transaction
     if (
@@ -250,19 +249,15 @@ const App: React.FC = () => {
       updatedBet.result &&
       updatedBet.kellyPL !== undefined
     ) {
-      // Settlement P/L logic: add back stake + P/L
-      // Since stake was subtracted on track, adding (stake + PL) results in net PL.
       const amount = updatedBet.kellyStake + updatedBet.kellyPL;
-
       const bankrollKey: keyof ExchangeBankroll =
         (updatedBet.exchangeKey as keyof ExchangeBankroll) || "matchbook";
 
       let type: BankrollTransaction["type"] = "bet_win";
       if (updatedBet.result === "lost") type = "bet_loss";
-      else if (updatedBet.result === "void" || updatedBet.result === "push")
-        type = "bet_void";
+      else if (updatedBet.result === "void") type = "bet_void";
 
-      const transaction: BankrollTransaction = {
+      transaction = {
         id: `settle-${updatedBet.id}-${Date.now()}`,
         timestamp: Date.now(),
         exchange: bankrollKey,
@@ -270,33 +265,53 @@ const App: React.FC = () => {
         amount: amount,
         betId: updatedBet.id,
       };
-
-      // Optimistic update
-      setTransactions((prev) => [...prev, transaction]);
-      // Persist to Supabase
-      await insertTransaction(transaction);
     }
 
-    // Optimistic update
-    setTrackedBets((prev) =>
-      prev.map((b) => (b.id === updatedBet.id ? updatedBet : b)),
-    );
-    // Persist to Supabase
-    await supabaseUpdateBet(updatedBet);
+    try {
+      // Persist to Supabase first
+      if (transaction) {
+        await insertTransaction(transaction);
+      }
+      await supabaseUpdateBet(updatedBet);
+
+      // Only if successful: update local state
+      if (transaction) {
+        setTransactions((prev) => [...prev, transaction!]);
+      }
+      setTrackedBets((prev) =>
+        prev.map((b) => (b.id === updatedBet.id ? updatedBet : b)),
+      );
+    } catch (error) {
+      console.error("Failed to save update:", error);
+      setErrorMessage("Failed to save changes to database.");
+      throw error;
+    }
   };
 
   const handleDeleteTrackedBet = async (id: string) => {
-    // Optimistic update
-    setTrackedBets((prev) => prev.filter((b) => b.id !== id));
-    // Persist to Supabase
-    await supabaseDeleteBet(id);
+    try {
+      // Persist to Supabase first
+      await supabaseDeleteBet(id);
+      // Only if successful, update local state
+      setTrackedBets((prev) => prev.filter((b) => b.id !== id));
+    } catch (error) {
+      console.error("Failed to delete bet:", error);
+      setErrorMessage("Failed to delete bet from database.");
+      throw error;
+    }
   };
 
   const handleAddTransaction = async (t: BankrollTransaction) => {
-    // Optimistic update
-    setTransactions((prev) => [...prev, t]);
-    // Persist to Supabase
-    await insertTransaction(t);
+    try {
+      // Persist to Supabase first
+      await insertTransaction(t);
+      // Only if successful, update local state
+      setTransactions((prev) => [...prev, t]);
+    } catch (error) {
+      console.error("Failed to add transaction:", error);
+      setErrorMessage("Failed to save transaction.");
+      throw error;
+    }
   };
 
   // --- Core Logic ---
@@ -446,6 +461,22 @@ const App: React.FC = () => {
           </button>
         </div>
 
+        {/* Global Error Message */}
+        {errorMessage && (
+          <div className="bg-red-500/10 border border-red-500/50 text-red-200 p-4 rounded-xl flex items-center justify-between gap-3 mb-6 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
+              <p className="text-sm font-medium">{errorMessage}</p>
+            </div>
+            <button
+              onClick={() => setErrorMessage("")}
+              className="text-xs font-bold uppercase tracking-wider text-red-400 hover:text-red-300 transition-colors px-2 py-1"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {view === "scanner" ? (
           <>
             {/* Controls */}
@@ -480,14 +511,6 @@ const App: React.FC = () => {
                 )}
               </div>
             </div>
-
-            {/* Main Content Area */}
-            {status === "error" && (
-              <div className="bg-red-500/10 border border-red-500/50 text-red-200 p-4 rounded-xl flex items-center gap-3 mb-6">
-                <AlertTriangle className="w-5 h-5 text-red-500" />
-                {errorMessage}
-              </div>
-            )}
 
             {status === "idle" && (
               <div className="flex flex-col items-center justify-center py-20 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">

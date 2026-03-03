@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { TrackedBet } from "../types";
-import { calculatePL } from "../services/betSettlement";
+import { calculatePL, determineBetResult } from "../services/betSettlement";
 import { LEAGUES } from "../constants";
 import { fetchClosingLine, fetchMatchResult } from "../services/edgeFinder";
 import { RefreshCw, Trophy, Trash2, ChevronDown } from "lucide-react";
@@ -8,8 +8,8 @@ import { RefreshCw, Trophy, Trash2, ChevronDown } from "lucide-react";
 interface Props {
   bets: TrackedBet[];
   apiKey: string;
-  onUpdateBet: (bet: TrackedBet) => void;
-  onDeleteBet: (id: string) => void;
+  onUpdateBet: (bet: TrackedBet) => Promise<void>;
+  onDeleteBet: (id: string) => Promise<void>;
 }
 
 export const BetHistoryView: React.FC<Props> = ({
@@ -63,7 +63,7 @@ export const BetHistoryView: React.FC<Props> = ({
     setLoadingId(null);
 
     if (result) {
-      onUpdateBet({
+      await onUpdateBet({
         ...bet,
         closingRawPrice: result.closingRawPrice,
         closingFairPrice: result.closingFairPrice,
@@ -88,51 +88,12 @@ export const BetHistoryView: React.FC<Props> = ({
     const { homeScore, awayScore } = scoreResult;
     if (homeScore === undefined || awayScore === undefined) return;
 
-    let result: "won" | "lost" | "void" = "lost";
-
-    if (bet.market === "Match Result") {
-      if (bet.selection === bet.homeTeam) {
-        if (homeScore > awayScore) result = "won";
-      } else if (bet.selection === bet.awayTeam) {
-        if (awayScore > homeScore) result = "won";
-      } else if (bet.selection.toLowerCase() === "draw") {
-        if (homeScore === awayScore) result = "won";
-      }
-    } else if (bet.market === "Over/Under") {
-      const parts = bet.selection.split(" ");
-      const type = parts[0];
-      const line = parseFloat(parts[1]);
-      const total = homeScore + awayScore;
-      if (type === "Over") {
-        if (total > line) result = "won";
-        else if (total < line) result = "lost";
-        else result = "void";
-      } else if (type === "Under") {
-        if (total < line) result = "won";
-        else if (total > line) result = "lost";
-        else result = "void";
-      }
-    } else if (bet.market === "Handicap") {
-      const parts = bet.selection.split(" ");
-      const point = parseFloat(parts[parts.length - 1]);
-      const team = parts.slice(0, -1).join(" ");
-      if (team === bet.homeTeam) {
-        const adjusted = homeScore + point;
-        if (adjusted > awayScore) result = "won";
-        else if (adjusted < awayScore) result = "lost";
-        else result = "void";
-      } else if (team === bet.awayTeam) {
-        const adjusted = awayScore + point;
-        if (adjusted > homeScore) result = "won";
-        else if (adjusted < homeScore) result = "lost";
-        else result = "void";
-      }
-    }
+    const result = determineBetResult(bet, homeScore, awayScore);
 
     // Use per-bet commission for P/L calculation
     const { kellyPL } = calculatePL(bet, result);
 
-    onUpdateBet({
+    await onUpdateBet({
       ...bet,
       result,
       homeScore,
@@ -170,7 +131,6 @@ export const BetHistoryView: React.FC<Props> = ({
       if (resultFilter === "Won" && res !== "won") return false;
       if (resultFilter === "Lost" && res !== "lost") return false;
       if (resultFilter === "Void" && res !== "void") return false;
-      if (resultFilter === "Push" && res !== "push") return false;
     }
     return true;
   });
@@ -298,7 +258,6 @@ export const BetHistoryView: React.FC<Props> = ({
               <option>Won</option>
               <option>Lost</option>
               <option>Void</option>
-              <option>Push</option>
               <option>Open</option>
             </select>
             <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
@@ -369,11 +328,6 @@ export const BetHistoryView: React.FC<Props> = ({
                       {bet.result === "void" && (
                         <span className="text-slate-400 font-bold uppercase text-xs">
                           Void
-                        </span>
-                      )}
-                      {bet.result === "push" && (
-                        <span className="text-slate-400 font-bold uppercase text-xs">
-                          Push
                         </span>
                       )}
                       {!bet.result && (
