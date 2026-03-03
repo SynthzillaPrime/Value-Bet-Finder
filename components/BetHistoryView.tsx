@@ -3,7 +3,7 @@ import { TrackedBet } from "../types";
 import { calculatePL, determineBetResult } from "../services/betSettlement";
 import { LEAGUES } from "../constants";
 import { fetchClosingLine, fetchMatchResult } from "../services/edgeFinder";
-import { RefreshCw, Trophy, Trash2, ChevronDown } from "lucide-react";
+import { RefreshCw, Trophy, Trash2, ChevronDown, Download } from "lucide-react";
 
 interface Props {
   bets: TrackedBet[];
@@ -46,6 +46,70 @@ export const BetHistoryView: React.FC<Props> = ({
   // Pagination state
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 25;
+
+  const exportBetsToCSV = (targetBets: TrackedBet[]) => {
+    const headers = [
+      "Date",
+      "Match",
+      "Competition",
+      "Selection",
+      "Market",
+      "Exchange",
+      "Odds",
+      "True Odds",
+      "Edge %",
+      "Commission %",
+      "Kelly Stake",
+      "Result",
+      "Kelly P/L",
+      "CLV %",
+      "Closing Odds",
+      "Timing Bucket",
+      "Placed At",
+    ];
+
+    const rows = targetBets.map((bet) => {
+      const kickoffDate = new Date(bet.kickoff);
+      const placedDate = new Date(bet.placedAt);
+      const competition =
+        LEAGUES.find((l) => l.key === bet.sportKey)?.name || bet.sport;
+
+      return [
+        kickoffDate.toLocaleDateString("en-GB"),
+        `"${bet.match}"`,
+        competition,
+        bet.selection,
+        bet.market,
+        bet.exchangeName,
+        bet.exchangePrice.toFixed(2),
+        bet.fairPrice.toFixed(2),
+        (bet.baseNetEdgePercent ?? bet.netEdgePercent).toFixed(1),
+        bet.commission ?? 0,
+        bet.kellyStake.toFixed(2),
+        bet.result || "open",
+        bet.kellyPL !== undefined ? bet.kellyPL.toFixed(2) : "",
+        bet.clvPercent !== undefined ? bet.clvPercent.toFixed(2) : "",
+        bet.closingFairPrice !== undefined
+          ? bet.closingFairPrice.toFixed(2)
+          : "",
+        bet.timingBucket,
+        `${placedDate.toLocaleDateString("en-GB")} ${placedDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })}`,
+      ];
+    });
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const dateStr = new Date().toISOString().split("T")[0];
+    link.setAttribute("href", url);
+    link.setAttribute("download", `vbf-bets-${dateStr}.csv`);
+    link.click();
+  };
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -154,6 +218,29 @@ export const BetHistoryView: React.FC<Props> = ({
             <p className="text-sm text-slate-500 mt-1">
               {bets.length} total · {filteredBets.length} shown
             </p>
+          </div>
+
+          <div className="relative">
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value === "all") exportBetsToCSV(bets);
+                if (e.target.value === "filtered") exportBetsToCSV(sortedBets);
+                e.target.value = "";
+              }}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-emerald-400 outline-none appearance-none cursor-pointer pr-8 min-w-[115px] transition-all shadow-lg shadow-emerald-900/20"
+            >
+              <option value="" disabled className="bg-slate-900 text-slate-400">
+                Export
+              </option>
+              <option value="all" className="bg-slate-900 text-white">
+                Export All
+              </option>
+              <option value="filtered" className="bg-slate-900 text-white">
+                Export Filtered
+              </option>
+            </select>
+            <Download className="absolute right-2.5 top-2.5 w-3.5 h-3.5 text-white pointer-events-none" />
           </div>
         </div>
 

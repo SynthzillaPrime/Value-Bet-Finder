@@ -6,6 +6,7 @@ import { AnalysisView } from "./components/AnalysisView";
 import { BankrollView } from "./components/bankroll/BankrollView";
 import { OpenBetsView } from "./components/OpenBetsView";
 import { BetHistoryView } from "./components/BetHistoryView";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { PinLock } from "./components/PinLock";
 import {
   isPinSetUp,
@@ -193,112 +194,124 @@ const App: React.FC = () => {
         )}
 
         {view === "scanner" ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            <div className="lg:col-span-8 space-y-6">
-              <div className="flex items-center justify-between bg-slate-900/40 p-5 rounded-2xl border border-slate-800/50 backdrop-blur-sm">
-                <div className="flex items-center gap-4 text-slate-400">
-                  <div className="flex flex-col text-center md:text-left">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-0.5">
-                      Last Scan
-                    </span>
-                    <span className="text-sm font-mono font-medium text-slate-300">
-                      {lastUpdated ? lastUpdated.toLocaleTimeString() : "Never"}
-                    </span>
+          <ErrorBoundary key="scanner" fallbackLabel="Scanner">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              <div className="lg:col-span-8 space-y-6">
+                <div className="flex items-center justify-between bg-slate-900/40 p-5 rounded-2xl border border-slate-800/50 backdrop-blur-sm">
+                  <div className="flex items-center gap-4 text-slate-400">
+                    <div className="flex flex-col text-center md:text-left">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-0.5">
+                        Last Scan
+                      </span>
+                      <span className="text-sm font-mono font-medium text-slate-300">
+                        {lastUpdated
+                          ? lastUpdated.toLocaleTimeString()
+                          : "Never"}
+                      </span>
+                    </div>
+                    <div className="hidden md:block w-px h-8 bg-slate-800/50" />
+                    <div className="flex flex-col text-center md:text-left">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-0.5">
+                        Found
+                      </span>
+                      <span className="text-sm font-mono font-medium text-slate-300">
+                        {bets.length} Edges
+                      </span>
+                    </div>
                   </div>
-                  <div className="hidden md:block w-px h-8 bg-slate-800/50" />
-                  <div className="flex flex-col text-center md:text-left">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-0.5">
-                      Found
-                    </span>
-                    <span className="text-sm font-mono font-medium text-slate-300">
-                      {bets.length} Edges
-                    </span>
+
+                  <div className="flex items-center gap-3">
+                    {status === "no-key" && (
+                      <ApiKeyInput onSave={handleSaveKey} />
+                    )}
+                    <button
+                      onClick={runScan}
+                      disabled={status === "loading" || status === "no-key"}
+                      className={`flex items-center gap-2.5 px-6 py-3 rounded-xl font-bold transition-all ${
+                        status === "loading" || status === "no-key"
+                          ? "opacity-40 cursor-not-allowed bg-slate-800"
+                          : "bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-lg shadow-emerald-500/20 active:scale-95"
+                      }`}
+                    >
+                      <RefreshCw
+                        className={`w-4.5 h-4.5 ${status === "loading" ? "animate-spin" : ""}`}
+                      />
+                      {status === "loading" ? "Scanning..." : "Run Scan"}
+                    </button>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  {status === "no-key" && (
-                    <ApiKeyInput onSave={handleSaveKey} />
-                  )}
-                  <button
-                    onClick={runScan}
-                    disabled={status === "loading" || status === "no-key"}
-                    className={`flex items-center gap-2.5 px-6 py-3 rounded-xl font-bold transition-all ${
-                      status === "loading" || status === "no-key"
-                        ? "opacity-40 cursor-not-allowed bg-slate-800"
-                        : "bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-lg shadow-emerald-500/20 active:scale-95"
-                    }`}
-                  >
-                    <RefreshCw
-                      className={`w-4.5 h-4.5 ${status === "loading" ? "animate-spin" : ""}`}
-                    />
-                    {status === "loading" ? "Scanning..." : "Run Scan"}
-                  </button>
-                </div>
+                {status === "loading" ? (
+                  <div className="flex flex-col items-center justify-center py-24 bg-slate-900/20 rounded-[2rem] border-2 border-dashed border-slate-800/50">
+                    <div className="relative">
+                      <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
+                      <Search className="w-6 h-6 text-emerald-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                    </div>
+                    <p className="mt-6 text-slate-400 font-medium animate-pulse">
+                      Scanning exchange markets...
+                    </p>
+                  </div>
+                ) : status === "empty" ? (
+                  <div className="text-center py-20 bg-slate-900/20 rounded-[2rem] border-2 border-dashed border-slate-800/50">
+                    <p className="text-slate-400 font-medium">
+                      No value bets found for selected leagues.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {bets.map((bet) => (
+                      <BetCard
+                        key={bet.id}
+                        bet={bet}
+                        onTrack={handleTrackBet}
+                        isTracked={trackedBets.some((tb) => tb.id === bet.id)}
+                        bankroll={bankroll}
+                        exchangeBankrolls={exchangeBankrolls}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {status === "loading" ? (
-                <div className="flex flex-col items-center justify-center py-24 bg-slate-900/20 rounded-[2rem] border-2 border-dashed border-slate-800/50">
-                  <div className="relative">
-                    <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
-                    <Search className="w-6 h-6 text-emerald-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                  </div>
-                  <p className="mt-6 text-slate-400 font-medium animate-pulse">
-                    Scanning exchange markets...
-                  </p>
-                </div>
-              ) : status === "empty" ? (
-                <div className="text-center py-20 bg-slate-900/20 rounded-[2rem] border-2 border-dashed border-slate-800/50">
-                  <p className="text-slate-400 font-medium">
-                    No value bets found for selected leagues.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {bets.map((bet) => (
-                    <BetCard
-                      key={bet.id}
-                      bet={bet}
-                      onTrack={handleTrackBet}
-                      isTracked={trackedBets.some((tb) => tb.id === bet.id)}
-                      bankroll={bankroll}
-                      exchangeBankrolls={exchangeBankrolls}
-                    />
-                  ))}
-                </div>
-              )}
+              <aside className="lg:col-span-4 sticky top-8">
+                <LeagueSelector
+                  selected={selectedLeagues}
+                  onChange={setSelectedLeagues}
+                  disabled={status === "loading"}
+                />
+              </aside>
             </div>
-
-            <aside className="lg:col-span-4 sticky top-8">
-              <LeagueSelector
-                selected={selectedLeagues}
-                onChange={setSelectedLeagues}
-                disabled={status === "loading"}
-              />
-            </aside>
-          </div>
+          </ErrorBoundary>
         ) : view === "openbets" ? (
-          <OpenBetsView
-            apiKey={apiKey || ""}
-            bets={trackedBets}
-            onUpdateBet={handleUpdateTrackedBet}
-            onDeleteBet={handleDeleteTrackedBet}
-          />
+          <ErrorBoundary key="openbets" fallbackLabel="Open Bets">
+            <OpenBetsView
+              apiKey={apiKey || ""}
+              bets={trackedBets}
+              onUpdateBet={handleUpdateTrackedBet}
+              onDeleteBet={handleDeleteTrackedBet}
+            />
+          </ErrorBoundary>
         ) : view === "history" ? (
-          <BetHistoryView
-            apiKey={apiKey || ""}
-            bets={trackedBets}
-            onUpdateBet={handleUpdateTrackedBet}
-            onDeleteBet={handleDeleteTrackedBet}
-          />
+          <ErrorBoundary key="history" fallbackLabel="History">
+            <BetHistoryView
+              apiKey={apiKey || ""}
+              bets={trackedBets}
+              onUpdateBet={handleUpdateTrackedBet}
+              onDeleteBet={handleDeleteTrackedBet}
+            />
+          </ErrorBoundary>
         ) : view === "analysis" ? (
-          <AnalysisView bets={trackedBets} />
+          <ErrorBoundary key="analysis" fallbackLabel="Analysis">
+            <AnalysisView bets={trackedBets} />
+          </ErrorBoundary>
         ) : (
-          <BankrollView
-            transactions={transactions}
-            exchangeBankrolls={exchangeBankrolls}
-            onAddTransaction={handleAddTransaction}
-          />
+          <ErrorBoundary key="bankroll" fallbackLabel="Bankroll">
+            <BankrollView
+              transactions={transactions}
+              exchangeBankrolls={exchangeBankrolls}
+              onAddTransaction={handleAddTransaction}
+            />
+          </ErrorBoundary>
         )}
 
         <footer className="mt-12 pb-8 flex justify-center">
