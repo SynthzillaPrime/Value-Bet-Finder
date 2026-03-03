@@ -179,34 +179,28 @@ export const fetchAllBets = async (): Promise<TrackedBet[]> => {
   return (data || []).map(rowToBet);
 };
 
-export const insertBet = async (bet: TrackedBet): Promise<boolean> => {
+export const insertBet = async (bet: TrackedBet): Promise<void> => {
   const { error } = await supabase.from("tracked_bets").insert(betToRow(bet));
   if (error) {
-    console.error("Failed to insert bet", error);
-    return false;
+    throw new Error("Failed to insert bet: " + error.message);
   }
-  return true;
 };
 
-export const updateBet = async (bet: TrackedBet): Promise<boolean> => {
+export const updateBet = async (bet: TrackedBet): Promise<void> => {
   const { error } = await supabase
     .from("tracked_bets")
     .update(betToRow(bet))
     .eq("id", bet.id);
   if (error) {
-    console.error("Failed to update bet", error);
-    return false;
+    throw new Error("Failed to update bet: " + error.message);
   }
-  return true;
 };
 
-export const deleteBet = async (id: string): Promise<boolean> => {
+export const deleteBet = async (id: string): Promise<void> => {
   const { error } = await supabase.from("tracked_bets").delete().eq("id", id);
   if (error) {
-    console.error("Failed to delete bet", error);
-    return false;
+    throw new Error("Failed to delete bet: " + error.message);
   }
-  return true;
 };
 
 // ============================================
@@ -250,13 +244,11 @@ export const fetchAllTransactions = async (): Promise<
 
 export const insertTransaction = async (
   tx: BankrollTransaction,
-): Promise<boolean> => {
+): Promise<void> => {
   const { error } = await supabase
     .from("bankroll_transactions")
     .insert(txToRow(tx));
   if (error) {
-    console.error("Failed to insert transaction", error);
-    return false;
+    throw new Error("Failed to insert transaction: " + error.message);
   }
-  return true;
 };

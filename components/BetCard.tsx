@@ -275,6 +275,13 @@ export const BetCard: React.FC<Props> = ({
                   </button>
                   <button
                     disabled={isTracking}
+                    onClick={() => handleCommissionSelect(0.75)}
+                    className="px-2.5 py-1.5 text-xs font-bold rounded-md bg-indigo-900/30 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-900/50 transition-colors disabled:opacity-50"
+                  >
+                    0.75%
+                  </button>
+                  <button
+                    disabled={isTracking}
                     onClick={() => handleCommissionSelect(2)}
                     className="px-2.5 py-1.5 text-xs font-bold rounded-md bg-amber-900/30 text-amber-400 border border-amber-500/30 hover:bg-amber-900/50 transition-colors disabled:opacity-50"
                   >

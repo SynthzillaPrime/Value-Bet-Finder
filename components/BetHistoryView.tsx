@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { TrackedBet } from "../types";
 import { LEAGUES } from "../constants";
-import { RefreshCw, Trophy, Trash2, ChevronDown, Download } from "lucide-react";
+import { Trophy, Trash2, ChevronDown, Download } from "lucide-react";
 
 interface Props {
   bets: TrackedBet[];
@@ -130,9 +130,9 @@ export const BetHistoryView: React.FC<Props> = ({
         return false;
     }
     if (clvFilter !== "All CLV") {
-      if (clvFilter === "Positive CLV" && !((bet.clvPercent || 0) > 0))
+      if (clvFilter === "Positive CLV" && !((bet.clvPercent ?? 0) > 0))
         return false;
-      if (clvFilter === "Negative CLV" && !((bet.clvPercent || 0) < 0))
+      if (clvFilter === "Negative CLV" && !((bet.clvPercent ?? 0) < 0))
         return false;
       if (clvFilter === "No CLV" && bet.clvPercent !== undefined) return false;
     }
@@ -440,23 +440,6 @@ export const BetHistoryView: React.FC<Props> = ({
                           ))}
                         </div>
 
-                        <button
-                          onClick={async () => {
-                            setLoadingId(bet.id);
-                            try {
-                              await onSettleBet(bet.id);
-                            } finally {
-                              setLoadingId(null);
-                            }
-                          }}
-                          disabled={!hasStarted || loadingId === bet.id}
-                          className="p-2 text-blue-400 hover:bg-slate-700 rounded disabled:opacity-30"
-                          title="Fetch CLV"
-                        >
-                          <RefreshCw
-                            className={`w-4 h-4 ${loadingId === bet.id ? "animate-spin" : ""}`}
-                          />
-                        </button>
                         <button
                           onClick={async () => {
                             setLoadingId(bet.id + "-result");

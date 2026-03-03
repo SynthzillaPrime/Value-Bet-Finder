@@ -107,7 +107,9 @@ export const BankrollView: React.FC<Props> = ({
     .filter((t) => t.type === "adjustment")
     .reduce((sum, t) => sum + t.amount, 0);
   const pl = transactions
-    .filter((t) => ["bet_win", "bet_loss", "bet_void"].includes(t.type))
+    .filter((t) =>
+      ["bet_placed", "bet_win", "bet_loss", "bet_void"].includes(t.type),
+    )
     .reduce((sum, t) => sum + t.amount, 0);
 
   return (
@@ -306,6 +308,7 @@ export const BankrollView: React.FC<Props> = ({
                     <option>All Types</option>
                     <option>Deposit</option>
                     <option>Withdrawal</option>
+                    <option>Bet Placed</option>
                     <option>Bet Win</option>
                     <option>Bet Loss</option>
                     <option>Bet Void</option>

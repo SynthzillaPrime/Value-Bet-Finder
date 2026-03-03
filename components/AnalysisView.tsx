@@ -327,7 +327,7 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={(value) => `£${value}`}
-                      domain={[0, "auto"]}
+                      domain={["auto", "auto"]}
                     />
                     <Tooltip
                       contentStyle={{
@@ -338,9 +338,8 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                       }}
                       itemStyle={{ color: "#f8fafc" }}
                       labelFormatter={(val) => `Bet #${val}`}
-                      formatter={(value: number | undefined) => {
-                        if (value === undefined) return null;
-                        return [`£${value.toFixed(2)}`, "Bankroll"];
+                      formatter={(value: any) => {
+                        return [`£${Number(value).toFixed(2)}`, "Bankroll"];
                       }}
                     />
                     <Area
@@ -458,7 +457,7 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={(value) => `£${value}`}
-                      domain={[0, "auto"]}
+                      domain={["auto", "auto"]}
                     />
                     <Tooltip
                       contentStyle={{
@@ -469,9 +468,8 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                       }}
                       itemStyle={{ color: "#f8fafc" }}
                       labelFormatter={(val) => `Bet #${val}`}
-                      formatter={(value: number | undefined) => {
-                        if (value === undefined) return null;
-                        return [`£${value.toFixed(2)}`];
+                      formatter={(value: any) => {
+                        return [`£${Number(value).toFixed(2)}`, "Profit/Loss"];
                       }}
                     />
                     <Legend verticalAlign="top" height={36} />
@@ -626,9 +624,8 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                         color: "#f8fafc",
                       }}
                       itemStyle={{ color: "#f8fafc" }}
-                      formatter={(value: number | undefined) => {
-                        if (value === undefined) return null;
-                        return [`${value.toFixed(2)}%`, "CLV"];
+                      formatter={(value: any) => {
+                        return [`${Number(value).toFixed(2)}%`, "CLV"];
                       }}
                     />
                     <ReferenceLine
