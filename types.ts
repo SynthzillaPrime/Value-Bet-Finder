@@ -85,7 +85,6 @@ export interface TrackedBet extends BetEdge {
 
   kellyStake: number;
   kellyPL?: number;
-  flatPL?: number;
 
   // Base edge/kelly calculated at permanent 2% commission — used for analysis
   baseNetEdgePercent?: number;
@@ -127,4 +126,10 @@ export interface LeagueOption {
   name: string;
 }
 
-export type FetchStatus = "idle" | "loading" | "success" | "error" | "no-key";
+export type FetchStatus =
+  | "idle"
+  | "loading"
+  | "success"
+  | "error"
+  | "no-key"
+  | "empty";

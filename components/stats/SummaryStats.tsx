@@ -43,20 +43,19 @@ export const SummaryStats: React.FC<Props> = ({ bets }) => {
   // 5. Avg CLV
   const avgClv =
     clvBets.length > 0
-      ? clvBets.reduce((acc, b) => acc + (b.clvPercent || 0), 0) /
-        clvBets.length
+      ? clvBets.reduce((s, b) => s + (b.clvPercent ?? 0), 0) / clvBets.length
       : 0;
-  const beatCloseCount = clvBets.filter((b) => (b.clvPercent || 0) > 0).length;
+  const beatCloseCount = clvBets.filter((b) => (b.clvPercent ?? 0) > 0).length;
   const beatCloseRate =
     clvBets.length > 0 ? (beatCloseCount / clvBets.length) * 100 : 0;
 
   // 6. Kelly Stats
   const totalKellyPL = settledBets.reduce(
-    (acc, b) => acc + (b.kellyPL || 0),
+    (acc, b) => acc + (b.kellyPL ?? 0),
     0,
   );
   const totalKellyStakes = settledBets.reduce(
-    (acc, b) => acc + (b.kellyStake || 0),
+    (acc, b) => acc + (b.kellyStake ?? 0),
     0,
   );
   const isKellyStaked = totalKellyStakes >= 0.01;
