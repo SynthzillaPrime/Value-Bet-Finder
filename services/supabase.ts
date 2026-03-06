@@ -88,7 +88,6 @@ const betToRow = (bet: TrackedBet): Record<string, any> => ({
   sport_key: bet.sportKey,
   selection: bet.selection,
   market: bet.market,
-  exchange: bet.exchangeKey,
   exchange_key: bet.exchangeKey,
   exchange_name: bet.exchangeName,
   exchange_price: bet.exchangePrice,
@@ -245,13 +244,12 @@ export const fetchAllTransactions = async (): Promise<
 
 export const insertTransaction = async (
   tx: BankrollTransaction,
-): Promise<boolean> => {
+): Promise<void> => {
   const { error } = await supabase
     .from("bankroll_transactions")
     .insert(txToRow(tx));
+
   if (error) {
-    console.error("Failed to insert transaction:", error);
-    return false;
+    throw new Error("Failed to insert transaction: " + error.message);
   }
-  return true;
 };

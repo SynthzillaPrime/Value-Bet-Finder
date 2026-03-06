@@ -35,11 +35,13 @@ export const useBankroll = (onError: (msg: string) => void) => {
    * Throws error so callers can handle it.
    */
   const addTransactionDirect = useCallback(async (t: BankrollTransaction) => {
-    const success = await insertTransaction(t);
-    if (!success) {
-      throw new Error("Failed to insert transaction into Supabase");
+    try {
+      await insertTransaction(t);
+      setTransactions((prev) => [...prev, t]);
+    } catch (error) {
+      console.error("Failed to insert transaction:", error);
+      throw error;
     }
-    setTransactions((prev) => [...prev, t]);
   }, []);
 
   /**
@@ -56,7 +58,7 @@ export const useBankroll = (onError: (msg: string) => void) => {
         throw error;
       }
     },
-    [addTransactionDirect, onError]
+    [addTransactionDirect, onError],
   );
 
   return {

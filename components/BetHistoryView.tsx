@@ -341,7 +341,7 @@ export const BetHistoryView: React.FC<Props> = ({
                         {bet.homeTeam} vs {bet.awayTeam}
                       </div>
                       <div className="text-[10px] text-slate-500 uppercase mt-0.5">
-                        {bet.selection} ({bet.market})
+                        {bet.selection}
                       </div>
                     </td>
                     <td className="p-4 text-right">

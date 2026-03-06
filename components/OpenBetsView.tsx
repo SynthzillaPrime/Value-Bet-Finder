@@ -26,34 +26,6 @@ export const OpenBetsView: React.FC<Props> = ({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [fetchingCLVId, setFetchingCLVId] = useState<string | null>(null);
-
-  const handleFetchCLV = async (bet: TrackedBet) => {
-    if (new Date() < new Date(bet.kickoff)) {
-      return;
-    }
-
-    if (bet.clvPercent !== undefined) return;
-    setFetchingCLVId(bet.id);
-    try {
-      await onSettleBet(bet.id);
-    } finally {
-      setFetchingCLVId(null);
-    }
-  };
-
-  const handleDeleteClick = (id: string) => {
-    if (confirmDeleteId === id) {
-      onDeleteBet(id);
-      setConfirmDeleteId(null);
-      if (deleteTimeoutRef.current) clearTimeout(deleteTimeoutRef.current);
-    } else {
-      setConfirmDeleteId(id);
-      if (deleteTimeoutRef.current) clearTimeout(deleteTimeoutRef.current);
-      deleteTimeoutRef.current = setTimeout(() => {
-        setConfirmDeleteId(null);
-      }, 3000);
-    }
-  };
   const [settlingAll, setSettlingAll] = useState(false);
   const [settleProgress, setSettleProgress] = useState<{
     current: number;
@@ -77,6 +49,31 @@ export const OpenBetsView: React.FC<Props> = ({
   const upcoming = openBets.filter(
     (b) => new Date(b.kickoff).getTime() > now.getTime(),
   );
+
+  const handleFetchCLV = async (bet: TrackedBet) => {
+    if (new Date() < new Date(bet.kickoff)) return;
+    if (bet.clvPercent !== undefined) return;
+    setFetchingCLVId(bet.id);
+    try {
+      await onSettleBet(bet.id);
+    } finally {
+      setFetchingCLVId(null);
+    }
+  };
+
+  const handleDeleteClick = (id: string) => {
+    if (confirmDeleteId === id) {
+      onDeleteBet(id);
+      setConfirmDeleteId(null);
+      if (deleteTimeoutRef.current) clearTimeout(deleteTimeoutRef.current);
+    } else {
+      setConfirmDeleteId(id);
+      if (deleteTimeoutRef.current) clearTimeout(deleteTimeoutRef.current);
+      deleteTimeoutRef.current = setTimeout(() => {
+        setConfirmDeleteId(null);
+      }, 3000);
+    }
+  };
 
   const handleSettleSingle = async (bet: TrackedBet) => {
     setSettlingId(bet.id);
@@ -104,18 +101,22 @@ export const OpenBetsView: React.FC<Props> = ({
   };
 
   const formatKickoff = (kickoff: Date) => {
-    const d = new Date(kickoff);
-    return d.toLocaleString("en-GB", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return (
+      kickoff.toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "2-digit",
+        month: "short",
+      }) +
+      ", " +
+      kickoff.toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    );
   };
 
   const getTimeStatus = (kickoff: Date) => {
-    const kickoffMs = new Date(kickoff).getTime();
+    const kickoffMs = kickoff.getTime();
     const nowMs = now.getTime();
 
     if (nowMs < kickoffMs) {
@@ -154,7 +155,6 @@ export const OpenBetsView: React.FC<Props> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-white">Open Bets</h2>
@@ -185,213 +185,228 @@ export const OpenBetsView: React.FC<Props> = ({
         </button>
       </div>
 
-      {/* Ready to Settle */}
-      {readyToSettle.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            Ready to Settle
-          </h3>
-          <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-emerald-500/20">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider">
-                  <th className="p-4 font-medium">Match</th>
-                  <th className="p-4 font-medium text-right">Exchange</th>
-                  <th className="p-4 font-medium text-right">Odds</th>
-                  <th className="p-4 font-medium text-right">Edge %</th>
-                  <th className="p-4 font-medium text-right">Kelly Stake</th>
-                  <th className="p-4 font-medium text-right">Comm.</th>
-                  <th className="p-4 font-medium text-right">Date</th>
-                  <th className="p-4 font-medium text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm text-slate-300">
-                {readyToSettle.map((bet) => (
-                  <BetRow
-                    key={bet.id}
-                    bet={bet}
-                    timeStatus={getTimeStatus(bet.kickoff)}
-                    formatKickoff={formatKickoff}
-                    settling={settlingId === bet.id || settlingAll}
-                    onSettle={() => handleSettleSingle(bet)}
-                    fetchingCLV={fetchingCLVId === bet.id}
-                    onFetchCLV={() => handleFetchCLV(bet)}
-                    isConfirming={confirmDeleteId === bet.id}
-                    onDelete={() => handleDeleteClick(bet.id)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      <div className="bg-slate-900/50 border border-slate-800/50 rounded-2xl overflow-hidden backdrop-blur-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-800/50 text-[10px] uppercase tracking-wider font-bold text-slate-500">
+                <th className="px-6 py-3 border-b border-slate-800/50">
+                  Match
+                </th>
+                <th className="px-6 py-3 border-b border-slate-800/50">
+                  Selection
+                </th>
+                <th className="px-6 py-3 border-b border-slate-800/50">
+                  Exchange
+                </th>
+                <th className="px-6 py-3 border-b border-slate-800/50 text-right">
+                  Odds
+                </th>
+                <th className="px-6 py-3 border-b border-slate-800/50 text-right">
+                  Edge
+                </th>
+                <th className="px-6 py-3 border-b border-slate-800/50 text-right">
+                  Stake
+                </th>
+                <th className="px-6 py-3 border-b border-slate-800/50 text-right">
+                  Comm.
+                </th>
+                <th className="px-6 py-3 border-b border-slate-800/50 text-center">
+                  Action
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/50">
+              {/* Ready to Settle Section */}
+              {readyToSettle.length > 0 && (
+                <>
+                  <tr className="bg-emerald-500/5">
+                    <td
+                      colSpan={8}
+                      className="px-6 py-2 border-b border-slate-800/50"
+                    >
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Ready to Settle
+                      </div>
+                    </td>
+                  </tr>
+                  {readyToSettle.map((bet) => (
+                    <BetRow
+                      key={bet.id}
+                      bet={bet}
+                      timeStatus={getTimeStatus(bet.kickoff)}
+                      formatKickoff={formatKickoff}
+                      onSettle={() => handleSettleSingle(bet)}
+                      settling={settlingId === bet.id || settlingAll}
+                      fetchingCLV={fetchingCLVId === bet.id}
+                      onFetchCLV={() => handleFetchCLV(bet)}
+                      isConfirming={confirmDeleteId === bet.id}
+                      onDelete={() => handleDeleteClick(bet.id)}
+                    />
+                  ))}
+                </>
+              )}
 
-      {/* In Play */}
-      {inPlay.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-xs font-bold text-yellow-400 uppercase tracking-wider flex items-center gap-2">
-            <AlertCircle className="w-3.5 h-3.5" />
-            In Play — settle after full time
-          </h3>
-          <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-yellow-500/20">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider">
-                  <th className="p-4 font-medium">Match</th>
-                  <th className="p-4 font-medium text-right">Exchange</th>
-                  <th className="p-4 font-medium text-right">Odds</th>
-                  <th className="p-4 font-medium text-right">Edge %</th>
-                  <th className="p-4 font-medium text-right">Kelly Stake</th>
-                  <th className="p-4 font-medium text-right">Comm.</th>
-                  <th className="p-4 font-medium text-right">Date</th>
-                  <th className="p-4 font-medium text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm text-slate-300">
-                {inPlay.map((bet) => (
-                  <BetRow
-                    key={bet.id}
-                    bet={bet}
-                    timeStatus={getTimeStatus(bet.kickoff)}
-                    formatKickoff={formatKickoff}
-                    settling={false}
-                    onSettle={null}
-                    fetchingCLV={fetchingCLVId === bet.id}
-                    onFetchCLV={() => handleFetchCLV(bet)}
-                    isConfirming={confirmDeleteId === bet.id}
-                    onDelete={() => handleDeleteClick(bet.id)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+              {/* In Play Section */}
+              {inPlay.length > 0 && (
+                <>
+                  <tr className="bg-yellow-500/5">
+                    <td
+                      colSpan={8}
+                      className="px-6 py-2 border-b border-slate-800/50"
+                    >
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-yellow-400 uppercase tracking-widest">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        In Play — settle after full time
+                      </div>
+                    </td>
+                  </tr>
+                  {inPlay.map((bet) => (
+                    <BetRow
+                      key={bet.id}
+                      bet={bet}
+                      timeStatus={getTimeStatus(bet.kickoff)}
+                      formatKickoff={formatKickoff}
+                      onSettle={null}
+                      settling={false}
+                      fetchingCLV={fetchingCLVId === bet.id}
+                      onFetchCLV={() => handleFetchCLV(bet)}
+                      isConfirming={confirmDeleteId === bet.id}
+                      onDelete={() => handleDeleteClick(bet.id)}
+                    />
+                  ))}
+                </>
+              )}
 
-      {/* Upcoming */}
-      {upcoming.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5" />
-            Upcoming
-          </h3>
-          <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider">
-                  <th className="p-4 font-medium">Match</th>
-                  <th className="p-4 font-medium text-right">Exchange</th>
-                  <th className="p-4 font-medium text-right">Odds</th>
-                  <th className="p-4 font-medium text-right">Edge %</th>
-                  <th className="p-4 font-medium text-right">Kelly Stake</th>
-                  <th className="p-4 font-medium text-right">Comm.</th>
-                  <th className="p-4 font-medium text-right">Date</th>
-                  <th className="p-4 font-medium text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm text-slate-300">
-                {upcoming.map((bet) => (
-                  <BetRow
-                    key={bet.id}
-                    bet={bet}
-                    timeStatus={getTimeStatus(bet.kickoff)}
-                    formatKickoff={formatKickoff}
-                    settling={false}
-                    onSettle={null}
-                    fetchingCLV={fetchingCLVId === bet.id}
-                    onFetchCLV={() => handleFetchCLV(bet)}
-                    isConfirming={confirmDeleteId === bet.id}
-                    onDelete={() => handleDeleteClick(bet.id)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+              {/* Upcoming Section */}
+              {upcoming.length > 0 && (
+                <>
+                  <tr className="bg-slate-800/20">
+                    <td
+                      colSpan={8}
+                      className="px-6 py-2 border-b border-slate-800/50"
+                    >
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                        <Clock className="w-3.5 h-3.5" />
+                        Upcoming
+                      </div>
+                    </td>
+                  </tr>
+                  {upcoming.map((bet) => (
+                    <BetRow
+                      key={bet.id}
+                      bet={bet}
+                      timeStatus={getTimeStatus(bet.kickoff)}
+                      formatKickoff={formatKickoff}
+                      onSettle={null}
+                      settling={false}
+                      fetchingCLV={fetchingCLVId === bet.id}
+                      onFetchCLV={() => handleFetchCLV(bet)}
+                      isConfirming={confirmDeleteId === bet.id}
+                      onDelete={() => handleDeleteClick(bet.id)}
+                    />
+                  ))}
+                </>
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
     </div>
   );
 };
-
-// ---- Reusable row component ----
 
 interface BetRowProps {
   bet: TrackedBet;
   timeStatus: { label: string; color: string };
   formatKickoff: (d: Date) => string;
-  settling: boolean;
   onSettle: (() => void) | null;
-  fetchingCLV?: boolean;
-  onFetchCLV?: () => void;
-  onDelete: () => void;
+  settling: boolean;
+  fetchingCLV: boolean;
+  onFetchCLV: () => void;
   isConfirming: boolean;
+  onDelete: () => void;
 }
 
 const BetRow: React.FC<BetRowProps> = ({
   bet,
   timeStatus,
   formatKickoff,
-  settling,
   onSettle,
+  settling,
   fetchingCLV,
   onFetchCLV,
-  onDelete,
   isConfirming,
+  onDelete,
 }) => {
+  const edge = bet.baseNetEdgePercent ?? bet.netEdgePercent;
   const hasStarted = new Date() >= new Date(bet.kickoff);
 
   return (
-    <tr className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
-      <td className="p-4">
-        <div className="font-semibold text-slate-200">
+    <tr className="group hover:bg-slate-800/30 transition-colors">
+      <td className="px-6 py-4">
+        <div className="font-medium text-slate-200">
           {bet.homeTeam} vs {bet.awayTeam}
         </div>
-        <div className="text-[10px] text-slate-500 uppercase mt-0.5">
-          {bet.selection} ({bet.market})
+        <div className="flex flex-col mt-1">
+          <span className="text-[10px] font-bold uppercase text-slate-500">
+            {bet.sport}
+          </span>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-[11px] text-slate-500">
+              {formatKickoff(bet.kickoff)}
+            </span>
+            <span className={`text-[10px] font-bold ${timeStatus.color}`}>
+              {timeStatus.label}
+            </span>
+          </div>
         </div>
       </td>
-      <td className="p-4 text-right">
-        <div className="text-xs text-slate-400 font-medium">
-          {bet.exchangeName}
+      <td className="px-6 py-4">
+        <div className="text-[15px] font-extrabold text-white">
+          {bet.selection}
         </div>
       </td>
-      <td className="p-4 text-right">
-        <div className="font-mono text-blue-300 font-bold">
+      <td className="px-6 py-4">
+        <div className="font-bold text-slate-300">{bet.exchangeName}</div>
+      </td>
+      <td className="px-6 py-4 text-right">
+        <div className="font-bold text-white tabular-nums">
           {bet.exchangePrice.toFixed(2)}
         </div>
       </td>
-      <td className="p-4 text-right">
-        <span className="text-emerald-400 font-bold">
-          +{(bet.baseNetEdgePercent ?? bet.netEdgePercent).toFixed(1)}%
-        </span>
-      </td>
-      <td className="p-4 text-right">
-        <div className="font-bold text-white">£{bet.kellyStake.toFixed(2)}</div>
-      </td>
-      <td className="p-4 text-right">
-        <div className="text-xs text-slate-400">{bet.commission ?? 0}%</div>
-      </td>
-      <td className="p-4 text-right">
-        <div className="text-xs text-slate-400">
-          {formatKickoff(bet.kickoff)}
-        </div>
-        <div className={`text-[10px] font-bold mt-0.5 ${timeStatus.color}`}>
-          {timeStatus.label}
+      <td className="px-6 py-4 text-right">
+        <div
+          className={`font-bold ${edge > 0 ? "text-emerald-400" : "text-slate-500"}`}
+        >
+          {edge > 0 ? "+" : ""}
+          {edge.toFixed(1)}%
         </div>
       </td>
-      <td className="p-4 text-right">
-        <div className="flex items-center justify-end gap-2">
-          {bet.clvPercent === undefined && hasStarted && onFetchCLV && (
+      <td className="px-6 py-4 text-right">
+        <div className="font-extrabold text-white">
+          £{bet.kellyStake.toFixed(2)}
+        </div>
+      </td>
+      <td className="px-6 py-4 text-right">
+        <div className="text-xs text-slate-400 font-medium">
+          {bet.commission ?? 0}%
+        </div>
+      </td>
+      <td className="px-6 py-4 text-center min-w-[140px]">
+        <div className="flex items-center justify-center gap-2">
+          {bet.clvPercent === undefined && hasStarted && (
             <button
               onClick={onFetchCLV}
               disabled={fetchingCLV}
-              className="px-2 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 flex items-center gap-1.5"
+              title="Fetch CLV"
+              className="p-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg transition-colors disabled:opacity-50"
             >
               {fetchingCLV ? (
-                <RefreshCw className="w-3 h-3 animate-spin" />
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                "Fetch CLV"
+                <RefreshCw className="w-3.5 h-3.5" />
               )}
             </button>
           )}
@@ -399,7 +414,7 @@ const BetRow: React.FC<BetRowProps> = ({
             <button
               onClick={onSettle}
               disabled={settling}
-              className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-emerald-900/20 disabled:opacity-50"
             >
               {settling ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -408,16 +423,18 @@ const BetRow: React.FC<BetRowProps> = ({
               )}
             </button>
           )}
-          <button
-            onClick={onDelete}
-            className={`transition-all rounded ${
-              isConfirming
-                ? "px-2 py-1 bg-red-900/40 text-red-400 text-[10px] font-bold uppercase tracking-wider"
-                : "p-1.5 text-slate-600 hover:text-red-400 hover:bg-red-900/20"
-            }`}
-          >
-            {isConfirming ? "Confirm?" : <Trash2 className="w-3.5 h-3.5" />}
-          </button>
+          <div className="w-[80px] flex justify-center">
+            <button
+              onClick={onDelete}
+              className={`transition-all rounded-lg w-full flex items-center justify-center ${
+                isConfirming
+                  ? "py-1.5 bg-red-600 text-white text-[10px] font-bold uppercase tracking-tight"
+                  : "p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10"
+              }`}
+            >
+              {isConfirming ? "Confirm?" : <Trash2 className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
       </td>
     </tr>
