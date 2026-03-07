@@ -65,7 +65,7 @@ export const SummaryStats: React.FC<Props> = ({ bets }) => {
     {
       label: "Total Bets",
       value: totalCount.toString(),
-      subValue: `${settledCount} settled, ${openCount} open`,
+      subValue: `${openCount} open`,
       color: "text-blue-400",
     },
     {
@@ -113,16 +113,18 @@ export const SummaryStats: React.FC<Props> = ({ bets }) => {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8 w-full font-sans">
       {stats.map((stat, i) => (
         <div
           key={i}
-          className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl flex flex-col gap-1 transition-all hover:bg-slate-800 hover:border-slate-600"
+          className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl flex flex-col gap-1 transition-all hover:bg-slate-800 hover:border-slate-600 min-w-0 w-full font-sans"
         >
-          <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-1">
+          <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-1 truncate">
             {stat.label}
           </span>
-          <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+          <div className={`text-2xl font-bold ${stat.color} truncate`}>
+            {stat.value}
+          </div>
           <div className="text-[10px] text-slate-400 font-medium truncate">
             {stat.subValue}
           </div>

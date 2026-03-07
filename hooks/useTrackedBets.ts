@@ -72,7 +72,6 @@ export const useTrackedBets = (
       type: "bet_placed",
       amount: -fractionalKellyStake,
       betId: bet.id,
-      note: `Stake for ${bet.match} on ${offer.exchangeName}`,
     };
 
     // Base edge at permanent 2% rate (for clean analysis)

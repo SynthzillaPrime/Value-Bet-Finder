@@ -4,6 +4,12 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Value Bet Finder</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap"
+            rel="stylesheet"
+        />
         <!-- We keep Tailwind via CDN for simplicity to avoid complex PostCSS setup,
          but we switch React to be bundled by Vite -->
         <script src="https://cdn.tailwindcss.com"></script>
@@ -11,6 +17,14 @@
             tailwind.config = {
                 theme: {
                     extend: {
+                        fontFamily: {
+                            sans: [
+                                "DM Sans",
+                                "-apple-system",
+                                "BlinkMacSystemFont",
+                                "sans-serif",
+                            ],
+                        },
                         colors: {
                             slate: {
                                 850: "#151e2e",
@@ -26,6 +40,24 @@
             body {
                 background-color: #0f172a; /* slate-900 */
                 color: #f8fafc; /* slate-50 */
+                font-family:
+                    "DM Sans",
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    sans-serif;
+            }
+            /* Recharts font consistency */
+            .recharts-text,
+            .recharts-cartesian-axis-tick-value,
+            .recharts-legend-item-text,
+            .recharts-label,
+            .recharts-tooltip-item,
+            .recharts-default-tooltip {
+                font-family:
+                    "DM Sans",
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    sans-serif !important;
             }
             /* Custom Scrollbar */
             ::-webkit-scrollbar {

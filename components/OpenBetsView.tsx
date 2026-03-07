@@ -25,7 +25,6 @@ export const OpenBetsView: React.FC<Props> = ({
   const [settlingId, setSettlingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [fetchingCLVId, setFetchingCLVId] = useState<string | null>(null);
   const [settlingAll, setSettlingAll] = useState(false);
   const [settleProgress, setSettleProgress] = useState<{
     current: number;
@@ -49,17 +48,6 @@ export const OpenBetsView: React.FC<Props> = ({
   const upcoming = openBets.filter(
     (b) => new Date(b.kickoff).getTime() > now.getTime(),
   );
-
-  const handleFetchCLV = async (bet: TrackedBet) => {
-    if (new Date() < new Date(bet.kickoff)) return;
-    if (bet.clvPercent !== undefined) return;
-    setFetchingCLVId(bet.id);
-    try {
-      await onSettleBet(bet.id);
-    } finally {
-      setFetchingCLVId(null);
-    }
-  };
 
   const handleDeleteClick = (id: string) => {
     if (confirmDeleteId === id) {
@@ -208,9 +196,6 @@ export const OpenBetsView: React.FC<Props> = ({
                 <th className="px-6 py-3 border-b border-slate-800/50 text-right">
                   Stake
                 </th>
-                <th className="px-6 py-3 border-b border-slate-800/50 text-right">
-                  Comm.
-                </th>
                 <th className="px-6 py-3 border-b border-slate-800/50 text-center">
                   Action
                 </th>
@@ -222,7 +207,7 @@ export const OpenBetsView: React.FC<Props> = ({
                 <>
                   <tr className="bg-emerald-500/5">
                     <td
-                      colSpan={8}
+                      colSpan={7}
                       className="px-6 py-2 border-b border-slate-800/50"
                     >
                       <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
@@ -239,8 +224,6 @@ export const OpenBetsView: React.FC<Props> = ({
                       formatKickoff={formatKickoff}
                       onSettle={() => handleSettleSingle(bet)}
                       settling={settlingId === bet.id || settlingAll}
-                      fetchingCLV={fetchingCLVId === bet.id}
-                      onFetchCLV={() => handleFetchCLV(bet)}
                       isConfirming={confirmDeleteId === bet.id}
                       onDelete={() => handleDeleteClick(bet.id)}
                     />
@@ -253,7 +236,7 @@ export const OpenBetsView: React.FC<Props> = ({
                 <>
                   <tr className="bg-yellow-500/5">
                     <td
-                      colSpan={8}
+                      colSpan={7}
                       className="px-6 py-2 border-b border-slate-800/50"
                     >
                       <div className="flex items-center gap-2 text-[10px] font-bold text-yellow-400 uppercase tracking-widest">
@@ -270,8 +253,6 @@ export const OpenBetsView: React.FC<Props> = ({
                       formatKickoff={formatKickoff}
                       onSettle={null}
                       settling={false}
-                      fetchingCLV={fetchingCLVId === bet.id}
-                      onFetchCLV={() => handleFetchCLV(bet)}
                       isConfirming={confirmDeleteId === bet.id}
                       onDelete={() => handleDeleteClick(bet.id)}
                     />
@@ -284,7 +265,7 @@ export const OpenBetsView: React.FC<Props> = ({
                 <>
                   <tr className="bg-slate-800/20">
                     <td
-                      colSpan={8}
+                      colSpan={7}
                       className="px-6 py-2 border-b border-slate-800/50"
                     >
                       <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
@@ -301,8 +282,6 @@ export const OpenBetsView: React.FC<Props> = ({
                       formatKickoff={formatKickoff}
                       onSettle={null}
                       settling={false}
-                      fetchingCLV={fetchingCLVId === bet.id}
-                      onFetchCLV={() => handleFetchCLV(bet)}
                       isConfirming={confirmDeleteId === bet.id}
                       onDelete={() => handleDeleteClick(bet.id)}
                     />
@@ -323,8 +302,6 @@ interface BetRowProps {
   formatKickoff: (d: Date) => string;
   onSettle: (() => void) | null;
   settling: boolean;
-  fetchingCLV: boolean;
-  onFetchCLV: () => void;
   isConfirming: boolean;
   onDelete: () => void;
 }
@@ -335,13 +312,10 @@ const BetRow: React.FC<BetRowProps> = ({
   formatKickoff,
   onSettle,
   settling,
-  fetchingCLV,
-  onFetchCLV,
   isConfirming,
   onDelete,
 }) => {
   const edge = bet.baseNetEdgePercent ?? bet.netEdgePercent;
-  const hasStarted = new Date() >= new Date(bet.kickoff);
 
   return (
     <tr className="group hover:bg-slate-800/30 transition-colors">
@@ -389,27 +363,8 @@ const BetRow: React.FC<BetRowProps> = ({
           £{bet.kellyStake.toFixed(2)}
         </div>
       </td>
-      <td className="px-6 py-4 text-right">
-        <div className="text-xs text-slate-400 font-medium">
-          {bet.commission ?? 0}%
-        </div>
-      </td>
       <td className="px-6 py-4 text-center min-w-[140px]">
         <div className="flex items-center justify-center gap-2">
-          {bet.clvPercent === undefined && hasStarted && (
-            <button
-              onClick={onFetchCLV}
-              disabled={fetchingCLV}
-              title="Fetch CLV"
-              className="p-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {fetchingCLV ? (
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="w-3.5 h-3.5" />
-              )}
-            </button>
-          )}
           {onSettle && (
             <button
               onClick={onSettle}

@@ -1,23 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { TrackedBet } from "../types";
 import { LEAGUES } from "../constants";
-import { Trophy, Trash2, ChevronDown, Download } from "lucide-react";
+import { Trash2, ChevronDown, Download } from "lucide-react";
 
 interface Props {
   bets: TrackedBet[];
   onDeleteBet: (id: string) => Promise<void>;
-  onSettleBet: (
-    betId: string,
-    forceResult?: "won" | "lost" | "void",
-  ) => Promise<boolean>;
 }
 
-export const BetHistoryView: React.FC<Props> = ({
-  bets,
-  onDeleteBet,
-  onSettleBet,
-}) => {
-  const [loadingId, setLoadingId] = useState<string | null>(null);
+export const BetHistoryView: React.FC<Props> = ({ bets, onDeleteBet }) => {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -158,7 +149,7 @@ export const BetHistoryView: React.FC<Props> = ({
   );
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 w-full">
       <div className="flex flex-col gap-4">
         <div className="flex justify-between items-center">
           <div>
@@ -176,15 +167,22 @@ export const BetHistoryView: React.FC<Props> = ({
                 if (e.target.value === "filtered") exportBetsToCSV(sortedBets);
                 e.target.value = "";
               }}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-emerald-400 outline-none appearance-none cursor-pointer pr-8 min-w-[115px] transition-all shadow-lg shadow-emerald-900/20"
+              className="font-sans bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-emerald-400 outline-none appearance-none cursor-pointer pr-8 min-w-[115px] transition-all shadow-lg shadow-emerald-900/20"
             >
-              <option value="" disabled className="bg-slate-900 text-slate-400">
+              <option
+                value=""
+                disabled
+                className="font-sans bg-slate-900 text-slate-400"
+              >
                 Export
               </option>
-              <option value="all" className="bg-slate-900 text-white">
+              <option value="all" className="font-sans bg-slate-900 text-white">
                 Export All
               </option>
-              <option value="filtered" className="bg-slate-900 text-white">
+              <option
+                value="filtered"
+                className="font-sans bg-slate-900 text-white"
+              >
                 Export Filtered
               </option>
             </select>
@@ -198,7 +196,7 @@ export const BetHistoryView: React.FC<Props> = ({
             <select
               value={compFilter}
               onChange={(e) => setCompFilter(e.target.value)}
-              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              className="font-sans bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
             >
               <option>All Competitions</option>
               {(() => {
@@ -241,7 +239,7 @@ export const BetHistoryView: React.FC<Props> = ({
             <select
               value={timingFilter}
               onChange={(e) => setTimingFilter(e.target.value)}
-              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              className="font-sans bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
             >
               <option>All Timing</option>
               <option>48hr+</option>
@@ -257,7 +255,7 @@ export const BetHistoryView: React.FC<Props> = ({
             <select
               value={oddsFilter}
               onChange={(e) => setOddsFilter(e.target.value)}
-              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              className="font-sans bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
             >
               <option>All Odds</option>
               <option>1.50 - 3.00</option>
@@ -272,7 +270,7 @@ export const BetHistoryView: React.FC<Props> = ({
             <select
               value={clvFilter}
               onChange={(e) => setClvFilter(e.target.value)}
-              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              className="font-sans bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
             >
               <option>All CLV</option>
               <option>Positive CLV</option>
@@ -287,7 +285,7 @@ export const BetHistoryView: React.FC<Props> = ({
             <select
               value={resultFilter}
               onChange={(e) => setResultFilter(e.target.value)}
-              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              className="font-sans bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
             >
               <option>All Results</option>
               <option>Won</option>
@@ -300,27 +298,41 @@ export const BetHistoryView: React.FC<Props> = ({
         </div>
       </div>
 
-      <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50">
-        <table className="w-full text-left border-collapse">
+      <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50 w-full">
+        <table className="w-full text-left border-collapse table-fixed min-w-[1100px]">
+          <colgroup>
+            <col />
+            <col className="w-[160px]" />
+            <col className="w-[100px]" />
+            <col className="w-[75px]" />
+            <col className="w-[75px]" />
+            <col className="w-[75px]" />
+            <col className="w-[75px]" />
+            <col className="w-[70px]" />
+            <col className="w-[80px]" />
+            <col className="w-[80px]" />
+            <col className="w-[70px]" />
+          </colgroup>
           <thead>
-            <tr className="text-slate-400 border-b border-slate-700 text-xs uppercase tracking-wider">
-              <th className="p-4 font-medium">Match</th>
-              <th className="p-4 font-medium text-right">Exchange</th>
-              <th className="p-4 font-medium text-right">Result</th>
-              <th className="p-4 font-medium text-right">Odds</th>
-              <th className="p-4 font-medium text-right">Edge %</th>
-              <th className="p-4 font-medium text-right">Stake (Kelly)</th>
-              <th className="p-4 font-medium text-right">P/L (Kelly)</th>
-              <th className="p-4 font-medium text-right">Comm.</th>
-              <th className="p-4 font-medium text-right">Date</th>
-              <th className="p-4 font-medium text-right">Action</th>
+            <tr className="bg-slate-800/50 text-slate-500 border-b border-slate-700 text-[10px] uppercase tracking-wider font-bold">
+              <th className="p-4">Match</th>
+              <th className="p-4">Selection</th>
+              <th className="py-4 px-2">Exchange</th>
+              <th className="py-4 px-2 text-right">Odds</th>
+              <th className="py-4 px-2 text-right">Edge</th>
+              <th className="py-4 px-2 text-right">SP</th>
+              <th className="py-4 px-2 text-right">CLV</th>
+              <th className="py-4 px-2 text-right">Result</th>
+              <th className="py-4 px-2 text-right">Stake</th>
+              <th className="py-4 px-2 text-right">P/L</th>
+              <th className="py-4 px-0 text-center">Action</th>
             </tr>
           </thead>
           <tbody className="text-sm text-slate-300">
             {sortedBets.length === 0 ? (
               <tr>
                 <td
-                  colSpan={10}
+                  colSpan={11}
                   className="p-12 text-center text-slate-600 italic"
                 >
                   {bets.length === 0
@@ -330,53 +342,60 @@ export const BetHistoryView: React.FC<Props> = ({
               </tr>
             ) : (
               paginatedBets.map((bet) => {
-                const hasStarted = new Date() > new Date(bet.kickoff);
+                const league =
+                  LEAGUES.find((l) => l.key === bet.sportKey)?.name ||
+                  bet.sport;
                 return (
                   <tr
                     key={bet.id}
                     className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors"
                   >
-                    <td className="p-4">
-                      <div className="font-semibold text-slate-200">
-                        {bet.homeTeam} vs {bet.awayTeam}
-                      </div>
-                      <div className="text-[10px] text-slate-500 uppercase mt-0.5">
-                        {bet.selection}
+                    <td className="p-4 align-middle">
+                      <div className="h-[48px] overflow-hidden flex flex-col justify-center">
+                        <div className="font-semibold text-slate-200 whitespace-normal line-clamp-2">
+                          {bet.homeTeam} vs {bet.awayTeam}
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1 whitespace-nowrap">
+                          <span className="text-[10px] text-slate-500 font-bold uppercase">
+                            {league}
+                          </span>
+                          <span className="text-slate-700 text-[10px]">•</span>
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            {new Date(bet.kickoff)
+                              .toLocaleString("en-GB", {
+                                weekday: "short",
+                                day: "2-digit",
+                                month: "short",
+                              })
+                              .replace(",", "")}
+                            ,{" "}
+                            {new Date(bet.kickoff).toLocaleTimeString("en-GB", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: false,
+                            })}
+                          </span>
+                        </div>
                       </div>
                     </td>
-                    <td className="p-4 text-right">
+                    <td className="p-4 align-middle">
+                      <div className="h-[48px] overflow-hidden flex flex-col justify-center">
+                        <div className="text-[15px] font-extrabold text-white whitespace-normal line-clamp-2">
+                          {bet.selection}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-2 align-middle">
                       <div className="text-xs text-slate-400 font-medium">
                         {bet.exchangeName}
                       </div>
                     </td>
-                    <td className="p-4 text-right">
-                      {bet.result === "won" && (
-                        <span className="text-emerald-400 font-bold uppercase text-xs">
-                          Won
-                        </span>
-                      )}
-                      {bet.result === "lost" && (
-                        <span className="text-red-400 font-bold uppercase text-xs">
-                          Lost
-                        </span>
-                      )}
-                      {bet.result === "void" && (
-                        <span className="text-slate-400 font-bold uppercase text-xs">
-                          Void
-                        </span>
-                      )}
-                      {!bet.result && (
-                        <span className="text-slate-600 text-xs italic">
-                          Open
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4 text-right">
+                    <td className="py-4 px-2 text-right align-middle">
                       <div className="font-mono text-blue-300 font-bold">
                         {bet.exchangePrice.toFixed(2)}
                       </div>
                     </td>
-                    <td className="p-4 text-right">
+                    <td className="py-4 px-2 text-right align-middle">
                       <span className="text-emerald-400 font-bold">
                         +
                         {(bet.baseNetEdgePercent ?? bet.netEdgePercent).toFixed(
@@ -385,90 +404,84 @@ export const BetHistoryView: React.FC<Props> = ({
                         %
                       </span>
                     </td>
-                    <td className="p-4 text-right">
+                    <td className="py-4 px-2 text-right align-middle">
+                      {bet.closingFairPrice !== undefined ? (
+                        <div className="font-semibold font-mono text-slate-500">
+                          {bet.closingFairPrice.toFixed(2)}
+                        </div>
+                      ) : (
+                        <span className="text-slate-600">—</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-2 text-right align-middle">
+                      {bet.clvPercent !== undefined ? (
+                        <span
+                          className={`${
+                            bet.clvPercent > 0
+                              ? "text-emerald-400 font-bold"
+                              : bet.clvPercent < 0
+                                ? "text-red-400 font-bold"
+                                : "text-slate-600"
+                          }`}
+                        >
+                          {bet.clvPercent > 0 ? "+" : ""}
+                          {bet.clvPercent.toFixed(1)}%
+                        </span>
+                      ) : (
+                        <span className="text-slate-600">—</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-2 text-right align-middle">
+                      {bet.result === "won" && (
+                        <span className="text-emerald-400 font-bold uppercase text-[10px]">
+                          Won
+                        </span>
+                      )}
+                      {bet.result === "lost" && (
+                        <span className="text-red-400 font-bold uppercase text-[10px]">
+                          Lost
+                        </span>
+                      )}
+                      {bet.result === "void" && (
+                        <span className="text-slate-400 font-bold uppercase text-[10px]">
+                          Void
+                        </span>
+                      )}
+                      {!bet.result && (
+                        <span className="text-slate-600 text-[10px] italic">
+                          Open
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-4 px-2 text-right align-middle">
                       <div className="font-bold text-white">
                         £{bet.kellyStake.toFixed(2)}
                       </div>
                     </td>
-                    <td className="p-4 text-right">
+                    <td className="py-4 px-2 text-right align-middle">
                       {bet.kellyPL !== undefined ? (
                         <div
                           className={`font-bold ${bet.kellyPL >= 0 ? "text-emerald-400" : "text-red-400"}`}
                         >
-                          {bet.kellyPL >= 0 ? "+" : ""}£
+                          {bet.kellyPL >= 0 ? "+" : "-"}£
                           {Math.abs(bet.kellyPL).toFixed(2)}
                         </div>
                       ) : (
                         <span className="text-slate-600">—</span>
                       )}
                     </td>
-                    <td className="p-4 text-right">
-                      <div className="text-xs text-slate-400">
-                        {bet.commission ?? 0}%
-                      </div>
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="text-xs text-slate-400">
-                        {new Date(bet.kickoff).toLocaleString("en-GB", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </div>
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <div className="flex items-center gap-1 mr-2 bg-slate-900/50 p-1 rounded-lg border border-slate-700/30">
-                          {(["won", "lost", "void"] as const).map((res) => (
-                            <button
-                              key={res}
-                              onClick={() => onSettleBet(bet.id, res)}
-                              className={`w-6 h-6 flex items-center justify-center rounded text-[10px] font-bold uppercase transition-colors ${
-                                bet.result === res
-                                  ? res === "won"
-                                    ? "bg-emerald-500 text-slate-950"
-                                    : res === "lost"
-                                      ? "bg-red-500 text-slate-950"
-                                      : "bg-slate-500 text-slate-950"
-                                  : "bg-slate-800 text-slate-500 hover:bg-slate-700 hover:text-slate-300"
-                              }`}
-                              title={`Manual ${res}`}
-                            >
-                              {res[0]}
-                            </button>
-                          ))}
-                        </div>
-
-                        <button
-                          onClick={async () => {
-                            setLoadingId(bet.id + "-result");
-                            try {
-                              await onSettleBet(bet.id);
-                            } finally {
-                              setLoadingId(null);
-                            }
-                          }}
-                          disabled={
-                            !hasStarted || loadingId === bet.id + "-result"
-                          }
-                          className="p-2 text-emerald-400 hover:bg-slate-700 rounded disabled:opacity-30"
-                          title="Check/Re-check Result"
-                        >
-                          <Trophy
-                            className={`w-4 h-4 ${loadingId === bet.id + "-result" ? "animate-pulse" : ""}`}
-                          />
-                        </button>
+                    <td className="py-4 px-0 pr-4 text-center align-middle">
+                      <div className="flex items-center justify-center">
                         <button
                           onClick={() => handleDeleteClick(bet.id)}
-                          className={`transition-all rounded ${
+                          className={`transition-all rounded flex items-center justify-center w-[50px] ${
                             confirmDeleteId === bet.id
-                              ? "px-2 py-1 bg-red-900/40 text-red-400 text-[10px] font-bold uppercase tracking-wider"
-                              : "p-2 text-slate-600 hover:text-red-400 hover:bg-red-900/20"
+                              ? "h-8 bg-red-900/40 text-red-400 text-[10px] font-bold uppercase tracking-wider"
+                              : "h-8 text-slate-600 hover:text-red-400 hover:bg-red-900/20"
                           }`}
                         >
                           {confirmDeleteId === bet.id ? (
-                            "Confirm?"
+                            "?"
                           ) : (
                             <Trash2 className="w-4 h-4" />
                           )}

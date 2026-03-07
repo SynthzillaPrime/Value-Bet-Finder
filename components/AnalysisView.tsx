@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { TrackedBet } from "../types";
+import { TrackedBet, BankrollTransaction } from "../types";
 import { LEAGUES } from "../constants";
 import { SummaryStats } from "./stats/SummaryStats";
 import { PaginatedTable } from "./PaginatedTable";
@@ -22,62 +22,64 @@ import {
 
 interface Props {
   bets: TrackedBet[];
+  transactions: BankrollTransaction[];
 }
 
-export const AnalysisView: React.FC<Props> = ({ bets }) => {
+export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
   const pageSize = 10;
 
   const settled = useMemo(() => {
     return bets.filter((b) => b.result !== undefined && b.result !== "void");
   }, [bets]);
 
-  // 1. Bankroll Data
+  // 1. Combined Bankroll & Expected Data
   const bankrollData = useMemo(() => {
-    return bets
-      .filter((b) => b.result !== undefined)
-      .sort((a, b) => a.placedAt - b.placedAt)
-      .reduce((acc: any[], bet, idx) => {
-        const prevBankroll = acc.length > 0 ? acc[acc.length - 1].bankroll : 0;
-        const currentBankroll = prevBankroll + (bet.kellyPL || 0);
-        acc.push({
-          betNum: idx + 1,
-          date: new Date(bet.placedAt).toLocaleDateString("en-GB"),
-          match: `${bet.homeTeam} vs ${bet.awayTeam}`,
-          result: bet.result,
-          pl: bet.kellyPL || 0,
-          bankroll: currentBankroll,
-        });
-        return acc;
-      }, []);
-  }, [bets]);
+    const settledBets = [...bets]
+      .filter((b) => b.result !== undefined && b.result !== "void")
+      .sort((a, b) => a.placedAt - b.placedAt);
 
-  // 2. Expected Data
-  const expectedData = useMemo(() => {
-    return bets
-      .filter((b) => b.result !== undefined)
-      .sort((a, b) => a.placedAt - b.placedAt)
-      .reduce((acc: any[], bet, idx) => {
-        const prevActual = acc.length > 0 ? acc[acc.length - 1].actual : 0;
-        const prevExpected = acc.length > 0 ? acc[acc.length - 1].expected : 0;
+    const nonBetTransactions = transactions.filter(
+      (t) =>
+        t.type === "deposit" ||
+        t.type === "withdrawal" ||
+        t.type === "adjustment",
+    );
 
-        const edge = bet.baseNetEdgePercent ?? bet.netEdgePercent ?? 0;
-        const expectedGain = (edge / 100) * bet.kellyStake;
-        const actualGain = bet.kellyPL ?? 0;
+    return settledBets.reduce((acc: any[], bet, idx) => {
+      // Calculate starting bankroll from all non-bet transactions up to this bet's placement
+      const startingBankroll = nonBetTransactions
+        .filter((t) => t.timestamp <= bet.placedAt)
+        .reduce((sum, t) => sum + t.amount, 0);
 
-        acc.push({
-          betNum: idx + 1,
-          match: `${bet.homeTeam} vs ${bet.awayTeam}`,
-          edge: edge,
-          stake: bet.kellyStake,
-          clv: bet.clvPercent,
-          expectedGain: expectedGain,
-          actualGain: actualGain,
-          actual: prevActual + actualGain,
-          expected: prevExpected + expectedGain,
-        });
-        return acc;
-      }, []);
-  }, [bets]);
+      const prevActualPL = acc.length > 0 ? acc[acc.length - 1].actualPL : 0;
+      const prevExpectedPL =
+        acc.length > 0 ? acc[acc.length - 1].expectedPL : 0;
+
+      const edge = bet.baseNetEdgePercent ?? bet.netEdgePercent ?? 0;
+      const expectedGain = (edge / 100) * bet.kellyStake;
+      const actualGain = bet.kellyPL ?? 0;
+
+      const currentActualPL = prevActualPL + actualGain;
+      const currentExpectedPL = prevExpectedPL + expectedGain;
+
+      acc.push({
+        betNum: idx + 1,
+        date: new Date(bet.placedAt).toLocaleDateString("en-GB"),
+        match: `${bet.homeTeam} vs ${bet.awayTeam}`,
+        result: bet.result,
+        edge: edge,
+        clv: bet.clvPercent,
+        stake: bet.kellyStake,
+        expectedGain: expectedGain,
+        actualGain: actualGain,
+        actualPL: currentActualPL,
+        expectedPL: currentExpectedPL,
+        actual: startingBankroll + currentActualPL,
+        expected: startingBankroll + currentExpectedPL,
+      });
+      return acc;
+    }, []);
+  }, [bets, transactions]);
 
   // 3. CLV Data
   const clvData = useMemo(() => {
@@ -119,8 +121,27 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
   const competitionData = useMemo(() => {
     const competitionsMap: Record<string, TrackedBet[]> = {};
     settled.forEach((b) => {
-      const compName =
-        LEAGUES.find((l) => l.key === b.sportKey)?.name || b.sport;
+      let compName = LEAGUES.find((l) => l.key === b.sportKey)?.name || b.sport;
+
+      // Truncate long competition names for chart display
+      const mapping: Record<string, string> = {
+        "Champions League": "UCL",
+        "Europa League": "UEL",
+        "Conference League": "UECL",
+        "Premier League": "EPL",
+        "La Liga": "LaLiga",
+        Bundesliga: "Bund",
+        "Serie A": "SerieA",
+        "Ligue 1": "Ligue1",
+        Championship: "Champ",
+      };
+
+      if (mapping[compName]) {
+        compName = mapping[compName];
+      } else if (compName.length > 12) {
+        compName = compName.substring(0, 10) + "...";
+      }
+
       if (!competitionsMap[compName]) competitionsMap[compName] = [];
       competitionsMap[compName].push(b);
     });
@@ -272,14 +293,12 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
       <SummaryStats bets={bets} />
 
       <div className="space-y-12">
-        {/* 1. Bankroll Tracker */}
-        <section>
-          <h3 className="text-lg font-bold text-slate-300 mb-4">
-            Bankroll Tracker
-          </h3>
-          <div className="space-y-6">
-            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
-              <div className="h-[300px] w-full">
+        {/* 1. Bankroll */}
+        <section className="w-full font-sans">
+          <h3 className="text-lg font-bold text-slate-300 mb-4">Bankroll</h3>
+          <div className="space-y-6 w-full font-sans">
+            <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+              <div className="h-[350px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={bankrollData}>
                     <defs>
@@ -293,7 +312,7 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                         <stop
                           offset="5%"
                           stopColor="#10b981"
-                          stopOpacity={0.3}
+                          stopOpacity={0.2}
                         />
                         <stop
                           offset="95%"
@@ -311,6 +330,7 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                       dataKey="betNum"
                       stroke="#64748b"
                       fontSize={10}
+                      tick={{ fontFamily: "DM Sans, sans-serif", fontSize: 10 }}
                       tickLine={false}
                       axisLine={false}
                       label={{
@@ -319,11 +339,13 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                         offset: -5,
                         fontSize: 10,
                         fill: "#64748b",
+                        fontFamily: "DM Sans, sans-serif",
                       }}
                     />
                     <YAxis
                       stroke="#64748b"
                       fontSize={12}
+                      tick={{ fontFamily: "DM Sans, sans-serif", fontSize: 12 }}
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={(value) => `£${value}`}
@@ -335,151 +357,35 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                         borderColor: "#334155",
                         borderRadius: "8px",
                         color: "#f8fafc",
+                        fontFamily: "DM Sans, sans-serif",
                       }}
-                      itemStyle={{ color: "#f8fafc" }}
+                      itemStyle={{
+                        color: "#f8fafc",
+                        fontFamily: "DM Sans, sans-serif",
+                      }}
                       labelFormatter={(val) => `Bet #${val}`}
-                      formatter={(value: any) => {
-                        return [`£${Number(value).toFixed(2)}`, "Bankroll"];
+                      formatter={(value: any, name: string | undefined) => {
+                        return [
+                          `£${Number(value).toFixed(2)}`,
+                          name === "Actual Bankroll"
+                            ? "Actual Bankroll"
+                            : "Expected Bankroll",
+                        ];
                       }}
+                    />
+                    <Legend
+                      verticalAlign="top"
+                      height={36}
+                      wrapperStyle={{ fontFamily: "DM Sans, sans-serif" }}
                     />
                     <Area
-                      type="monotone"
-                      dataKey="bankroll"
-                      stroke="#10b981"
-                      strokeWidth={3}
-                      fillOpacity={1}
-                      fill="url(#colorBankroll)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <PaginatedTable
-              data={[...bankrollData].reverse()}
-              pageSize={pageSize}
-              keyFn={(row) => row.betNum.toString()}
-              columns={[
-                {
-                  label: "Bet #",
-                  render: (row) => (
-                    <span className="font-mono text-slate-500">
-                      #{row.betNum}
-                    </span>
-                  ),
-                },
-                {
-                  label: "Date",
-                  render: (row) => <span className="text-xs">{row.date}</span>,
-                },
-                {
-                  label: "Match",
-                  render: (row) => (
-                    <span className="font-medium text-slate-200">
-                      {row.match}
-                    </span>
-                  ),
-                },
-                {
-                  label: "Result",
-                  render: (row) => (
-                    <span
-                      className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
-                        row.result === "won"
-                          ? "bg-emerald-500/10 text-emerald-400"
-                          : row.result === "lost"
-                            ? "bg-red-500/10 text-red-400"
-                            : "bg-slate-700 text-slate-300"
-                      }`}
-                    >
-                      {row.result}
-                    </span>
-                  ),
-                },
-                {
-                  label: "P/L",
-                  align: "right",
-                  render: (row) => (
-                    <span
-                      className={`font-mono font-bold ${row.pl >= 0 ? "text-emerald-400" : "text-red-400"}`}
-                    >
-                      {row.pl > 0 ? "+" : ""}
-                      {row.pl.toFixed(2)}
-                    </span>
-                  ),
-                },
-                {
-                  label: "Bankroll",
-                  align: "right",
-                  render: (row) => (
-                    <span className="font-mono text-slate-200">
-                      £{row.bankroll.toFixed(2)}
-                    </span>
-                  ),
-                },
-              ]}
-            />
-          </div>
-        </section>
-
-        {/* 2. Expected vs Actual */}
-        <section>
-          <h3 className="text-lg font-bold text-slate-300 mb-4">
-            Expected vs Actual
-          </h3>
-          <div className="space-y-6">
-            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
-              <div className="h-[350px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={expectedData}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="#1e293b"
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="betNum"
-                      stroke="#64748b"
-                      fontSize={10}
-                      tickLine={false}
-                      axisLine={false}
-                      label={{
-                        value: "Bet #",
-                        position: "insideBottom",
-                        offset: -5,
-                        fontSize: 10,
-                        fill: "#64748b",
-                      }}
-                    />
-                    <YAxis
-                      stroke="#64748b"
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(value) => `£${value}`}
-                      domain={["auto", "auto"]}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#0f172a",
-                        borderColor: "#334155",
-                        borderRadius: "8px",
-                        color: "#f8fafc",
-                      }}
-                      itemStyle={{ color: "#f8fafc" }}
-                      labelFormatter={(val) => `Bet #${val}`}
-                      formatter={(value: any) => {
-                        return [`£${Number(value).toFixed(2)}`, "Profit/Loss"];
-                      }}
-                    />
-                    <Legend verticalAlign="top" height={36} />
-                    <Line
                       name="Actual Bankroll"
                       type="monotone"
                       dataKey="actual"
                       stroke="#10b981"
                       strokeWidth={3}
-                      dot={{ r: 4, fill: "#10b981", strokeWidth: 0 }}
+                      fillOpacity={1}
+                      fill="url(#colorBankroll)"
                       activeDot={{ r: 6 }}
                     />
                     <Line
@@ -491,20 +397,21 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                       strokeDasharray="5 5"
                       dot={false}
                     />
-                  </LineChart>
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
               <p className="mt-4 text-center text-xs text-slate-400 max-w-2xl mx-auto">
                 <span className="font-bold text-slate-300 uppercase mr-2">
                   Explanation:
                 </span>
-                Expected = Starting bank + sum of (edge × stake). Actual = Real
-                results. Lines converging over time = edge is real.
+                Expected = Starting bankroll + sum of (edge × stake). Actual =
+                Starting bankroll + real P/L. Lines converging over time = edge
+                is real.
               </p>
             </div>
 
             <PaginatedTable
-              data={[...expectedData].reverse()}
+              data={[...bankrollData].reverse()}
               pageSize={pageSize}
               keyFn={(row) => row.betNum.toString()}
               columns={[
@@ -584,16 +491,25 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                     </span>
                   ),
                 },
+                {
+                  label: "Bankroll",
+                  align: "right",
+                  render: (row) => (
+                    <span className="font-mono text-slate-200 font-bold">
+                      £{row.actual.toFixed(2)}
+                    </span>
+                  ),
+                },
               ]}
             />
           </div>
         </section>
 
         {/* 3. CLV Tracker */}
-        <section>
+        <section className="w-full font-sans">
           <h3 className="text-lg font-bold text-slate-300 mb-4">CLV Tracker</h3>
-          <div className="space-y-6">
-            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+          <div className="space-y-6 w-full font-sans">
+            <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={clvData.chart}>
@@ -606,12 +522,14 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                       dataKey="betNum"
                       stroke="#64748b"
                       fontSize={12}
+                      tick={{ fontFamily: "DM Sans, sans-serif", fontSize: 12 }}
                       tickLine={false}
                       axisLine={false}
                     />
                     <YAxis
                       stroke="#64748b"
                       fontSize={12}
+                      tick={{ fontFamily: "DM Sans, sans-serif", fontSize: 12 }}
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={(value) => `${value}%`}
@@ -622,8 +540,12 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                         borderColor: "#334155",
                         borderRadius: "8px",
                         color: "#f8fafc",
+                        fontFamily: "DM Sans, sans-serif",
                       }}
-                      itemStyle={{ color: "#f8fafc" }}
+                      itemStyle={{
+                        color: "#f8fafc",
+                        fontFamily: "DM Sans, sans-serif",
+                      }}
                       formatter={(value: any) => {
                         return [`${Number(value).toFixed(2)}%`, "CLV"];
                       }}
@@ -695,25 +617,16 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                   ),
                 },
                 {
-                  label: "Net Edge %",
+                  label: "Odds",
                   align: "right",
                   render: (row) => (
-                    <span className="font-mono text-slate-400">
-                      {row.netEdge.toFixed(1)}%
-                    </span>
-                  ),
-                },
-                {
-                  label: "Your Odds",
-                  align: "right",
-                  render: (row) => (
-                    <span className="font-mono text-blue-300">
+                    <span className="font-mono text-blue-300 font-bold">
                       {row.odds.toFixed(2)}
                     </span>
                   ),
                 },
                 {
-                  label: "Closing Odds",
+                  label: "SP",
                   align: "right",
                   render: (row) => (
                     <span className="font-mono text-slate-400">
@@ -722,7 +635,16 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                   ),
                 },
                 {
-                  label: "CLV %",
+                  label: "Edge",
+                  align: "right",
+                  render: (row) => (
+                    <span className="font-mono text-slate-400 font-bold">
+                      {row.netEdge.toFixed(1)}%
+                    </span>
+                  ),
+                },
+                {
+                  label: "CLV",
                   align: "right",
                   render: (row) => (
                     <span
@@ -739,22 +661,22 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
         </section>
 
         {/* 4. By Competition */}
-        <section>
+        <section className="w-full font-sans">
           <h3 className="text-lg font-bold text-slate-300 mb-4">
             By Competition
           </h3>
           {competitionData.length === 0 ? (
-            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-8 text-center text-slate-500">
+            <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-8 text-center text-slate-500 font-sans">
               No settled data.
             </div>
           ) : (
-            <div className="space-y-6">
-              <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+            <div className="space-y-6 w-full font-sans">
+              <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
                 <div className="w-full h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={competitionData}
-                      margin={{ left: 0, right: 0, top: 10, bottom: 70 }}
+                      margin={{ left: 0, right: 0, top: 10, bottom: 30 }}
                     >
                       <CartesianGrid
                         strokeDasharray="3 3"
@@ -766,14 +688,18 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                         stroke="#64748b"
                         fontSize={10}
                         interval={0}
-                        tick={{ fontSize: 9 }}
-                        angle={-45}
-                        textAnchor="end"
-                        height={80}
+                        tick={{
+                          fontFamily: "DM Sans, sans-serif",
+                          fontSize: 10,
+                        }}
                       />
                       <YAxis
                         stroke="#64748b"
                         fontSize={12}
+                        tick={{
+                          fontFamily: "DM Sans, sans-serif",
+                          fontSize: 12,
+                        }}
                         tickFormatter={(v) => `${v}%`}
                       />
                       <Tooltip
@@ -782,8 +708,12 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                           borderColor: "#334155",
                           borderRadius: "8px",
                           color: "#f8fafc",
+                          fontFamily: "DM Sans, sans-serif",
                         }}
-                        itemStyle={{ color: "#f8fafc" }}
+                        itemStyle={{
+                          color: "#f8fafc",
+                          fontFamily: "DM Sans, sans-serif",
+                        }}
                         cursor={{ fill: "rgba(255,255,255,0.03)" }}
                         formatter={(v: number | undefined) => [
                           v !== undefined ? `${v.toFixed(2)}%` : "0.00%",
@@ -828,7 +758,7 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                     label: "Avg Edge",
                     align: "right",
                     render: (row) => (
-                      <span className="text-slate-400">
+                      <span className="font-mono text-slate-400 font-bold">
                         {row.avgEdge.toFixed(1)}%
                       </span>
                     ),
@@ -838,9 +768,9 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                     align: "right",
                     render: (row) => (
                       <span
-                        className={
+                        className={`font-mono font-bold ${
                           row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"
-                        }
+                        }`}
                       >
                         {row.avgClv > 0 ? "+" : ""}
                         {row.avgClv.toFixed(2)}%
@@ -866,12 +796,12 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
         </section>
 
         {/* 5. By Odds Band */}
-        <section>
+        <section className="w-full font-sans">
           <h3 className="text-lg font-bold text-slate-300 mb-4">
             By Odds Band
           </h3>
-          <div className="space-y-6">
-            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+          <div className="space-y-6 w-full font-sans">
+            <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
@@ -887,12 +817,14 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                       dataKey="name"
                       stroke="#64748b"
                       fontSize={12}
+                      tick={{ fontFamily: "DM Sans, sans-serif", fontSize: 12 }}
                       tickLine={false}
                       axisLine={false}
                     />
                     <YAxis
                       stroke="#64748b"
                       fontSize={12}
+                      tick={{ fontFamily: "DM Sans, sans-serif", fontSize: 12 }}
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={(v) => `${v}%`}
@@ -903,8 +835,12 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                         borderColor: "#334155",
                         borderRadius: "8px",
                         color: "#f8fafc",
+                        fontFamily: "DM Sans, sans-serif",
                       }}
-                      itemStyle={{ color: "#f8fafc" }}
+                      itemStyle={{
+                        color: "#f8fafc",
+                        fontFamily: "DM Sans, sans-serif",
+                      }}
                       cursor={{ fill: "rgba(255,255,255,0.03)" }}
                       formatter={(v: number | undefined) => [
                         v !== undefined ? `${v.toFixed(2)}%` : "0.00%",
@@ -950,9 +886,9 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                   align: "right",
                   render: (row) => (
                     <span
-                      className={
+                      className={`font-mono font-bold ${
                         row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"
-                      }
+                      }`}
                     >
                       {row.avgClv > 0 ? "+" : ""}
                       {row.avgClv.toFixed(2)}%
@@ -977,10 +913,10 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
         </section>
 
         {/* 6. By Timing */}
-        <section>
+        <section className="w-full font-sans">
           <h3 className="text-lg font-bold text-slate-300 mb-4">By Timing</h3>
-          <div className="space-y-6">
-            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+          <div className="space-y-6 w-full font-sans">
+            <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
@@ -996,12 +932,14 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                       dataKey="name"
                       stroke="#64748b"
                       fontSize={12}
+                      tick={{ fontFamily: "DM Sans, sans-serif", fontSize: 12 }}
                       tickLine={false}
                       axisLine={false}
                     />
                     <YAxis
                       stroke="#64748b"
                       fontSize={12}
+                      tick={{ fontFamily: "DM Sans, sans-serif", fontSize: 12 }}
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={(v) => `${v}%`}
@@ -1012,8 +950,12 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                         borderColor: "#334155",
                         borderRadius: "8px",
                         color: "#f8fafc",
+                        fontFamily: "DM Sans, sans-serif",
                       }}
-                      itemStyle={{ color: "#f8fafc" }}
+                      itemStyle={{
+                        color: "#f8fafc",
+                        fontFamily: "DM Sans, sans-serif",
+                      }}
                       cursor={{ fill: "rgba(255,255,255,0.03)" }}
                       formatter={(v: number | undefined) => [
                         v !== undefined ? `${v.toFixed(2)}%` : "0.00%",
@@ -1059,9 +1001,9 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                   align: "right",
                   render: (row) => (
                     <span
-                      className={
+                      className={`font-mono font-bold ${
                         row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"
-                      }
+                      }`}
                     >
                       {row.avgClv > 0 ? "+" : ""}
                       {row.avgClv.toFixed(2)}%
@@ -1086,10 +1028,10 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
         </section>
 
         {/* 7. By Market */}
-        <section>
+        <section className="w-full font-sans">
           <h3 className="text-lg font-bold text-slate-300 mb-4">By Market</h3>
-          <div className="space-y-6">
-            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+          <div className="space-y-6 w-full font-sans">
+            <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
@@ -1105,12 +1047,14 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                       dataKey="name"
                       stroke="#64748b"
                       fontSize={12}
+                      tick={{ fontFamily: "DM Sans, sans-serif", fontSize: 12 }}
                       tickLine={false}
                       axisLine={false}
                     />
                     <YAxis
                       stroke="#64748b"
                       fontSize={12}
+                      tick={{ fontFamily: "DM Sans, sans-serif", fontSize: 12 }}
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={(v) => `${v}%`}
@@ -1121,8 +1065,12 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                         borderColor: "#334155",
                         borderRadius: "8px",
                         color: "#f8fafc",
+                        fontFamily: "DM Sans, sans-serif",
                       }}
-                      itemStyle={{ color: "#f8fafc" }}
+                      itemStyle={{
+                        color: "#f8fafc",
+                        fontFamily: "DM Sans, sans-serif",
+                      }}
                       cursor={{ fill: "rgba(255,255,255,0.03)" }}
                       formatter={(v: number | undefined) => [
                         v !== undefined ? `${v.toFixed(2)}%` : "0.00%",
@@ -1167,7 +1115,7 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                   label: "Avg Edge",
                   align: "right",
                   render: (row) => (
-                    <span className="text-slate-400">
+                    <span className="font-mono text-slate-400 font-bold">
                       {row.avgEdge.toFixed(1)}%
                     </span>
                   ),
@@ -1177,9 +1125,9 @@ export const AnalysisView: React.FC<Props> = ({ bets }) => {
                   align: "right",
                   render: (row) => (
                     <span
-                      className={
+                      className={`font-mono font-bold ${
                         row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"
-                      }
+                      }`}
                     >
                       {row.avgClv > 0 ? "+" : ""}
                       {row.avgClv.toFixed(2)}%

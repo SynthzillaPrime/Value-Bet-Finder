@@ -42,7 +42,6 @@ const App: React.FC = () => {
     status,
     bets,
     requestsRemaining,
-    lastUpdated,
     errorMessage,
     setErrorMessage,
     selectedLeagues,
@@ -164,7 +163,7 @@ const App: React.FC = () => {
               <Trophy className="w-8 h-8 text-slate-950" strokeWidth={2.5} />
             </div>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold tracking-tight text-white">
                 Value Bet Finder
               </h1>
             </div>
@@ -181,7 +180,7 @@ const App: React.FC = () => {
               <button
                 key={item.id}
                 onClick={() => setView(item.id as any)}
-                className={`px-5 py-2.5 transition-all duration-200 whitespace-nowrap text-sm first:rounded-l-xl last:rounded-r-xl ${
+                className={`min-w-[110px] text-center px-5 py-2.5 transition-all duration-200 whitespace-nowrap text-sm first:rounded-l-xl last:rounded-r-xl ${
                   view === item.id
                     ? "bg-emerald-500 text-slate-950 font-bold shadow-lg shadow-emerald-500/20 z-10"
                     : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
@@ -609,12 +608,11 @@ const App: React.FC = () => {
             <BetHistoryView
               bets={trackedBets}
               onDeleteBet={handleDeleteTrackedBet}
-              onSettleBet={settleBet}
             />
           </ErrorBoundary>
         ) : view === "analysis" ? (
           <ErrorBoundary key="analysis" fallbackLabel="Analysis">
-            <AnalysisView bets={trackedBets} />
+            <AnalysisView bets={trackedBets} transactions={transactions} />
           </ErrorBoundary>
         ) : (
           <ErrorBoundary key="bankroll" fallbackLabel="Bankroll">
@@ -622,6 +620,7 @@ const App: React.FC = () => {
               transactions={transactions}
               exchangeBankrolls={exchangeBankrolls}
               onAddTransaction={handleAddTransaction}
+              trackedBets={trackedBets}
             />
           </ErrorBoundary>
         )}

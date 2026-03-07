@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ReactNode } from "react";
+import { useState, useEffect, ReactNode } from "react";
 
 interface Column<T> {
   label: string;
@@ -32,14 +32,17 @@ export const PaginatedTable = <T,>({
   const paginatedData = data.slice(startIndex, startIndex + pageSize);
 
   return (
-    <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50">
-      <table className="w-full text-left border-collapse">
+    <div className="w-full overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50 font-sans">
+      <table
+        className="w-full text-left border-collapse font-sans"
+        style={{ fontFamily: "'DM Sans', sans-serif" }}
+      >
         <thead>
-          <tr className="text-slate-400 border-b border-slate-700 text-[10px] uppercase tracking-wider">
+          <tr className="bg-slate-800/50 text-slate-500 border-b border-slate-700/50 text-[10px] uppercase tracking-wider font-bold">
             {columns.map((col, idx) => (
               <th
                 key={idx}
-                className={`p-4 font-medium ${col.align === "right" ? "text-right" : ""}`}
+                className={`px-4 py-3 ${col.align === "right" ? "text-right" : ""}`}
               >
                 {col.label}
               </th>
