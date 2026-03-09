@@ -41,6 +41,42 @@ interface FetchResult {
 }
 
 /**
+ * Fetches the count of upcoming fixtures for specific leagues.
+ * This endpoint is free and does not count towards the API quota.
+ */
+export const fetchLeagueFixtureCounts = async (
+  apiKey: string,
+  leagueKeys: string[],
+): Promise<Record<string, number>> => {
+  const now = new Date();
+  const maxKickoff = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+
+  const fetchPromises = leagueKeys.map(async (leagueKey) => {
+    const url = `https://api.the-odds-api.com/v4/sports/${leagueKey}/events?apiKey=${apiKey}&dateFormat=iso`;
+    try {
+      const response = await fetch(url);
+      if (!response.ok) return { key: leagueKey, count: 0 };
+      const events = (await response.json()) as any[];
+      const upcomingCount = events.filter((event) => {
+        const kickoff = new Date(event.commence_time);
+        return kickoff > now && kickoff <= maxKickoff;
+      }).length;
+      return { key: leagueKey, count: upcomingCount };
+    } catch (error) {
+      console.error(`Error fetching fixtures for ${leagueKey}`, error);
+      return { key: leagueKey, count: 0 };
+    }
+  });
+
+  const results = await Promise.all(fetchPromises);
+  const counts: Record<string, number> = {};
+  results.forEach((res) => {
+    counts[res.key] = res.count;
+  });
+  return counts;
+};
+
+/**
  * Fetches odds for a single league
  */
 const fetchLeagueOdds = async (

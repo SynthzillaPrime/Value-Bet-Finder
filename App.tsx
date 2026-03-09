@@ -43,6 +43,9 @@ const App: React.FC = () => {
     bets,
     requestsRemaining,
     requestsUsed,
+    fixtureCounts,
+    isCheckingFixtures,
+    loadFixtureCounts,
     errorMessage,
     setErrorMessage,
     selectedLeagues,
@@ -219,6 +222,9 @@ const App: React.FC = () => {
                     selected={selectedLeagues}
                     onChange={setSelectedLeagues}
                     disabled={status === "loading"}
+                    fixtureCounts={fixtureCounts}
+                    onCheckFixtures={loadFixtureCounts}
+                    isCheckingFixtures={isCheckingFixtures}
                   />
                   <div className="text-sm text-slate-400">
                     <span className="font-bold text-white">{bets.length}</span>{" "}

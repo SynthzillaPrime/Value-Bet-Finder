@@ -8,26 +8,33 @@ export const HARDCODED_API_KEY: string =
   import.meta.env.VITE_ODDS_API_KEY || "";
 
 export const LEAGUES: LeagueOption[] = [
+  // Top Leagues
   { key: "soccer_epl", name: "Premier League" },
-  { key: "soccer_efl_champ", name: "Championship" },
   { key: "soccer_spain_la_liga", name: "La Liga" },
   { key: "soccer_germany_bundesliga", name: "Bundesliga" },
   { key: "soccer_italy_serie_a", name: "Serie A" },
   { key: "soccer_france_ligue_one", name: "Ligue 1" },
-  { key: "soccer_uefa_champs_league", name: "Champions League" },
-  { key: "soccer_uefa_europa_league", name: "Europa League" },
-  { key: "soccer_fa_cup", name: "FA Cup" },
-  { key: "soccer_england_efl_cup", name: "EFL Cup" },
-  { key: "soccer_england_league1", name: "League One" },
-  { key: "soccer_england_league2", name: "League Two" },
+  { key: "soccer_portugal_primeira_liga", name: "Primeira Liga" },
+  { key: "soccer_netherlands_eredivisie", name: "Eredivisie" },
+  { key: "soccer_spl", name: "Scottish Premiership" },
+
+  // Second Divisions
+  { key: "soccer_efl_champ", name: "Championship" },
   { key: "soccer_spain_segunda_division", name: "La Liga 2" },
   { key: "soccer_germany_bundesliga2", name: "Bundesliga 2" },
   { key: "soccer_italy_serie_b", name: "Serie B" },
   { key: "soccer_france_ligue_two", name: "Ligue 2" },
-  { key: "soccer_portugal_primeira_liga", name: "Primeira Liga" },
-  { key: "soccer_netherlands_eredivisie", name: "Eredivisie" },
-  { key: "soccer_spl", name: "Scottish Premiership" },
+  { key: "soccer_england_league1", name: "League One" },
+  { key: "soccer_england_league2", name: "League Two" },
+
+  // European Cups
+  { key: "soccer_uefa_champs_league", name: "Champions League" },
+  { key: "soccer_uefa_europa_league", name: "Europa League" },
   { key: "soccer_uefa_europa_conference_league", name: "Conference League" },
+
+  // Domestic Cups
+  { key: "soccer_fa_cup", name: "FA Cup" },
+  { key: "soccer_england_efl_cup", name: "EFL Cup" },
 ];
 
 // Commission rates used by the SCANNER for edge calculation display.

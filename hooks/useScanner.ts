@@ -1,6 +1,11 @@
 import { useState, useMemo, useCallback } from "react";
 import { MatchResponse, FetchStatus } from "../types";
-import { fetchOddsData, calculateEdges } from "../services/edgeFinder";
+import {
+  fetchOddsData,
+  calculateEdges,
+  fetchLeagueFixtureCounts,
+} from "../services/edgeFinder";
+import { LEAGUES } from "../constants";
 import { HARDCODED_API_KEY } from "../constants";
 
 const STORAGE_KEY = "ods_api_key";
@@ -28,6 +33,10 @@ export const useScanner = () => {
   const [requestsUsed, setRequestsUsed] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [selectedLeagues, setSelectedLeagues] = useState<string[]>([]);
+  const [fixtureCounts, setFixtureCounts] = useState<Record<string, number>>(
+    {},
+  );
+  const [isCheckingFixtures, setIsCheckingFixtures] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   const bets = useMemo(() => {
@@ -45,11 +54,26 @@ export const useScanner = () => {
     setErrorMessage("");
 
     try {
+      // Filter selected leagues to only those with known fixtures (if counts are loaded)
+      const hasFixtureData = Object.keys(fixtureCounts).length > 0;
+      const activeSelected = hasFixtureData
+        ? selectedLeagues.filter((key) => (fixtureCounts[key] || 0) > 0)
+        : selectedLeagues;
+
+      if (activeSelected.length === 0 && selectedLeagues.length > 0) {
+        setRawMatches([]);
+        setStatus("empty");
+        return;
+      }
+
       const {
         matches,
         remainingRequests: remaining,
         usedRequests: used,
-      } = await fetchOddsData(apiKey, selectedLeagues);
+      } = await fetchOddsData(
+        apiKey,
+        activeSelected.length > 0 ? activeSelected : selectedLeagues,
+      );
       setRawMatches(matches);
       setRequestsRemaining(remaining);
       setRequestsUsed(used);
@@ -77,6 +101,20 @@ export const useScanner = () => {
     setErrorMessage("");
   };
 
+  const loadFixtureCounts = useCallback(async () => {
+    if (!apiKey) return;
+    setIsCheckingFixtures(true);
+    try {
+      const allLeagueKeys = LEAGUES.map((l) => l.key);
+      const counts = await fetchLeagueFixtureCounts(apiKey, allLeagueKeys);
+      setFixtureCounts(counts);
+    } catch (error) {
+      console.error("Failed to load fixture counts:", error);
+    } finally {
+      setIsCheckingFixtures(false);
+    }
+  }, [apiKey]);
+
   const handleClearKey = () => {
     localStorage.removeItem(STORAGE_KEY);
     setApiKey(null);
@@ -90,6 +128,9 @@ export const useScanner = () => {
     bets,
     requestsRemaining,
     requestsUsed,
+    fixtureCounts,
+    isCheckingFixtures,
+    loadFixtureCounts,
     lastUpdated,
     errorMessage,
     setErrorMessage,
