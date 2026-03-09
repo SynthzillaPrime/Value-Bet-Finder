@@ -191,7 +191,7 @@ export const BankrollView: React.FC<Props> = ({
   const isPositivePL = totalStats.profitLoss >= 0;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col lg:flex-row gap-4 items-stretch mb-6">
         {/* Left Panel: Summary Table + Chart Stacked */}
         <div className="flex-1 bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col">
@@ -499,7 +499,7 @@ export const BankrollView: React.FC<Props> = ({
       </div>
 
       {/* Transaction History Table - Full Width */}
-      <div className="w-full space-y-6 font-sans">
+      <div className="w-full space-y-6">
         <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
           <div className="px-6 py-4 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-800/20">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -552,25 +552,19 @@ export const BankrollView: React.FC<Props> = ({
                       exportTransactionsToCSV(sortedTransactions);
                     e.target.value = "";
                   }}
-                  className="font-sans bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-emerald-400 outline-none appearance-none cursor-pointer pr-8 min-w-[115px] transition-all shadow-lg shadow-emerald-900/20"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-emerald-400 outline-none appearance-none cursor-pointer pr-8 min-w-[115px] transition-all shadow-lg shadow-emerald-900/20"
                 >
                   <option
                     value=""
                     disabled
-                    className="font-sans bg-slate-900 text-slate-400"
+                    className="bg-slate-900 text-slate-400"
                   >
                     Export
                   </option>
-                  <option
-                    value="all"
-                    className="font-sans bg-slate-900 text-white"
-                  >
+                  <option value="all" className="bg-slate-900 text-white">
                     Export All
                   </option>
-                  <option
-                    value="filtered"
-                    className="font-sans bg-slate-900 text-white"
-                  >
+                  <option value="filtered" className="bg-slate-900 text-white">
                     Export Filtered
                   </option>
                 </select>
@@ -579,7 +573,7 @@ export const BankrollView: React.FC<Props> = ({
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse font-sans">
+            <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="text-slate-500 border-b border-slate-800 text-[10px] uppercase tracking-wider bg-slate-800/50 font-bold">
                   <th className="px-6 py-3 whitespace-nowrap">Date & Time</th>
@@ -663,7 +657,7 @@ export const BankrollView: React.FC<Props> = ({
           {/* Pagination Bar */}
           {sortedTransactions.length > 0 && (
             <div className="flex items-center justify-between bg-slate-800/20 border-t border-slate-800 px-6 py-3">
-              <div className="text-xs text-slate-500 font-sans">
+              <div className="text-xs text-slate-500">
                 Showing{" "}
                 <span className="font-bold text-slate-300">
                   {Math.min(

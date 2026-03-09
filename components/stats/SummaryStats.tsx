@@ -113,11 +113,11 @@ export const SummaryStats: React.FC<Props> = ({ bets }) => {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8 w-full font-sans">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8 w-full">
       {stats.map((stat, i) => (
         <div
           key={i}
-          className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl flex flex-col gap-1 transition-all hover:bg-slate-800 hover:border-slate-600 min-w-0 w-full font-sans"
+          className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl flex flex-col gap-1 transition-all hover:bg-slate-800 hover:border-slate-600 min-w-0 w-full"
         >
           <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-1 truncate">
             {stat.label}

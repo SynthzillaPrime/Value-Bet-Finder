@@ -1,13 +1,12 @@
-import React, { useState } from 'react';
-import { Key, ArrowRight, ExternalLink, X } from 'lucide-react';
+import React, { useState } from "react";
+import { Key, ArrowRight, ExternalLink } from "lucide-react";
 
 interface Props {
   onSave: (key: string) => void;
-  onCancel?: () => void;
 }
 
-export const ApiKeyInput: React.FC<Props> = ({ onSave, onCancel }) => {
-  const [inputKey, setInputKey] = useState('');
+export const ApiKeyInput: React.FC<Props> = ({ onSave }) => {
+  const [inputKey, setInputKey] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,23 +18,14 @@ export const ApiKeyInput: React.FC<Props> = ({ onSave, onCancel }) => {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
       <div className="bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700 max-w-md w-full relative">
-        {onCancel && (
-            <button 
-                onClick={onCancel}
-                className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
-                title="Cancel"
-            >
-                <X className="w-5 h-5" />
-            </button>
-        )}
-        
         <div className="bg-blue-500/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
           <Key className="w-8 h-8 text-blue-400" />
         </div>
-        
+
         <h2 className="text-2xl font-bold text-white mb-2">Enter API Key</h2>
         <p className="text-slate-400 mb-8">
-          To find value bets, this app needs a key from The-Odds-API. It is stored locally on your device.
+          To find value bets, this app needs a key from The-Odds-API. It is
+          stored locally on your device.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -49,7 +39,7 @@ export const ApiKeyInput: React.FC<Props> = ({ onSave, onCancel }) => {
               autoFocus
             />
           </div>
-          
+
           <button
             type="submit"
             disabled={!inputKey}
@@ -60,9 +50,9 @@ export const ApiKeyInput: React.FC<Props> = ({ onSave, onCancel }) => {
         </form>
 
         <div className="mt-8 pt-6 border-t border-slate-700">
-          <a 
-            href="https://the-odds-api.com" 
-            target="_blank" 
+          <a
+            href="https://the-odds-api.com"
+            target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-blue-400 hover:text-blue-300 flex items-center justify-center gap-1"
           >

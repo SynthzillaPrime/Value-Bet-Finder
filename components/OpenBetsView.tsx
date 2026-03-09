@@ -12,8 +12,12 @@ import {
 interface Props {
   bets: TrackedBet[];
   onDeleteBet: (id: string) => Promise<void>;
-  onSettleBet: (betId: string) => Promise<boolean>;
-  onSettleAll: () => Promise<{ settled: number; failed: number }>;
+  onSettleBet: (betId: string) => Promise<string>;
+  onSettleAll: () => Promise<{
+    settled: number;
+    skipped: number;
+    failed: number;
+  }>;
 }
 
 export const OpenBetsView: React.FC<Props> = ({
@@ -78,10 +82,12 @@ export const OpenBetsView: React.FC<Props> = ({
     setSettleProgress({ current: 0, total: readyToSettle.length });
 
     try {
-      const { settled, failed } = await onSettleAll();
+      const { settled, skipped, failed } = await onSettleAll();
+      let message = `Settled: ${settled}, Skipped: ${skipped}`;
       if (failed > 0) {
-        alert(`Settlement complete: ${settled} succeeded, ${failed} failed.`);
+        message += `, Failed: ${failed}`;
       }
+      alert(message);
     } finally {
       setSettlingAll(false);
       setSettleProgress(null);

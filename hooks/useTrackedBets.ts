@@ -97,7 +97,6 @@ export const useTrackedBets = (
       status: "open",
       hoursBeforeKickoff,
       timingBucket,
-      flatStake: 1,
       kellyStake: fractionalKellyStake,
       commission,
       netEdgePercent: actualNetEdge,
@@ -183,11 +182,9 @@ export const useTrackedBets = (
   const settleBet = async (
     betId: string,
     forceResult?: "won" | "lost" | "void",
-  ): Promise<boolean> => {
+  ): Promise<"settled" | "skipped" | "failed"> => {
     const bet = trackedBets.find((b) => b.id === betId);
-    if (!bet) return false;
-
-    if (bet.result && !forceResult) return true;
+    if (!bet) return "failed";
 
     let clvData = {
       closingRawPrice: bet.closingRawPrice,
@@ -195,8 +192,8 @@ export const useTrackedBets = (
       clvPercent: bet.clvPercent,
     };
 
-    // Fetch CLV if missing
-    if (clvData.clvPercent === undefined) {
+    // Fetch CLV if missing or if re-settling (no forceResult provided)
+    if (clvData.clvPercent === undefined || !forceResult) {
       const result = await fetchClosingLine(apiKey, bet);
       if (result) {
         clvData = {
@@ -213,16 +210,17 @@ export const useTrackedBets = (
 
     if (!result) {
       const scoreResult = await fetchMatchResult(apiKey, bet);
-      if (!scoreResult || !scoreResult.completed) return false;
+      if (!scoreResult) return "failed";
+      if (!scoreResult.completed) return "skipped";
 
       homeScore = scoreResult.homeScore;
       awayScore = scoreResult.awayScore;
-      if (homeScore === undefined || awayScore === undefined) return false;
+      if (homeScore === undefined || awayScore === undefined) return "failed";
 
       result = determineBetResult(bet, homeScore, awayScore);
     }
 
-    if (!result) return false;
+    if (!result) return "failed";
 
     const { kellyPL } = calculatePL(bet, result);
 
@@ -236,32 +234,39 @@ export const useTrackedBets = (
         ...clvData,
         status: "closed",
       });
-      return true;
+      return "settled";
     } catch (e) {
       console.error(`Failed to settle bet ${betId}:`, e);
-      return false;
+      return "failed";
     }
   };
 
-  const settleAll = async (): Promise<{ settled: number; failed: number }> => {
+  const settleAll = async (): Promise<{
+    settled: number;
+    skipped: number;
+    failed: number;
+  }> => {
     const betsToSettle = trackedBets.filter((b) => !b.result);
     let settled = 0;
+    let skipped = 0;
     let failed = 0;
 
     for (const bet of betsToSettle) {
-      const success = await settleBet(bet.id);
-      if (success) {
+      const status = await settleBet(bet.id);
+      if (status === "settled") {
         settled++;
+      } else if (status === "skipped") {
+        skipped++;
       } else {
         failed++;
       }
 
       // Small delay to avoid API rate limits
-      if (settled + failed < betsToSettle.length) {
+      if (settled + skipped + failed < betsToSettle.length) {
         await new Promise((r) => setTimeout(r, 500));
       }
     }
-    return { settled, failed };
+    return { settled, skipped, failed };
   };
 
   return {

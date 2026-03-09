@@ -285,7 +285,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
   }, [settled]);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-12">
+    <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-bold text-white">Performance Analysis</h2>
       </div>
@@ -294,9 +294,9 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
 
       <div className="space-y-12">
         {/* 1. Bankroll */}
-        <section className="w-full font-sans">
+        <section className="w-full">
           <h3 className="text-lg font-bold text-slate-300 mb-4">Bankroll</h3>
-          <div className="space-y-6 w-full font-sans">
+          <div className="space-y-6 w-full">
             <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
               <div className="h-[350px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -506,9 +506,9 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
         </section>
 
         {/* 3. CLV Tracker */}
-        <section className="w-full font-sans">
+        <section className="w-full">
           <h3 className="text-lg font-bold text-slate-300 mb-4">CLV Tracker</h3>
-          <div className="space-y-6 w-full font-sans">
+          <div className="space-y-6 w-full">
             <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -661,16 +661,16 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
         </section>
 
         {/* 4. By Competition */}
-        <section className="w-full font-sans">
+        <section className="w-full">
           <h3 className="text-lg font-bold text-slate-300 mb-4">
             By Competition
           </h3>
           {competitionData.length === 0 ? (
-            <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-8 text-center text-slate-500 font-sans">
+            <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-8 text-center text-slate-500">
               No settled data.
             </div>
           ) : (
-            <div className="space-y-6 w-full font-sans">
+            <div className="space-y-6 w-full">
               <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
                 <div className="w-full h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -796,11 +796,11 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
         </section>
 
         {/* 5. By Odds Band */}
-        <section className="w-full font-sans">
+        <section className="w-full">
           <h3 className="text-lg font-bold text-slate-300 mb-4">
             By Odds Band
           </h3>
-          <div className="space-y-6 w-full font-sans">
+          <div className="space-y-6 w-full">
             <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -913,9 +913,9 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
         </section>
 
         {/* 6. By Timing */}
-        <section className="w-full font-sans">
+        <section className="w-full">
           <h3 className="text-lg font-bold text-slate-300 mb-4">By Timing</h3>
-          <div className="space-y-6 w-full font-sans">
+          <div className="space-y-6 w-full">
             <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -1028,9 +1028,9 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
         </section>
 
         {/* 7. By Market */}
-        <section className="w-full font-sans">
+        <section className="w-full">
           <h3 className="text-lg font-bold text-slate-300 mb-4">By Market</h3>
-          <div className="space-y-6 w-full font-sans">
+          <div className="space-y-6 w-full">
             <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">

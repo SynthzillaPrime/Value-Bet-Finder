@@ -82,7 +82,7 @@ export interface TrackedBet extends BetEdge {
   timingBucket: "48hr+" | "24-48hr" | "12-24hr" | "<12hr";
   notes?: string;
 
-  flatStake: number;
+  flatStake?: number;
   kellyStake: number;
   kellyPL?: number;
 

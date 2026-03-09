@@ -32,11 +32,8 @@ export const PaginatedTable = <T,>({
   const paginatedData = data.slice(startIndex, startIndex + pageSize);
 
   return (
-    <div className="w-full overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50 font-sans">
-      <table
-        className="w-full text-left border-collapse font-sans"
-        style={{ fontFamily: "'DM Sans', sans-serif" }}
-      >
+    <div className="w-full overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50">
+      <table className="w-full text-left border-collapse">
         <thead>
           <tr className="bg-slate-800/50 text-slate-500 border-b border-slate-700/50 text-[10px] uppercase tracking-wider font-bold">
             {columns.map((col, idx) => (

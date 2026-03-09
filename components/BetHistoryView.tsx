@@ -1,14 +1,22 @@
 import React, { useState, useEffect, useRef } from "react";
 import { TrackedBet } from "../types";
 import { LEAGUES } from "../constants";
-import { Trash2, ChevronDown, Download } from "lucide-react";
+import { Trash2, ChevronDown, Download, RefreshCw } from "lucide-react";
 
 interface Props {
   bets: TrackedBet[];
   onDeleteBet: (id: string) => Promise<void>;
+  onSettleBet: (
+    betId: string,
+    forceResult?: "won" | "lost" | "void",
+  ) => Promise<string>;
 }
 
-export const BetHistoryView: React.FC<Props> = ({ bets, onDeleteBet }) => {
+export const BetHistoryView: React.FC<Props> = ({
+  bets,
+  onDeleteBet,
+  onSettleBet,
+}) => {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -167,22 +175,15 @@ export const BetHistoryView: React.FC<Props> = ({ bets, onDeleteBet }) => {
                 if (e.target.value === "filtered") exportBetsToCSV(sortedBets);
                 e.target.value = "";
               }}
-              className="font-sans bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-emerald-400 outline-none appearance-none cursor-pointer pr-8 min-w-[115px] transition-all shadow-lg shadow-emerald-900/20"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-emerald-400 outline-none appearance-none cursor-pointer pr-8 min-w-[115px] transition-all shadow-lg shadow-emerald-900/20"
             >
-              <option
-                value=""
-                disabled
-                className="font-sans bg-slate-900 text-slate-400"
-              >
+              <option value="" disabled className="bg-slate-900 text-slate-400">
                 Export
               </option>
-              <option value="all" className="font-sans bg-slate-900 text-white">
+              <option value="all" className="bg-slate-900 text-white">
                 Export All
               </option>
-              <option
-                value="filtered"
-                className="font-sans bg-slate-900 text-white"
-              >
+              <option value="filtered" className="bg-slate-900 text-white">
                 Export Filtered
               </option>
             </select>
@@ -196,7 +197,7 @@ export const BetHistoryView: React.FC<Props> = ({ bets, onDeleteBet }) => {
             <select
               value={compFilter}
               onChange={(e) => setCompFilter(e.target.value)}
-              className="font-sans bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
             >
               <option>All Competitions</option>
               {(() => {
@@ -239,7 +240,7 @@ export const BetHistoryView: React.FC<Props> = ({ bets, onDeleteBet }) => {
             <select
               value={timingFilter}
               onChange={(e) => setTimingFilter(e.target.value)}
-              className="font-sans bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
             >
               <option>All Timing</option>
               <option>48hr+</option>
@@ -255,7 +256,7 @@ export const BetHistoryView: React.FC<Props> = ({ bets, onDeleteBet }) => {
             <select
               value={oddsFilter}
               onChange={(e) => setOddsFilter(e.target.value)}
-              className="font-sans bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
             >
               <option>All Odds</option>
               <option>1.50 - 3.00</option>
@@ -270,7 +271,7 @@ export const BetHistoryView: React.FC<Props> = ({ bets, onDeleteBet }) => {
             <select
               value={clvFilter}
               onChange={(e) => setClvFilter(e.target.value)}
-              className="font-sans bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
             >
               <option>All CLV</option>
               <option>Positive CLV</option>
@@ -285,7 +286,7 @@ export const BetHistoryView: React.FC<Props> = ({ bets, onDeleteBet }) => {
             <select
               value={resultFilter}
               onChange={(e) => setResultFilter(e.target.value)}
-              className="font-sans bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
             >
               <option>All Results</option>
               <option>Won</option>
@@ -345,6 +346,7 @@ export const BetHistoryView: React.FC<Props> = ({ bets, onDeleteBet }) => {
                 const league =
                   LEAGUES.find((l) => l.key === bet.sportKey)?.name ||
                   bet.sport;
+                const edge = bet.baseNetEdgePercent ?? bet.netEdgePercent;
                 return (
                   <tr
                     key={bet.id}
@@ -397,11 +399,8 @@ export const BetHistoryView: React.FC<Props> = ({ bets, onDeleteBet }) => {
                     </td>
                     <td className="py-4 px-2 text-right align-middle">
                       <span className="text-emerald-400 font-bold">
-                        +
-                        {(bet.baseNetEdgePercent ?? bet.netEdgePercent).toFixed(
-                          1,
-                        )}
-                        %
+                        {edge > 0 ? "+" : ""}
+                        {edge.toFixed(1)}%
                       </span>
                     </td>
                     <td className="py-4 px-2 text-right align-middle">
@@ -471,7 +470,16 @@ export const BetHistoryView: React.FC<Props> = ({ bets, onDeleteBet }) => {
                       )}
                     </td>
                     <td className="py-4 px-0 pr-4 text-center align-middle">
-                      <div className="flex items-center justify-center">
+                      <div className="flex items-center justify-center gap-1">
+                        {bet.result && (
+                          <button
+                            onClick={() => onSettleBet(bet.id)}
+                            className="h-8 w-8 flex items-center justify-center text-slate-600 hover:text-emerald-400 hover:bg-emerald-900/20 transition-all rounded"
+                            title="Re-settle bet (refresh CLV & result)"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDeleteClick(bet.id)}
                           className={`transition-all rounded flex items-center justify-center w-[50px] ${
