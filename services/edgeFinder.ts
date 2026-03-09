@@ -51,24 +51,42 @@ export const fetchLeagueFixtureCounts = async (
   const now = new Date();
   const maxKickoff = new Date(now.getTime() + 48 * 60 * 60 * 1000);
 
-  const fetchPromises = leagueKeys.map(async (leagueKey) => {
+  const results: { key: string; count: number }[] = [];
+
+  for (let i = 0; i < leagueKeys.length; i++) {
+    const leagueKey = leagueKeys[i];
     const url = `https://api.the-odds-api.com/v4/sports/${leagueKey}/events?apiKey=${apiKey}&dateFormat=iso`;
+
     try {
-      const response = await fetch(url);
-      if (!response.ok) return { key: leagueKey, count: 0 };
-      const events = (await response.json()) as any[];
-      const upcomingCount = events.filter((event) => {
-        const kickoff = new Date(event.commence_time);
-        return kickoff > now && kickoff <= maxKickoff;
-      }).length;
-      return { key: leagueKey, count: upcomingCount };
+      let response = await fetch(url);
+
+      // Handle rate limit with one retry
+      if (response.status === 429) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        response = await fetch(url);
+      }
+
+      if (!response.ok) {
+        results.push({ key: leagueKey, count: 0 });
+      } else {
+        const events = (await response.json()) as any[];
+        const upcomingCount = events.filter((event) => {
+          const kickoff = new Date(event.commence_time);
+          return kickoff > now && kickoff <= maxKickoff;
+        }).length;
+        results.push({ key: leagueKey, count: upcomingCount });
+      }
     } catch (error) {
       console.error(`Error fetching fixtures for ${leagueKey}`, error);
-      return { key: leagueKey, count: 0 };
+      results.push({ key: leagueKey, count: 0 });
     }
-  });
 
-  const results = await Promise.all(fetchPromises);
+    // Stagger requests: 200ms delay between each league (except the last one)
+    if (i < leagueKeys.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  }
+
   const counts: Record<string, number> = {};
   results.forEach((res) => {
     counts[res.key] = res.count;
@@ -97,7 +115,26 @@ const fetchLeagueOdds = async (
 
     if (!response.ok) {
       if (response.status === 401) throw new Error("AUTH_ERROR");
-      if (response.status === 429) throw new Error("QUOTA_EXCEEDED");
+      if (response.status === 429) {
+        // Rate limit hit - wait 1s and retry once
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const retryResponse = await fetch(url);
+
+        const retryRemaining = retryResponse.headers.get(
+          "x-requests-remaining",
+        );
+        const retryUsed = retryResponse.headers.get("x-requests-used");
+        const rem = retryRemaining ? parseInt(retryRemaining, 10) : null;
+        const usd = retryUsed ? parseInt(retryUsed, 10) : null;
+
+        if (retryResponse.ok) {
+          const data = await retryResponse.json();
+          return { data: data as MatchResponse[], remaining: rem, used: usd };
+        }
+
+        if (retryResponse.status === 429) throw new Error("QUOTA_EXCEEDED");
+        return { data: [], remaining: rem, used: usd };
+      }
       console.warn(`Failed to fetch ${leagueKey}: ${response.statusText}`);
       return { data: [], remaining, used };
     }
@@ -127,10 +164,16 @@ export const fetchOddsData = async (
   remainingRequests: number | null;
   usedRequests: number | null;
 }> => {
-  const fetchPromises = selectedLeagues.map((leagueKey) =>
-    fetchLeagueOdds(apiKey, leagueKey),
-  );
-  const results = await Promise.all(fetchPromises);
+  const results: FetchResult[] = [];
+  for (let i = 0; i < selectedLeagues.length; i++) {
+    const result = await fetchLeagueOdds(apiKey, selectedLeagues[i]);
+    results.push(result);
+
+    // Stagger requests: 200ms delay between each league (except the last one)
+    if (i < selectedLeagues.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  }
 
   const flatMatches = results.flatMap((r) => r.data);
 
