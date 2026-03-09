@@ -40,4 +40,4 @@ export const EXCHANGES = [
 ];
 
 export const BOOKMAKERS = `pinnacle,${EXCHANGES.map((e) => e.key).join(",")}`;
-export const MARKETS = "h2h,totals,spreads";
+export const MARKETS = "h2h";

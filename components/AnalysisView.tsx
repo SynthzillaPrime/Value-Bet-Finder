@@ -249,7 +249,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
 
   // 7. Market Data
   const marketData = useMemo(() => {
-    const markets = ["Match Result", "Over/Under", "Handicap"];
+    const markets = ["Match Result"];
     return markets.map((mkt) => {
       const marketBets = settled.filter((b) => b.market === mkt);
       const totalPL = marketBets.reduce((sum, b) => sum + (b.kellyPL ?? 0), 0);

@@ -25,6 +25,7 @@ export const useScanner = () => {
   const [requestsRemaining, setRequestsRemaining] = useState<number | null>(
     null,
   );
+  const [requestsUsed, setRequestsUsed] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [selectedLeagues, setSelectedLeagues] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string>("");
@@ -44,12 +45,14 @@ export const useScanner = () => {
     setErrorMessage("");
 
     try {
-      const { matches, remainingRequests: remaining } = await fetchOddsData(
-        apiKey,
-        selectedLeagues,
-      );
+      const {
+        matches,
+        remainingRequests: remaining,
+        usedRequests: used,
+      } = await fetchOddsData(apiKey, selectedLeagues);
       setRawMatches(matches);
       setRequestsRemaining(remaining);
+      setRequestsUsed(used);
       setLastUpdated(new Date());
 
       if (matches.length === 0) {
@@ -86,6 +89,7 @@ export const useScanner = () => {
     status,
     bets,
     requestsRemaining,
+    requestsUsed,
     lastUpdated,
     errorMessage,
     setErrorMessage,

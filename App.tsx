@@ -42,6 +42,7 @@ const App: React.FC = () => {
     status,
     bets,
     requestsRemaining,
+    requestsUsed,
     errorMessage,
     setErrorMessage,
     selectedLeagues,
@@ -630,25 +631,45 @@ const App: React.FC = () => {
           <div className="flex flex-col gap-1.5 bg-slate-900 px-6 py-3 rounded-full border border-slate-800 w-64 shadow-lg">
             <div className="flex justify-center items-center text-xs text-slate-400">
               <span className="text-slate-300 font-medium">
-                {requestsRemaining !== null
-                  ? Math.max(0, 10000 - requestsRemaining).toLocaleString()
-                  : "—"}{" "}
-                of 10,000 used
+                {requestsUsed !== null && requestsRemaining !== null ? (
+                  <>
+                    API: {requestsUsed.toLocaleString()} /{" "}
+                    {(requestsUsed + requestsRemaining).toLocaleString()} used
+                  </>
+                ) : (
+                  "—"
+                )}
               </span>
             </div>
             <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
               <div
                 className={`h-full transition-all duration-1000 ${
-                  requestsRemaining === null
+                  requestsUsed === null || requestsRemaining === null
                     ? "w-0"
-                    : ((10000 - requestsRemaining) / 10000) * 100 >= 90
+                    : (requestsUsed / (requestsUsed + requestsRemaining)) *
+                          100 >=
+                        90
                       ? "bg-red-500"
-                      : ((10000 - requestsRemaining) / 10000) * 100 >= 70
+                      : (requestsUsed / (requestsUsed + requestsRemaining)) *
+                            100 >=
+                          70
                         ? "bg-amber-500"
                         : "bg-emerald-500"
                 }`}
                 style={{
-                  width: `${requestsRemaining === null ? 0 : Math.min(100, Math.max(0, ((10000 - requestsRemaining) / 10000) * 100))}%`,
+                  width: `${
+                    requestsUsed === null || requestsRemaining === null
+                      ? 0
+                      : Math.min(
+                          100,
+                          Math.max(
+                            0,
+                            (requestsUsed /
+                              (requestsUsed + requestsRemaining)) *
+                              100,
+                          ),
+                        )
+                  }%`,
                 }}
               />
             </div>

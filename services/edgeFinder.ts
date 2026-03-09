@@ -37,6 +37,7 @@ export const stripVig = (
 interface FetchResult {
   data: MatchResponse[];
   remaining: number | null;
+  used: number | null;
 }
 
 /**
@@ -46,21 +47,23 @@ const fetchLeagueOdds = async (
   apiKey: string,
   leagueKey: string,
 ): Promise<FetchResult> => {
-  // h2h = 1X2, totals = Over/Under (btts not supported by this endpoint)
-  const url = `https://api.the-odds-api.com/v4/sports/${leagueKey}/odds?apiKey=${apiKey}&regions=uk,eu,us&markets=${MARKETS}&oddsFormat=decimal&bookmakers=${BOOKMAKERS}`;
+  // h2h = 1X2
+  const url = `https://api.the-odds-api.com/v4/sports/${leagueKey}/odds?apiKey=${apiKey}&regions=uk&markets=${MARKETS}&oddsFormat=decimal&bookmakers=${BOOKMAKERS}`;
 
   try {
     const response = await fetch(url);
 
     // Check for quota header
     const remainingHeader = response.headers.get("x-requests-remaining");
+    const usedHeader = response.headers.get("x-requests-used");
     const remaining = remainingHeader ? parseInt(remainingHeader, 10) : null;
+    const used = usedHeader ? parseInt(usedHeader, 10) : null;
 
     if (!response.ok) {
       if (response.status === 401) throw new Error("AUTH_ERROR");
       if (response.status === 429) throw new Error("QUOTA_EXCEEDED");
       console.warn(`Failed to fetch ${leagueKey}: ${response.statusText}`);
-      return { data: [], remaining };
+      return { data: [], remaining, used };
     }
 
     if (remaining !== null && remaining <= 0) {
@@ -68,12 +71,12 @@ const fetchLeagueOdds = async (
     }
 
     const data = await response.json();
-    return { data: data as MatchResponse[], remaining };
+    return { data: data as MatchResponse[], remaining, used };
   } catch (error) {
     const msg = (error as Error).message;
     if (msg === "AUTH_ERROR" || msg === "QUOTA_EXCEEDED") throw error;
     console.error(`Error fetching ${leagueKey}`, error);
-    return { data: [], remaining: null };
+    return { data: [], remaining: null, used: null };
   }
 };
 
@@ -83,20 +86,30 @@ const fetchLeagueOdds = async (
 export const fetchOddsData = async (
   apiKey: string,
   selectedLeagues: string[],
-): Promise<{ matches: MatchResponse[]; remainingRequests: number | null }> => {
+): Promise<{
+  matches: MatchResponse[];
+  remainingRequests: number | null;
+  usedRequests: number | null;
+}> => {
   const fetchPromises = selectedLeagues.map((leagueKey) =>
     fetchLeagueOdds(apiKey, leagueKey),
   );
   const results = await Promise.all(fetchPromises);
 
   const flatMatches = results.flatMap((r) => r.data);
+
   const remainingCounts = results
     .map((r) => r.remaining)
     .filter((r): r is number => r !== null);
   const remainingRequests =
     remainingCounts.length > 0 ? Math.min(...remainingCounts) : null;
 
-  return { matches: flatMatches, remainingRequests };
+  const usedCounts = results
+    .map((r) => r.used)
+    .filter((r): r is number => r !== null);
+  const usedRequests = usedCounts.length > 0 ? Math.max(...usedCounts) : null;
+
+  return { matches: flatMatches, remainingRequests, usedRequests };
 };
 
 /**
@@ -125,18 +138,13 @@ export const calculateEdges = (matches: MatchResponse[]): BetEdge[] => {
       const fairPrices = stripVig(pinnMarket.outcomes);
       if (!fairPrices) continue;
 
-      // Determine Market Name
-      let marketName = pinnMarket.key;
-      if (pinnMarket.key === "h2h") marketName = "Match Result";
-      else if (pinnMarket.key === "totals") marketName = "Over/Under";
-      else if (pinnMarket.key === "spreads") marketName = "Handicap";
+      // Only process h2h markets
+      if (pinnMarket.key !== "h2h") continue;
+      const marketName = "Match Result";
 
       // Iterate through each selection (outcome) in the Pinnacle market
       for (const outcome of pinnMarket.outcomes) {
-        const selection =
-          outcome.point !== undefined
-            ? `${outcome.name} ${outcome.point > 0 ? "+" : ""}${outcome.point}`
-            : outcome.name;
+        const selection = outcome.name;
         const fairPrice = fairPrices[outcome.name];
 
         if (!fairPrice) continue;
@@ -150,13 +158,11 @@ export const calculateEdges = (matches: MatchResponse[]): BetEdge[] => {
           );
           if (!exchangeBookie) continue;
 
-          const exMarket = exchangeBookie.markets.find(
-            (m) => m.key === pinnMarket.key,
-          );
+          const exMarket = exchangeBookie.markets.find((m) => m.key === "h2h");
           if (!exMarket) continue;
 
           const exOutcome = exMarket.outcomes.find(
-            (o) => o.name === outcome.name && o.point === outcome.point,
+            (o) => o.name === outcome.name,
           );
           if (!exOutcome) continue;
 
@@ -257,7 +263,7 @@ export const fetchClosingLine = async (
   const kickoffDate = new Date(bet.kickoff);
   const dateStr = kickoffDate.toISOString().split(".")[0] + "Z";
 
-  const url = `https://api.the-odds-api.com/v4/sports/${bet.sportKey}/odds-history?apiKey=${apiKey}&regions=eu,uk&markets=${MARKETS}&date=${dateStr}&bookmakers=pinnacle`;
+  const url = `https://api.the-odds-api.com/v4/sports/${bet.sportKey}/odds-history?apiKey=${apiKey}&regions=uk&markets=${MARKETS}&date=${dateStr}&bookmakers=pinnacle`;
 
   try {
     const response = await fetch(url);
@@ -278,22 +284,13 @@ export const fetchClosingLine = async (
     const pinnacle = match.bookmakers.find((b) => b.key === "pinnacle");
     if (!pinnacle) return null;
 
-    // Map market name back to key
-    let marketKey = "h2h";
-    if (bet.market === "Over/Under") marketKey = "totals";
-    else if (bet.market === "Handicap") marketKey = "spreads";
-
-    const market = pinnacle.markets.find((m) => m.key === marketKey);
+    // Map market name back to key - only h2h supported
+    if (bet.market !== "Match Result") return null;
+    const market = pinnacle.markets.find((m) => m.key === "h2h");
 
     if (!market) return null;
 
-    const outcome = market.outcomes.find((o) => {
-      const selection =
-        o.point !== undefined
-          ? `${o.name} ${o.point > 0 ? "+" : ""}${o.point}`
-          : o.name;
-      return selection === bet.selection;
-    });
+    const outcome = market.outcomes.find((o) => o.name === bet.selection);
     if (!outcome) return null;
 
     // Calculate fair prices for the whole market at close
