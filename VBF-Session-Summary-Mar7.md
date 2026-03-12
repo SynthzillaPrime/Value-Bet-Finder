@@ -101,7 +101,7 @@ DM Sans loaded via Google Fonts `<link>` in index.html. Set as Tailwind `font-sa
 
 ### Table conventions (all tabs)
 - Header: `bg-slate-800/50`, `text-[10px] uppercase tracking-wider font-bold text-slate-500`
-- Numeric cells: right-aligned, `font-mono font-bold`, `whitespace-nowrap`
+- Numeric cells: right-aligned, `tabular-nums font-bold`, `whitespace-nowrap`
 - Text cells: left-aligned
 - Selection column: `text-[15px] font-extrabold text-white` — always the boldest text
 - Match column: team names in `font-semibold text-slate-200`, league + kickoff below in `text-[10px/11px] text-slate-500`

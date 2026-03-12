@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { LEAGUES } from "./constants";
 import { ApiKeyInput } from "./components/ApiKeyInput";
 import { LeagueSelector } from "./components/LeagueSelector";
 import { AnalysisView } from "./components/AnalysisView";
@@ -347,7 +348,9 @@ const App: React.FC = () => {
                                   </div>
                                   <div className="flex items-center gap-2 mt-1">
                                     <span className="text-[10px] font-bold uppercase text-slate-500">
-                                      {bet.sport}
+                                      {LEAGUES.find(
+                                        (l) => l.key === bet.sportKey,
+                                      )?.name || bet.sport}
                                     </span>
                                     <span className="text-[11px] text-slate-500">
                                       {formattedDate}

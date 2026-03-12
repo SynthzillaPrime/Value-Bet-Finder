@@ -286,10 +286,6 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-bold text-white">Performance Analysis</h2>
-      </div>
-
       <SummaryStats bets={bets} />
 
       <div className="space-y-12">
@@ -297,7 +293,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
         <section className="w-full">
           <h3 className="text-lg font-bold text-slate-300 mb-4">Bankroll</h3>
           <div className="space-y-6 w-full">
-            <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+            <div className="w-full bg-slate-900/50 border border-slate-800/50 rounded-2xl p-6 backdrop-blur-sm">
               <div className="h-[350px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={bankrollData}>
@@ -418,7 +414,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                 {
                   label: "Bet #",
                   render: (row) => (
-                    <span className="font-mono text-slate-500">
+                    <span className="tabular-nums text-slate-500">
                       #{row.betNum}
                     </span>
                   ),
@@ -445,7 +441,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   align: "right",
                   render: (row) => (
                     <span
-                      className={`font-mono ${
+                      className={`tabular-nums ${
                         row.clv !== undefined
                           ? row.clv > 0
                             ? "text-emerald-400"
@@ -463,7 +459,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   label: "Kelly Stake",
                   align: "right",
                   render: (row) => (
-                    <span className="text-slate-200 font-mono">
+                    <span className="text-slate-200 tabular-nums">
                       £{row.stake.toFixed(2)}
                     </span>
                   ),
@@ -473,7 +469,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   align: "right",
                   render: (row) => (
                     <span
-                      className={`font-mono ${row.expectedGain >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                      className={`tabular-nums ${row.expectedGain >= 0 ? "text-emerald-400" : "text-red-400"}`}
                     >
                       £{row.expectedGain.toFixed(2)}
                     </span>
@@ -484,7 +480,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   align: "right",
                   render: (row) => (
                     <span
-                      className={`font-mono font-bold ${row.actualGain >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                      className={`tabular-nums font-bold ${row.actualGain >= 0 ? "text-emerald-400" : "text-red-400"}`}
                     >
                       {row.actualGain > 0 ? "+" : ""}£
                       {row.actualGain.toFixed(2)}
@@ -495,7 +491,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   label: "Bankroll",
                   align: "right",
                   render: (row) => (
-                    <span className="font-mono text-slate-200 font-bold">
+                    <span className="tabular-nums text-slate-200 font-bold">
                       £{row.actual.toFixed(2)}
                     </span>
                   ),
@@ -509,7 +505,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
         <section className="w-full">
           <h3 className="text-lg font-bold text-slate-300 mb-4">CLV Tracker</h3>
           <div className="space-y-6 w-full">
-            <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+            <div className="w-full bg-slate-900/50 border border-slate-800/50 rounded-2xl p-6 backdrop-blur-sm">
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={clvData.chart}>
@@ -603,7 +599,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                 {
                   label: "Bet #",
                   render: (row) => (
-                    <span className="font-mono text-slate-500">
+                    <span className="tabular-nums text-slate-500">
                       #{row.betNum}
                     </span>
                   ),
@@ -620,7 +616,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   label: "Odds",
                   align: "right",
                   render: (row) => (
-                    <span className="font-mono text-blue-300 font-bold">
+                    <span className="tabular-nums text-blue-300 font-bold">
                       {row.odds.toFixed(2)}
                     </span>
                   ),
@@ -629,7 +625,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   label: "SP",
                   align: "right",
                   render: (row) => (
-                    <span className="font-mono text-slate-400">
+                    <span className="tabular-nums text-slate-400">
                       {row.closing?.toFixed(2) || "—"}
                     </span>
                   ),
@@ -638,7 +634,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   label: "Edge",
                   align: "right",
                   render: (row) => (
-                    <span className="font-mono text-slate-400 font-bold">
+                    <span className="tabular-nums text-slate-400 font-bold">
                       {row.netEdge.toFixed(1)}%
                     </span>
                   ),
@@ -648,7 +644,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   align: "right",
                   render: (row) => (
                     <span
-                      className={`font-mono font-bold ${row.clv > 0 ? "text-emerald-400" : "text-red-400"}`}
+                      className={`tabular-nums font-bold ${row.clv > 0 ? "text-emerald-400" : "text-red-400"}`}
                     >
                       {row.clv > 0 ? "+" : ""}
                       {row.clv.toFixed(2)}%
@@ -671,7 +667,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
             </div>
           ) : (
             <div className="space-y-6 w-full">
-              <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+              <div className="bg-slate-900/50 border border-slate-800/50 rounded-2xl p-6 backdrop-blur-sm">
                 <div className="w-full h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
@@ -758,7 +754,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                     label: "Avg Edge",
                     align: "right",
                     render: (row) => (
-                      <span className="font-mono text-slate-400 font-bold">
+                      <span className="tabular-nums text-slate-400 font-bold">
                         {row.avgEdge.toFixed(1)}%
                       </span>
                     ),
@@ -768,7 +764,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                     align: "right",
                     render: (row) => (
                       <span
-                        className={`font-mono font-bold ${
+                        className={`tabular-nums font-bold ${
                           row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"
                         }`}
                       >
@@ -801,7 +797,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
             By Odds Band
           </h3>
           <div className="space-y-6 w-full">
-            <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+            <div className="bg-slate-900/50 border border-slate-800/50 rounded-2xl p-6 backdrop-blur-sm">
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
@@ -886,7 +882,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   align: "right",
                   render: (row) => (
                     <span
-                      className={`font-mono font-bold ${
+                      className={`tabular-nums font-bold ${
                         row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"
                       }`}
                     >
@@ -916,7 +912,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
         <section className="w-full">
           <h3 className="text-lg font-bold text-slate-300 mb-4">By Timing</h3>
           <div className="space-y-6 w-full">
-            <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+            <div className="bg-slate-900/50 border border-slate-800/50 rounded-2xl p-6 backdrop-blur-sm">
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
@@ -1001,7 +997,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   align: "right",
                   render: (row) => (
                     <span
-                      className={`font-mono font-bold ${
+                      className={`tabular-nums font-bold ${
                         row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"
                       }`}
                     >
@@ -1031,7 +1027,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
         <section className="w-full">
           <h3 className="text-lg font-bold text-slate-300 mb-4">By Market</h3>
           <div className="space-y-6 w-full">
-            <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+            <div className="bg-slate-900/50 border border-slate-800/50 rounded-2xl p-6 backdrop-blur-sm">
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
@@ -1115,7 +1111,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   label: "Avg Edge",
                   align: "right",
                   render: (row) => (
-                    <span className="font-mono text-slate-400 font-bold">
+                    <span className="tabular-nums text-slate-400 font-bold">
                       {row.avgEdge.toFixed(1)}%
                     </span>
                   ),
@@ -1125,7 +1121,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   align: "right",
                   render: (row) => (
                     <span
-                      className={`font-mono font-bold ${
+                      className={`tabular-nums font-bold ${
                         row.avgClv >= 0 ? "text-emerald-400" : "text-red-400"
                       }`}
                     >

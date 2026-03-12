@@ -71,7 +71,7 @@ export const SummaryStats: React.FC<Props> = ({ bets }) => {
     {
       label: "Total Staked",
       value: `£${totalKellyStakes.toFixed(2)}`,
-      subValue: "30% Kelly Staking",
+      subValue: "Kelly Staking",
       color: "text-blue-400",
     },
     {

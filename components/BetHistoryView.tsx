@@ -160,12 +160,9 @@ export const BetHistoryView: React.FC<Props> = ({
     <div className="space-y-6 animate-in fade-in duration-500 w-full">
       <div className="flex flex-col gap-4">
         <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-white">Bet History</h2>
-            <p className="text-sm text-slate-500 mt-1">
-              {bets.length} total · {filteredBets.length} shown
-            </p>
-          </div>
+          <span className="text-sm text-slate-500">
+            {bets.length} total · {filteredBets.length} shown
+          </span>
 
           <div className="relative">
             <select
@@ -299,7 +296,7 @@ export const BetHistoryView: React.FC<Props> = ({
         </div>
       </div>
 
-      <div className="overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50 w-full">
+      <div className="overflow-x-auto bg-slate-900/50 border border-slate-800/50 rounded-2xl backdrop-blur-sm w-full">
         <table className="w-full text-left border-collapse table-fixed min-w-[1100px]">
           <colgroup>
             <col />
@@ -315,7 +312,7 @@ export const BetHistoryView: React.FC<Props> = ({
             <col className="w-[70px]" />
           </colgroup>
           <thead>
-            <tr className="bg-slate-800/50 text-slate-500 border-b border-slate-700 text-[10px] uppercase tracking-wider font-bold">
+            <tr className="bg-slate-800/50 text-slate-500 border-b border-slate-800/50 text-[10px] uppercase tracking-wider font-bold">
               <th className="p-4">Match</th>
               <th className="p-4">Selection</th>
               <th className="py-4 px-2">Exchange</th>
@@ -363,19 +360,24 @@ export const BetHistoryView: React.FC<Props> = ({
                           </span>
                           <span className="text-slate-700 text-[10px]">•</span>
                           <span className="text-[10px] text-slate-500 font-medium">
-                            {new Date(bet.kickoff)
-                              .toLocaleString("en-GB", {
-                                weekday: "short",
-                                day: "2-digit",
-                                month: "short",
-                              })
-                              .replace(",", "")}
-                            ,{" "}
-                            {new Date(bet.kickoff).toLocaleTimeString("en-GB", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: false,
-                            })}
+                            <span className="tabular-nums">
+                              {new Date(bet.kickoff)
+                                .toLocaleString("en-GB", {
+                                  weekday: "short",
+                                  day: "2-digit",
+                                  month: "short",
+                                })
+                                .replace(",", "")}
+                              ,{" "}
+                              {new Date(bet.kickoff).toLocaleTimeString(
+                                "en-GB",
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  hour12: false,
+                                },
+                              )}
+                            </span>
                           </span>
                         </div>
                       </div>
@@ -393,19 +395,19 @@ export const BetHistoryView: React.FC<Props> = ({
                       </div>
                     </td>
                     <td className="py-4 px-2 text-right align-middle">
-                      <div className="font-mono text-blue-300 font-bold">
+                      <div className="tabular-nums text-white font-bold">
                         {bet.exchangePrice.toFixed(2)}
                       </div>
                     </td>
                     <td className="py-4 px-2 text-right align-middle">
-                      <span className="text-emerald-400 font-bold">
+                      <span className="text-emerald-400 font-bold tabular-nums">
                         {edge > 0 ? "+" : ""}
                         {edge.toFixed(1)}%
                       </span>
                     </td>
                     <td className="py-4 px-2 text-right align-middle">
                       {bet.closingFairPrice !== undefined ? (
-                        <div className="font-semibold font-mono text-slate-500">
+                        <div className="font-semibold tabular-nums text-slate-500">
                           {bet.closingFairPrice.toFixed(2)}
                         </div>
                       ) : (
@@ -415,7 +417,7 @@ export const BetHistoryView: React.FC<Props> = ({
                     <td className="py-4 px-2 text-right align-middle">
                       {bet.clvPercent !== undefined ? (
                         <span
-                          className={`${
+                          className={`tabular-nums ${
                             bet.clvPercent > 0
                               ? "text-emerald-400 font-bold"
                               : bet.clvPercent < 0
@@ -453,14 +455,14 @@ export const BetHistoryView: React.FC<Props> = ({
                       )}
                     </td>
                     <td className="py-4 px-2 text-right align-middle">
-                      <div className="font-bold text-white">
+                      <div className="font-bold text-white tabular-nums">
                         £{bet.kellyStake.toFixed(2)}
                       </div>
                     </td>
                     <td className="py-4 px-2 text-right align-middle">
                       {bet.kellyPL !== undefined ? (
                         <div
-                          className={`font-bold ${bet.kellyPL >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                          className={`font-bold tabular-nums ${bet.kellyPL >= 0 ? "text-emerald-400" : "text-red-400"}`}
                         >
                           {bet.kellyPL >= 0 ? "+" : "-"}£
                           {Math.abs(bet.kellyPL).toFixed(2)}
@@ -509,12 +511,12 @@ export const BetHistoryView: React.FC<Props> = ({
         <div className="flex items-center justify-between bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3">
           <div className="text-sm text-slate-400">
             Showing{" "}
-            <span className="font-medium text-slate-200">
+            <span className="font-medium text-slate-200 tabular-nums">
               {Math.min((page - 1) * ITEMS_PER_PAGE + 1, sortedBets.length)}-
               {Math.min(page * ITEMS_PER_PAGE, sortedBets.length)}
             </span>{" "}
             of{" "}
-            <span className="font-medium text-slate-200">
+            <span className="font-medium text-slate-200 tabular-nums">
               {sortedBets.length}
             </span>{" "}
             bets

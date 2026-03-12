@@ -242,20 +242,20 @@ export const BankrollView: React.FC<Props> = ({
                     <td className="px-6 py-3 font-bold text-slate-300 whitespace-nowrap text-xs">
                       {stats.name}
                     </td>
-                    <td className="px-6 py-3 font-mono font-bold text-right text-white whitespace-nowrap text-xs">
+                    <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-xs">
                       £{stats.netDeposits.toFixed(2)}
                     </td>
-                    <td className="px-6 py-3 font-mono font-bold text-right text-white whitespace-nowrap text-xs">
+                    <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-xs">
                       £{stats.balance.toFixed(2)}
                     </td>
-                    <td className="px-6 py-3 font-mono font-bold text-right text-white whitespace-nowrap text-xs">
+                    <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-xs">
                       {stats.bets}
                     </td>
-                    <td className="px-6 py-3 font-mono font-bold text-right text-white whitespace-nowrap text-xs">
+                    <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-xs">
                       £{stats.staked.toFixed(2)}
                     </td>
                     <td
-                      className={`px-6 py-3 font-mono font-bold text-right whitespace-nowrap text-xs ${
+                      className={`px-6 py-3 tabular-nums font-bold text-right whitespace-nowrap text-xs ${
                         stats.profitLoss >= 0
                           ? "text-emerald-400"
                           : "text-red-400"
@@ -265,7 +265,7 @@ export const BankrollView: React.FC<Props> = ({
                       {Math.abs(stats.profitLoss).toFixed(2)}
                     </td>
                     <td
-                      className={`px-6 py-3 font-mono font-bold text-right whitespace-nowrap text-xs ${
+                      className={`px-6 py-3 tabular-nums font-bold text-right whitespace-nowrap text-xs ${
                         stats.stakeRoi !== null
                           ? stats.stakeRoi >= 0
                             ? "text-emerald-400"
@@ -280,7 +280,7 @@ export const BankrollView: React.FC<Props> = ({
                         : "—"}
                     </td>
                     <td
-                      className={`px-6 py-3 font-mono font-bold text-right whitespace-nowrap text-xs ${
+                      className={`px-6 py-3 tabular-nums font-bold text-right whitespace-nowrap text-xs ${
                         stats.ret !== null
                           ? stats.ret >= 0
                             ? "text-emerald-400"
@@ -298,20 +298,20 @@ export const BankrollView: React.FC<Props> = ({
                   <td className="px-6 py-3 text-[13px] font-extrabold text-white whitespace-nowrap">
                     Total
                   </td>
-                  <td className="px-6 py-3 text-[13px] font-extrabold text-white font-mono text-right whitespace-nowrap">
+                  <td className="px-6 py-3 text-[13px] font-extrabold text-white tabular-nums text-right whitespace-nowrap">
                     £{totalStats.netDeposits.toFixed(2)}
                   </td>
-                  <td className="px-6 py-3 text-[13px] font-extrabold text-white font-mono text-right whitespace-nowrap">
+                  <td className="px-6 py-3 text-[13px] font-extrabold text-white tabular-nums text-right whitespace-nowrap">
                     £{totalStats.balance.toFixed(2)}
                   </td>
-                  <td className="px-6 py-3 text-[13px] font-extrabold text-white font-mono text-right whitespace-nowrap">
+                  <td className="px-6 py-3 text-[13px] font-extrabold text-white tabular-nums text-right whitespace-nowrap">
                     {totalStats.bets}
                   </td>
-                  <td className="px-6 py-3 text-[13px] font-extrabold text-white font-mono text-right whitespace-nowrap">
+                  <td className="px-6 py-3 text-[13px] font-extrabold text-white tabular-nums text-right whitespace-nowrap">
                     £{totalStats.staked.toFixed(2)}
                   </td>
                   <td
-                    className={`px-6 py-3 text-[13px] font-extrabold font-mono text-right whitespace-nowrap ${
+                    className={`px-6 py-3 text-[13px] font-extrabold tabular-nums text-right whitespace-nowrap ${
                       totalStats.profitLoss >= 0
                         ? "text-emerald-400"
                         : "text-red-400"
@@ -321,7 +321,7 @@ export const BankrollView: React.FC<Props> = ({
                     {Math.abs(totalStats.profitLoss).toFixed(2)}
                   </td>
                   <td
-                    className={`px-6 py-3 text-[13px] font-extrabold font-mono text-right whitespace-nowrap ${
+                    className={`px-6 py-3 text-[13px] font-extrabold tabular-nums text-right whitespace-nowrap ${
                       totalStats.stakeRoi !== null
                         ? totalStats.stakeRoi >= 0
                           ? "text-emerald-400"
@@ -336,7 +336,7 @@ export const BankrollView: React.FC<Props> = ({
                       : "—"}
                   </td>
                   <td
-                    className={`px-6 py-3 text-[13px] font-extrabold font-mono text-right whitespace-nowrap ${
+                    className={`px-6 py-3 text-[13px] font-extrabold tabular-nums text-right whitespace-nowrap ${
                       totalStats.ret !== null
                         ? totalStats.ret >= 0
                           ? "text-emerald-400"
@@ -356,7 +356,7 @@ export const BankrollView: React.FC<Props> = ({
           </div>
 
           {/* Sparkline Chart */}
-          <div className="flex-1 p-4 min-h-[100px] flex flex-col justify-between">
+          <div className="flex-1 p-4 min-h-[100px] max-h-[160px] flex flex-col justify-between">
             <div className="flex justify-between items-start mb-2">
               <div>
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
@@ -473,7 +473,7 @@ export const BankrollView: React.FC<Props> = ({
                   onChange={(e) =>
                     setNewTx({ ...newTx, amount: e.target.value })
                   }
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:ring-1 focus:ring-blue-500 outline-none placeholder:text-slate-600 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white tabular-nums focus:ring-1 focus:ring-blue-500 outline-none placeholder:text-slate-600 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
 
@@ -500,8 +500,8 @@ export const BankrollView: React.FC<Props> = ({
 
       {/* Transaction History Table - Full Width */}
       <div className="w-full space-y-6">
-        <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-          <div className="px-6 py-4 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-800/20">
+        <div className="bg-slate-900/50 border border-slate-800/50 rounded-2xl overflow-hidden backdrop-blur-sm shadow-xl">
+          <div className="px-6 py-4 border-b border-slate-800/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-800/20">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <History className="w-4 h-4 text-slate-400" />
               Transaction History
@@ -575,7 +575,7 @@ export const BankrollView: React.FC<Props> = ({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="text-slate-500 border-b border-slate-800 text-[10px] uppercase tracking-wider bg-slate-800/50 font-bold">
+                <tr className="text-slate-500 border-b border-slate-800/50 text-[10px] uppercase tracking-wider bg-slate-800/50 font-bold">
                   <th className="px-6 py-3 whitespace-nowrap">Date & Time</th>
                   <th className="px-6 py-3 whitespace-nowrap">Exchange</th>
                   <th className="px-6 py-3 whitespace-nowrap">Type</th>
@@ -635,7 +635,7 @@ export const BankrollView: React.FC<Props> = ({
                           {t.type.replace("_", " ")}
                         </td>
                         <td
-                          className={`px-6 py-4 text-right font-mono font-bold text-sm ${
+                          className={`px-6 py-4 text-right tabular-nums font-bold text-sm ${
                             isZero
                               ? "text-slate-500"
                               : isPositive

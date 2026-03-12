@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { TrackedBet } from "../types";
+import { LEAGUES } from "../constants";
 
 import {
   RefreshCw,
@@ -139,7 +140,6 @@ export const OpenBetsView: React.FC<Props> = ({
   if (openBets.length === 0) {
     return (
       <div className="space-y-8 animate-in fade-in duration-500">
-        <h2 className="text-2xl font-bold text-white">Open Bets</h2>
         <div className="flex flex-col items-center justify-center py-20 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
           <h3 className="text-xl font-semibold text-slate-300">No open bets</h3>
         </div>
@@ -150,20 +150,17 @@ export const OpenBetsView: React.FC<Props> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-white">Open Bets</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            {openBets.length} open
-            {readyToSettle.length > 0 &&
-              ` · ${readyToSettle.length} ready to settle`}
-            {inPlay.length > 0 && ` · ${inPlay.length} in play`}
-          </p>
-        </div>
+        <span className="text-sm text-slate-500 tabular-nums">
+          {openBets.length} open
+          {readyToSettle.length > 0 &&
+            ` · ${readyToSettle.length} ready to settle`}
+          {inPlay.length > 0 && ` · ${inPlay.length} in play`}
+        </span>
 
         <button
           onClick={handleSettleAll}
           disabled={settlingAll || readyToSettle.length === 0}
-          className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg shadow-emerald-900/20 transition-all flex items-center gap-2"
+          className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg shadow-emerald-900/20 transition-all flex items-center gap-2 tabular-nums"
         >
           {settlingAll ? (
             <>
@@ -184,25 +181,25 @@ export const OpenBetsView: React.FC<Props> = ({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-800/50 text-[10px] uppercase tracking-wider font-bold text-slate-500">
-                <th className="px-6 py-3 border-b border-slate-800/50">
+                <th className="px-6 py-3 border-b border-slate-800/50 font-bold">
                   Match
                 </th>
-                <th className="px-6 py-3 border-b border-slate-800/50">
+                <th className="px-6 py-3 border-b border-slate-800/50 font-bold">
                   Selection
                 </th>
-                <th className="px-6 py-3 border-b border-slate-800/50">
+                <th className="px-6 py-3 border-b border-slate-800/50 font-bold">
                   Exchange
                 </th>
-                <th className="px-6 py-3 border-b border-slate-800/50 text-right">
+                <th className="px-6 py-3 border-b border-slate-800/50 text-right font-bold">
                   Odds
                 </th>
-                <th className="px-6 py-3 border-b border-slate-800/50 text-right">
+                <th className="px-6 py-3 border-b border-slate-800/50 text-right font-bold">
                   Edge
                 </th>
-                <th className="px-6 py-3 border-b border-slate-800/50 text-right">
+                <th className="px-6 py-3 border-b border-slate-800/50 text-right font-bold">
                   Stake
                 </th>
-                <th className="px-6 py-3 border-b border-slate-800/50 text-center">
+                <th className="px-6 py-3 border-b border-slate-800/50 text-center font-bold">
                   Action
                 </th>
               </tr>
@@ -331,13 +328,15 @@ const BetRow: React.FC<BetRowProps> = ({
         </div>
         <div className="flex flex-col mt-1">
           <span className="text-[10px] font-bold uppercase text-slate-500">
-            {bet.sport}
+            {LEAGUES.find((l) => l.key === bet.sportKey)?.name || bet.sport}
           </span>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[11px] text-slate-500">
+            <span className="text-[11px] text-slate-500 tabular-nums">
               {formatKickoff(bet.kickoff)}
             </span>
-            <span className={`text-[10px] font-bold ${timeStatus.color}`}>
+            <span
+              className={`text-[10px] font-bold tabular-nums ${timeStatus.color}`}
+            >
               {timeStatus.label}
             </span>
           </div>
@@ -358,14 +357,14 @@ const BetRow: React.FC<BetRowProps> = ({
       </td>
       <td className="px-6 py-4 text-right">
         <div
-          className={`font-bold ${edge > 0 ? "text-emerald-400" : "text-slate-500"}`}
+          className={`font-bold tabular-nums ${edge > 0 ? "text-emerald-400" : "text-slate-500"}`}
         >
           {edge > 0 ? "+" : ""}
           {edge.toFixed(1)}%
         </div>
       </td>
       <td className="px-6 py-4 text-right">
-        <div className="font-extrabold text-white">
+        <div className="font-extrabold text-white tabular-nums">
           £{bet.kellyStake.toFixed(2)}
         </div>
       </td>

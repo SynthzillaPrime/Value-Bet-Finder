@@ -32,10 +32,10 @@ export const PaginatedTable = <T,>({
   const paginatedData = data.slice(startIndex, startIndex + pageSize);
 
   return (
-    <div className="w-full overflow-x-auto bg-slate-800/50 rounded-xl border border-slate-700/50">
+    <div className="w-full overflow-x-auto bg-slate-900/50 border border-slate-800/50 rounded-2xl overflow-hidden backdrop-blur-sm">
       <table className="w-full text-left border-collapse">
         <thead>
-          <tr className="bg-slate-800/50 text-slate-500 border-b border-slate-700/50 text-[10px] uppercase tracking-wider font-bold">
+          <tr className="bg-slate-800/50 text-slate-500 border-b border-slate-800/50 text-[10px] uppercase tracking-wider font-bold">
             {columns.map((col, idx) => (
               <th
                 key={idx}
@@ -66,7 +66,7 @@ export const PaginatedTable = <T,>({
       </table>
 
       {total > pageSize && (
-        <div className="bg-slate-800/50 border-t border-slate-700/50 px-4 py-3 flex justify-between items-center">
+        <div className="bg-slate-800/50 border-t border-slate-800/50 px-4 py-3 flex justify-between items-center">
           <span className="text-xs text-slate-500">
             Showing {Math.min(startIndex + 1, total)}-
             {Math.min(startIndex + pageSize, total)} of {total}
