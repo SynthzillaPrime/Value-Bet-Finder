@@ -11,7 +11,7 @@ import { HARDCODED_API_KEY } from "../constants";
 const STORAGE_KEY = "ods_api_key";
 
 export const useScanner = () => {
-  const [apiKey, setApiKey] = useState<string | null>(() => {
+  const [apiKey, setApiKeyInternal] = useState<string | null>(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) return stored;
     if (HARDCODED_API_KEY && HARDCODED_API_KEY.length > 5)
@@ -94,9 +94,9 @@ export const useScanner = () => {
     }
   }, [apiKey, selectedLeagues]);
 
-  const handleSaveKey = (key: string) => {
+  const setApiKey = (key: string) => {
     localStorage.setItem(STORAGE_KEY, key);
-    setApiKey(key);
+    setApiKeyInternal(key);
     setStatus("idle");
     setErrorMessage("");
   };
@@ -117,7 +117,7 @@ export const useScanner = () => {
 
   const handleClearKey = () => {
     localStorage.removeItem(STORAGE_KEY);
-    setApiKey(null);
+    setApiKeyInternal(null);
     setStatus("no-key");
     setRawMatches([]);
   };
@@ -137,7 +137,7 @@ export const useScanner = () => {
     selectedLeagues,
     setSelectedLeagues,
     runScan,
-    handleSaveKey,
+    setApiKey,
     handleClearKey,
   };
 };

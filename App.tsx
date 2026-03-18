@@ -37,6 +37,8 @@ const App: React.FC = () => {
   >(null);
   const [isTracking, setIsTracking] = useState(false);
   const [customCommission, setCustomCommission] = useState("");
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [newApiKey, setNewApiKey] = useState("");
 
   const {
     apiKey,
@@ -52,7 +54,7 @@ const App: React.FC = () => {
     selectedLeagues,
     setSelectedLeagues,
     runScan,
-    handleSaveKey,
+    setApiKey,
   } = useScanner();
 
   const {
@@ -195,6 +197,16 @@ const App: React.FC = () => {
               </button>
             ))}
           </nav>
+
+          <button
+            onClick={() => {
+              setNewApiKey("");
+              setShowApiKeyModal(true);
+            }}
+            className="text-slate-500 hover:text-slate-300 text-xs uppercase tracking-wider font-bold transition-colors ml-auto md:ml-0"
+          >
+            API Key
+          </button>
         </header>
 
         {(errorMessage || loadError) && (
@@ -234,9 +246,7 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                  {status === "no-key" && (
-                    <ApiKeyInput onSave={handleSaveKey} />
-                  )}
+                  {status === "no-key" && <ApiKeyInput onSave={setApiKey} />}
                   <button
                     onClick={runScan}
                     disabled={status === "loading" || status === "no-key"}
@@ -693,6 +703,60 @@ const App: React.FC = () => {
           </div>
         </footer>
       </div>
+
+      {showApiKeyModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowApiKeyModal(false)}
+          />
+          <div className="bg-slate-900 border border-slate-800/50 rounded-2xl p-6 w-full max-w-md relative z-10 shadow-2xl">
+            <h2 className="text-xl font-bold text-white mb-4">API Key</h2>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-400 mb-1.5">
+                Current Key
+              </label>
+              <div className="text-sm font-mono bg-slate-950/50 px-3 py-2 rounded-lg border border-slate-800 text-slate-300">
+                {apiKey ? `••••••••${apiKey.slice(-6)}` : "No key set"}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-400 mb-1.5">
+                New API Key
+              </label>
+              <input
+                type="text"
+                value={newApiKey}
+                onChange={(e) => setNewApiKey(e.target.value)}
+                placeholder="Paste new key here..."
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  if (newApiKey.trim()) {
+                    setApiKey(newApiKey.trim());
+                  }
+                  setShowApiKeyModal(false);
+                }}
+                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl transition-colors shadow-lg shadow-blue-600/20"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setShowApiKeyModal(false)}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
