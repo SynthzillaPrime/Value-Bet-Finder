@@ -124,6 +124,7 @@ export interface BankrollTransaction {
 export interface LeagueOption {
   key: string;
   name: string;
+  group: string;
 }
 
 export type FetchStatus =

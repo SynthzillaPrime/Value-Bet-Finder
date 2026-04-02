@@ -106,37 +106,61 @@ export const LeagueSelector: React.FC<Props> = ({
             </div>
           </div>
           <div className="max-h-[300px] overflow-y-auto p-1 custom-scrollbar">
-            {LEAGUES.map((league) => {
-              const isSelected = selected.includes(league.key);
-              const count = fixtureCounts ? fixtureCounts[league.key] : null;
-              const hasNoFixtures = count === 0;
+            {(
+              [
+                "Top European",
+                "Other European",
+                "Domestic Cups",
+                "International",
+                "Rest of World",
+              ] as const
+            ).map((group) => {
+              const leaguesInGroup = LEAGUES.filter((l) => l.group === group);
+              if (leaguesInGroup.length === 0) return null;
 
               return (
-                <button
-                  key={league.key}
-                  onClick={() => toggleLeague(league.key)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                    isSelected
-                      ? "bg-blue-600/10 text-blue-200"
-                      : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-                  } ${hasNoFixtures ? "opacity-50" : ""}`}
-                >
-                  {isSelected ? (
-                    <CheckSquare className="w-4 h-4 text-blue-500" />
-                  ) : (
-                    <Square className="w-4 h-4 text-slate-600" />
-                  )}
-                  <div className="flex items-center justify-between min-w-0 flex-1">
-                    <span className="truncate text-left">{league.name}</span>
-                    {count !== null && (
-                      <span
-                        className={`text-[10px] font-bold tabular-nums ml-2 ${hasNoFixtures ? "text-slate-600" : "text-slate-500"}`}
-                      >
-                        ({count})
-                      </span>
-                    )}
+                <div key={group} className="mb-2 last:mb-0">
+                  <div className="px-3 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10 border-b border-slate-800/50 mb-1">
+                    {group}
                   </div>
-                </button>
+                  {leaguesInGroup.map((league) => {
+                    const isSelected = selected.includes(league.key);
+                    const count = fixtureCounts
+                      ? fixtureCounts[league.key]
+                      : null;
+                    const hasNoFixtures = count === 0;
+
+                    return (
+                      <button
+                        key={league.key}
+                        onClick={() => toggleLeague(league.key)}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                          isSelected
+                            ? "bg-blue-600/10 text-blue-200"
+                            : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                        } ${hasNoFixtures ? "opacity-50" : ""}`}
+                      >
+                        {isSelected ? (
+                          <CheckSquare className="w-4 h-4 text-blue-500" />
+                        ) : (
+                          <Square className="w-4 h-4 text-slate-600" />
+                        )}
+                        <div className="flex items-center justify-between min-w-0 flex-1">
+                          <span className="truncate text-left">
+                            {league.name}
+                          </span>
+                          {count !== null && (
+                            <span
+                              className={`text-[10px] font-bold tabular-nums ml-2 ${hasNoFixtures ? "text-slate-600" : "text-slate-500"}`}
+                            >
+                              ({count})
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               );
             })}
           </div>
