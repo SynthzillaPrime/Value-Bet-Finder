@@ -192,14 +192,14 @@ export const useTrackedBets = (
       clvPercent: bet.clvPercent,
     };
 
-    // Fetch CLV if missing or if re-settling (no forceResult provided)
-    if (clvData.clvPercent === undefined || !forceResult) {
-      const result = await fetchClosingLine(apiKey, bet);
-      if (result) {
+    // Fetch CLV if missing and not a manual settlement
+    if (!forceResult && clvData.clvPercent === undefined) {
+      const clvResult = await fetchClosingLine(apiKey, bet);
+      if (clvResult) {
         clvData = {
-          closingRawPrice: result.closingRawPrice,
-          closingFairPrice: result.closingFairPrice,
-          clvPercent: result.clvPercent,
+          closingRawPrice: clvResult.closingRawPrice,
+          closingFairPrice: clvResult.closingFairPrice,
+          clvPercent: clvResult.clvPercent,
         };
       }
     }

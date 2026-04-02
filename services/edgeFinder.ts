@@ -400,7 +400,15 @@ export const fetchMatchResult = async (
   apiKey: string,
   bet: TrackedBet,
 ): Promise<ScoreResult | null> => {
-  const url = `https://api.the-odds-api.com/v4/sports/${bet.sportKey}/scores?apiKey=${apiKey}&daysFrom=3`;
+  // Calculate daysFrom dynamically based on kickoff
+  const now = Date.now();
+  const kickoff = new Date(bet.kickoff).getTime();
+  const diffDays = Math.ceil((now - kickoff) / (1000 * 60 * 60 * 24));
+  // API limit for daysFrom is 3. We clamp between 3 and 3 (effectively always 3)
+  // while keeping the calculation logic for future reference.
+  const daysFrom = Math.min(3, Math.max(3, diffDays + 1));
+
+  const url = `https://api.the-odds-api.com/v4/sports/${bet.sportKey}/scores?apiKey=${apiKey}&daysFrom=${daysFrom}`;
 
   try {
     const response = await fetch(url);

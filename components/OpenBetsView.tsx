@@ -8,12 +8,16 @@ import {
   CheckCircle2,
   AlertCircle,
   Trash2,
+  X,
 } from "lucide-react";
 
 interface Props {
   bets: TrackedBet[];
   onDeleteBet: (id: string) => Promise<void>;
-  onSettleBet: (betId: string) => Promise<string>;
+  onSettleBet: (
+    betId: string,
+    forceResult?: "won" | "lost" | "void",
+  ) => Promise<"settled" | "skipped" | "failed">;
   onSettleAll: () => Promise<{
     settled: number;
     skipped: number;
@@ -28,6 +32,9 @@ export const OpenBetsView: React.FC<Props> = ({
   onSettleAll,
 }) => {
   const [settlingId, setSettlingId] = useState<string | null>(null);
+  const [failedSettleIds, setFailedSettleIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [settlingAll, setSettlingAll] = useState(false);
@@ -68,10 +75,22 @@ export const OpenBetsView: React.FC<Props> = ({
     }
   };
 
-  const handleSettleSingle = async (bet: TrackedBet) => {
-    setSettlingId(bet.id);
+  const handleSettleSingle = async (
+    betId: string,
+    forceResult?: "won" | "lost" | "void",
+  ) => {
+    setSettlingId(betId);
     try {
-      await onSettleBet(bet.id);
+      const result = await onSettleBet(betId, forceResult);
+      if (result === "failed" && !forceResult) {
+        setFailedSettleIds((prev) => new Set(prev).add(betId));
+      } else if (result === "settled") {
+        setFailedSettleIds((prev) => {
+          const next = new Set(prev);
+          next.delete(betId);
+          return next;
+        });
+      }
     } finally {
       setSettlingId(null);
     }
@@ -225,10 +244,18 @@ export const OpenBetsView: React.FC<Props> = ({
                       bet={bet}
                       timeStatus={getTimeStatus(bet.kickoff)}
                       formatKickoff={formatKickoff}
-                      onSettle={() => handleSettleSingle(bet)}
+                      onSettle={(res) => handleSettleSingle(bet.id, res)}
+                      onResetFailure={() => {
+                        setFailedSettleIds((prev) => {
+                          const next = new Set(prev);
+                          next.delete(bet.id);
+                          return next;
+                        });
+                      }}
                       settling={settlingId === bet.id || settlingAll}
                       isConfirming={confirmDeleteId === bet.id}
                       onDelete={() => handleDeleteClick(bet.id)}
+                      autoFailed={failedSettleIds.has(bet.id)}
                     />
                   ))}
                 </>
@@ -254,10 +281,18 @@ export const OpenBetsView: React.FC<Props> = ({
                       bet={bet}
                       timeStatus={getTimeStatus(bet.kickoff)}
                       formatKickoff={formatKickoff}
-                      onSettle={null}
-                      settling={false}
+                      onSettle={(res) => handleSettleSingle(bet.id, res)}
+                      onResetFailure={() => {
+                        setFailedSettleIds((prev) => {
+                          const next = new Set(prev);
+                          next.delete(bet.id);
+                          return next;
+                        });
+                      }}
+                      settling={settlingId === bet.id}
                       isConfirming={confirmDeleteId === bet.id}
                       onDelete={() => handleDeleteClick(bet.id)}
+                      autoFailed={failedSettleIds.has(bet.id)}
                     />
                   ))}
                 </>
@@ -283,10 +318,18 @@ export const OpenBetsView: React.FC<Props> = ({
                       bet={bet}
                       timeStatus={getTimeStatus(bet.kickoff)}
                       formatKickoff={formatKickoff}
-                      onSettle={null}
-                      settling={false}
+                      onSettle={(res) => handleSettleSingle(bet.id, res)}
+                      onResetFailure={() => {
+                        setFailedSettleIds((prev) => {
+                          const next = new Set(prev);
+                          next.delete(bet.id);
+                          return next;
+                        });
+                      }}
+                      settling={settlingId === bet.id}
                       isConfirming={confirmDeleteId === bet.id}
                       onDelete={() => handleDeleteClick(bet.id)}
+                      autoFailed={failedSettleIds.has(bet.id)}
                     />
                   ))}
                 </>
@@ -303,10 +346,12 @@ interface BetRowProps {
   bet: TrackedBet;
   timeStatus: { label: string; color: string };
   formatKickoff: (d: Date) => string;
-  onSettle: (() => void) | null;
+  onSettle: (forceResult?: "won" | "lost" | "void") => void;
+  onResetFailure: () => void;
   settling: boolean;
   isConfirming: boolean;
   onDelete: () => void;
+  autoFailed: boolean;
 }
 
 const BetRow: React.FC<BetRowProps> = ({
@@ -314,11 +359,14 @@ const BetRow: React.FC<BetRowProps> = ({
   timeStatus,
   formatKickoff,
   onSettle,
+  onResetFailure,
   settling,
   isConfirming,
   onDelete,
+  autoFailed,
 }) => {
   const edge = bet.baseNetEdgePercent ?? bet.netEdgePercent;
+  const isReady = timeStatus.label === "Ready to settle";
 
   return (
     <tr className="group hover:bg-slate-800/30 transition-colors">
@@ -368,31 +416,69 @@ const BetRow: React.FC<BetRowProps> = ({
           £{bet.kellyStake.toFixed(2)}
         </div>
       </td>
-      <td className="px-6 py-4 text-center min-w-[140px]">
-        <div className="flex items-center justify-center gap-2">
-          {onSettle && (
-            <button
-              onClick={onSettle}
-              disabled={settling}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-emerald-900/20 disabled:opacity-50"
-            >
-              {settling ? (
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                "Settle"
-              )}
-            </button>
-          )}
-          <div className="w-[80px] flex justify-center">
+      <td className="px-6 py-4 text-center min-w-[180px]">
+        <div className="flex items-center justify-center gap-3">
+          {/* Fixed-width container for Settle/Manual buttons to prevent jitter */}
+          <div className="w-[85px] flex items-center justify-center relative">
+            {autoFailed ? (
+              <div className="flex flex-col gap-1 w-full animate-in fade-in slide-in-from-right-1 duration-200">
+                <button
+                  onClick={() => onSettle("won")}
+                  disabled={settling}
+                  className="w-full py-0.5 bg-emerald-950/20 border border-emerald-500/30 text-emerald-400 rounded text-[9px] font-bold uppercase hover:bg-emerald-900/40 transition-colors disabled:opacity-50"
+                >
+                  Won
+                </button>
+                <button
+                  onClick={() => onSettle("lost")}
+                  disabled={settling}
+                  className="w-full py-0.5 bg-red-950/20 border border-red-500/30 text-red-400 rounded text-[9px] font-bold uppercase hover:bg-red-900/40 transition-colors disabled:opacity-50"
+                >
+                  Lost
+                </button>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => onSettle("void")}
+                    disabled={settling}
+                    className="flex-1 py-0.5 bg-slate-900 border border-slate-500/30 text-slate-400 rounded text-[9px] font-bold uppercase hover:bg-slate-800 transition-colors disabled:opacity-50"
+                  >
+                    Void
+                  </button>
+                  <button
+                    onClick={onResetFailure}
+                    disabled={settling}
+                    className="p-1 text-slate-500 hover:text-slate-300 transition-colors"
+                    title="Cancel manual settlement"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => onSettle()}
+                disabled={settling || !isReady}
+                className="w-full px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-emerald-900/20 disabled:opacity-50 disabled:bg-slate-800 disabled:text-slate-500 disabled:shadow-none"
+              >
+                {settling ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin mx-auto" />
+                ) : (
+                  "Settle"
+                )}
+              </button>
+            )}
+          </div>
+
+          <div className="w-[44px] flex justify-center border-l border-slate-800/50 pl-3">
             <button
               onClick={onDelete}
-              className={`transition-all rounded-lg w-full flex items-center justify-center ${
+              className={`transition-all rounded-lg flex items-center justify-center h-8 ${
                 isConfirming
-                  ? "py-1.5 bg-red-600 text-white text-[10px] font-bold uppercase tracking-tight"
-                  : "p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10"
+                  ? "w-full bg-red-600 text-white text-[10px] font-bold uppercase tracking-tight"
+                  : "w-8 text-slate-500 hover:text-red-400 hover:bg-red-500/10"
               }`}
             >
-              {isConfirming ? "Confirm?" : <Trash2 className="w-4 h-4" />}
+              {isConfirming ? "Yes?" : <Trash2 className="w-4 h-4" />}
             </button>
           </div>
         </div>

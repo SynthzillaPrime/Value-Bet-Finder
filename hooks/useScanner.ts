@@ -32,9 +32,7 @@ export const useScanner = () => {
   );
   const [requestsUsed, setRequestsUsed] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [selectedLeagues, setSelectedLeagues] = useState<string[]>(() =>
-    LEAGUES.filter((l) => l.group === "Top European").map((l) => l.key),
-  );
+  const [selectedLeagues, setSelectedLeagues] = useState<string[]>([]);
   const [fixtureCounts, setFixtureCounts] = useState<Record<string, number>>(
     {},
   );

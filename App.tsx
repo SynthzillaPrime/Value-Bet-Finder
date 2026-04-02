@@ -17,7 +17,14 @@ import {
 import { useTrackedBets } from "./hooks/useTrackedBets";
 import { useBankroll } from "./hooks/useBankroll";
 import { useScanner } from "./hooks/useScanner";
-import { RefreshCw, AlertTriangle, Trophy, Search } from "lucide-react";
+import {
+  RefreshCw,
+  AlertTriangle,
+  Trophy,
+  Search,
+  Zap,
+  CheckCircle2,
+} from "lucide-react";
 
 const App: React.FC = () => {
   // Auth and Navigation State
@@ -36,6 +43,12 @@ const App: React.FC = () => {
     string | null
   >(null);
   const [isTracking, setIsTracking] = useState(false);
+  const [batchTrackingStatus, setBatchTrackingStatus] = useState<{
+    current: number;
+    total: number;
+    done: boolean;
+  } | null>(null);
+  const [batchExchange, setBatchExchange] = useState<string>("matchbook");
   const [customCommission, setCustomCommission] = useState("");
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [newApiKey, setNewApiKey] = useState("");
@@ -96,6 +109,57 @@ const App: React.FC = () => {
     } finally {
       setIsTracking(false);
     }
+  };
+
+  const handleTrackAll = async () => {
+    // Filter for bets that aren't already tracked on this specific exchange
+    // We check for matchId + selection + exchangeKey to avoid duplicates
+    const untrackedBets = bets.filter((bet) => {
+      const alreadyTracked = trackedBets.some(
+        (tb) =>
+          tb.id === bet.id &&
+          tb.selection === bet.selection &&
+          tb.exchangeKey === batchExchange,
+      );
+
+      // Only track if it hasn't been tracked and it actually has an offer for the selected exchange
+      const hasExchangeOffer = bet.offers.some(
+        (o) => o.exchangeKey === batchExchange,
+      );
+
+      return !alreadyTracked && hasExchangeOffer;
+    });
+
+    if (untrackedBets.length === 0) return;
+
+    setIsTracking(true);
+    setBatchTrackingStatus({
+      current: 0,
+      total: untrackedBets.length,
+      done: false,
+    });
+
+    for (let i = 0; i < untrackedBets.length; i++) {
+      const bet = untrackedBets[i];
+      setBatchTrackingStatus((prev) =>
+        prev ? { ...prev, current: i + 1 } : null,
+      );
+
+      try {
+        // Track with 2% commission as per requirements
+        await handleTrackBet(bet, 2, batchExchange);
+      } catch (error) {
+        console.error(`Failed to track bet ${bet.id}:`, error);
+      }
+    }
+
+    setBatchTrackingStatus((prev) => (prev ? { ...prev, done: true } : null));
+    setIsTracking(false);
+
+    // Clear confirmation message after 3 seconds
+    setTimeout(() => {
+      setBatchTrackingStatus(null);
+    }, 3000);
   };
 
   // Authentication check on mount
@@ -245,7 +309,65 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                  {status === "success" && bets.length > 0 && (
+                    <div className="flex items-center gap-2 bg-slate-900/40 p-1.5 pr-3 rounded-xl border border-slate-800/60 backdrop-blur-sm">
+                      <select
+                        value={batchExchange}
+                        onChange={(e) => setBatchExchange(e.target.value)}
+                        disabled={isTracking}
+                        className="bg-slate-800/80 text-white text-xs font-bold py-1.5 px-2.5 rounded-lg border border-slate-700 outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                      >
+                        <option value="matchbook">Matchbook</option>
+                        <option value="smarkets">Smarkets</option>
+                      </select>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase whitespace-nowrap px-1">
+                        at 2% commission
+                      </span>
+                      <button
+                        onClick={handleTrackAll}
+                        disabled={
+                          isTracking ||
+                          !bets.some(
+                            (bet) =>
+                              bet.offers.some(
+                                (o) => o.exchangeKey === batchExchange,
+                              ) &&
+                              !trackedBets.some(
+                                (tb) =>
+                                  tb.id === bet.id &&
+                                  tb.selection === bet.selection &&
+                                  tb.exchangeKey === batchExchange,
+                              ),
+                          )
+                        }
+                        className={`flex items-center gap-2 px-4 py-1.5 rounded-lg font-bold text-xs transition-all ${
+                          batchTrackingStatus?.done
+                            ? "bg-emerald-500 text-slate-950"
+                            : "bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/20 disabled:opacity-50 disabled:bg-slate-800 disabled:text-slate-500 disabled:shadow-none"
+                        }`}
+                      >
+                        {isTracking && batchTrackingStatus ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            Tracking {batchTrackingStatus.current}/
+                            {batchTrackingStatus.total}...
+                          </>
+                        ) : batchTrackingStatus?.done ? (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            {batchTrackingStatus.total} bets tracked
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-3.5 h-3.5 fill-current" />
+                            Track All
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+
                   {status === "no-key" && <ApiKeyInput onSave={setApiKey} />}
                   <button
                     onClick={runScan}
@@ -470,7 +592,7 @@ const App: React.FC = () => {
                               {expandedBetId === bet.id && (
                                 <tr className="bg-slate-950/50 border-t border-slate-800 animate-in fade-in slide-in-from-top-1 duration-200">
                                   <td colSpan={8} className="px-6 py-4">
-                                    <div className="flex items-center gap-6">
+                                    <div className="flex items-center justify-end gap-6">
                                       <div className="flex items-center gap-3">
                                         <span className="text-[10px] uppercase font-bold text-slate-500 whitespace-nowrap">
                                           Commission:
@@ -588,14 +710,14 @@ const App: React.FC = () => {
                                       </div>
 
                                       {isTracking ? (
-                                        <div className="flex items-center gap-2 ml-auto text-blue-400 text-[10px] font-bold uppercase">
+                                        <div className="flex items-center gap-2 text-blue-400 text-[10px] font-bold uppercase">
                                           <RefreshCw className="w-3 h-3 animate-spin" />
                                           Tracking...
                                         </div>
                                       ) : (
                                         <button
                                           onClick={() => setExpandedBetId(null)}
-                                          className="ml-auto text-xs text-slate-500 hover:text-slate-300 font-medium transition-colors"
+                                          className="text-xs text-slate-500 hover:text-slate-300 font-medium transition-colors"
                                         >
                                           Cancel
                                         </button>

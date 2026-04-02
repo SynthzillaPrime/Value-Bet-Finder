@@ -9,7 +9,7 @@ interface Props {
   onSettleBet: (
     betId: string,
     forceResult?: "won" | "lost" | "void",
-  ) => Promise<string>;
+  ) => Promise<"settled" | "skipped" | "failed">;
 }
 
 export const BetHistoryView: React.FC<Props> = ({
