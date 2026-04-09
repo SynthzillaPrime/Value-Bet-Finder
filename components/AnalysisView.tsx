@@ -330,38 +330,45 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm font-semibold text-slate-200 hover:bg-slate-800 transition-all"
           >
-            Sections
+            Sections ({visibleSections.size})
             <ChevronDown
               className={`w-4 h-4 text-slate-500 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`}
             />
           </button>
 
           {isDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 p-1 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
-              {[
-                { id: "bankroll", label: "Bankroll" },
-                { id: "clv", label: "CLV Tracker" },
-                { id: "competition", label: "By Competition" },
-                { id: "odds-band", label: "By Odds Band" },
-                { id: "timing", label: "By Timing" },
-              ].map((section) => (
-                <button
-                  key={section.id}
-                  onClick={() => toggleSection(section.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                    visibleSections.has(section.id)
-                      ? "bg-emerald-500/10 text-emerald-200"
-                      : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-                  }`}
-                >
-                  {visibleSections.has(section.id) ? (
-                    <CheckSquare className="w-4 h-4 text-emerald-500" />
-                  ) : (
-                    <Square className="w-4 h-4 text-slate-600" />
-                  )}
-                  {section.label}
-                </button>
-              ))}
+            <div className="absolute right-0 mt-2 w-64 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+              <div className="p-1">
+                {[
+                  { id: "bankroll", label: "Bankroll" },
+                  { id: "clv", label: "CLV Tracker" },
+                  { id: "competition", label: "By Competition" },
+                  { id: "odds-band", label: "By Odds Band" },
+                  { id: "timing", label: "By Timing" },
+                ].map((section) => {
+                  const isSelected = visibleSections.has(section.id);
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => toggleSection(section.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                        isSelected
+                          ? "bg-blue-600/10 text-blue-200"
+                          : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                      }`}
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="w-4 h-4 text-blue-500" />
+                      ) : (
+                        <Square className="w-4 h-4 text-slate-600" />
+                      )}
+                      <span className="truncate text-left">
+                        {section.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
