@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { LEAGUES } from "./constants";
-import { ApiKeyInput } from "./components/ApiKeyInput";
 import { LeagueSelector } from "./components/LeagueSelector";
 import { AnalysisView } from "./components/AnalysisView";
 import { BankrollView } from "./components/bankroll/BankrollView";
 import { OpenBetsView } from "./components/OpenBetsView";
 import { BetHistoryView } from "./components/BetHistoryView";
+import { ScannerTable } from "./components/ScannerTable";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { PinLock } from "./components/PinLock";
 import {
@@ -24,6 +23,8 @@ import {
   Search,
   Zap,
   CheckCircle2,
+  Settings,
+  X,
 } from "lucide-react";
 
 const App: React.FC = () => {
@@ -50,7 +51,8 @@ const App: React.FC = () => {
   } | null>(null);
   const [batchExchange, setBatchExchange] = useState<string>("matchbook");
   const [customCommission, setCustomCommission] = useState("");
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [newApiKey, setNewApiKey] = useState("");
 
   const {
@@ -92,6 +94,13 @@ const App: React.FC = () => {
     setErrorMessage,
     apiKey || "",
   );
+
+  useEffect(() => {
+    if (status === "no-key" && !apiKey) {
+      setShowSettings(true);
+      setShowApiKeyInput(true);
+    }
+  }, [status, apiKey]);
 
   const handleCommissionSelect = async (bet: any, commission: number) => {
     if (isNaN(commission) || commission < 0 || commission > 100) return;
@@ -228,49 +237,127 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 font-sans selection:bg-emerald-500/30">
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <div className="flex items-center gap-4">
-            <div className="bg-emerald-500 p-2.5 rounded-xl shadow-lg shadow-emerald-500/20">
-              <Trophy className="w-8 h-8 text-slate-950" strokeWidth={2.5} />
+        <header className="flex items-center justify-between mb-12 p-1">
+          <div className="flex items-center gap-3">
+            <div className="bg-emerald-500 p-2 rounded-xl shadow-lg shadow-emerald-500/20">
+              <Trophy className="w-6 h-6 text-slate-950" />
             </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-white">
-                Value Bet Finder
-              </h1>
-            </div>
+            <h1 className="text-2xl font-black text-white tracking-tight hidden sm:block">
+              VALUE<span className="text-emerald-500">BET</span>
+            </h1>
           </div>
 
-          <nav className="flex bg-slate-900 rounded-xl border border-slate-800/50 self-start overflow-x-auto max-w-full no-scrollbar divide-x divide-slate-800">
-            {[
-              { id: "scanner", label: "Scanner" },
-              { id: "openbets", label: "Open Bets" },
-              { id: "history", label: "History" },
-              { id: "analysis", label: "Analysis" },
-              { id: "bankroll", label: "Bankroll" },
-            ].map((item) => (
+          <div className="flex items-center gap-4">
+            <div className="relative">
               <button
-                key={item.id}
-                onClick={() => setView(item.id as any)}
-                className={`min-w-[110px] text-center px-5 py-2.5 transition-all duration-200 whitespace-nowrap text-sm first:rounded-l-xl last:rounded-r-xl ${
-                  view === item.id
-                    ? "bg-emerald-500 text-slate-950 font-bold shadow-lg shadow-emerald-500/20 z-10"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                }`}
+                onClick={() => setShowSettings(!showSettings)}
+                className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all"
               >
-                {item.label}
+                <Settings className="w-5 h-5" />
               </button>
-            ))}
-          </nav>
 
-          <button
-            onClick={() => {
-              setNewApiKey("");
-              setShowApiKeyModal(true);
-            }}
-            className="text-slate-500 hover:text-slate-300 text-xs uppercase tracking-wider font-bold transition-colors ml-auto md:ml-0"
-          >
-            API Key
-          </button>
+              {showSettings && (
+                <div className="absolute right-0 mt-2 w-72 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 p-4 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                      Settings
+                    </h3>
+                    <button
+                      onClick={() => setShowSettings(false)}
+                      className="text-slate-500 hover:text-slate-300"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">
+                        Odds API Key
+                      </label>
+                      {showApiKeyInput || !apiKey ? (
+                        <div className="space-y-2">
+                          <input
+                            type="password"
+                            value={newApiKey}
+                            onChange={(e) => setNewApiKey(e.target.value)}
+                            placeholder="Enter API Key"
+                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-1 focus:ring-emerald-500 outline-none"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setApiKey(newApiKey);
+                                setShowApiKeyInput(false);
+                              }}
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-lg transition-colors"
+                            >
+                              Save
+                            </button>
+                            {apiKey && (
+                              <button
+                                onClick={() => setShowApiKeyInput(false)}
+                                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2 rounded-lg transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center justify-between bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2">
+                            <span className="text-xs text-slate-400 tabular-nums">
+                              ••••••••{apiKey.slice(-4)}
+                            </span>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => {
+                                  setNewApiKey(apiKey);
+                                  setShowApiKeyInput(true);
+                                }}
+                                className="text-[10px] font-bold text-blue-400 hover:text-blue-300 px-1"
+                              >
+                                Change
+                              </button>
+                              <button
+                                onClick={() => setApiKey("")}
+                                className="text-[10px] font-bold text-red-400 hover:text-red-300 px-1"
+                              >
+                                Clear
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <nav className="flex items-center bg-slate-900/50 p-1 rounded-2xl border border-slate-800/50 backdrop-blur-sm">
+              {[
+                { id: "scanner", label: "Scanner" },
+                { id: "openbets", label: "Open Bets" },
+                { id: "history", label: "History" },
+                { id: "analysis", label: "Analysis" },
+                { id: "bankroll", label: "Bankroll" },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setView(item.id as any)}
+                  className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${
+                    view === item.id
+                      ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/10"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+          </div>
         </header>
 
         {(errorMessage || loadError) && (
@@ -368,20 +455,29 @@ const App: React.FC = () => {
                     </div>
                   )}
 
-                  {status === "no-key" && <ApiKeyInput onSave={setApiKey} />}
                   <button
-                    onClick={runScan}
-                    disabled={status === "loading" || status === "no-key"}
+                    onClick={
+                      status === "no-key"
+                        ? () => setShowSettings(true)
+                        : runScan
+                    }
+                    disabled={status === "loading"}
                     className={`flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl font-bold transition-all w-full md:w-auto ${
-                      status === "loading" || status === "no-key"
+                      status === "loading"
                         ? "opacity-40 cursor-not-allowed bg-slate-800"
-                        : "bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-lg shadow-emerald-500/20 active:scale-95"
+                        : status === "no-key"
+                          ? "bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/20"
+                          : "bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-lg shadow-emerald-500/20 active:scale-95"
                     }`}
                   >
                     <RefreshCw
                       className={`w-4.5 h-4.5 ${status === "loading" ? "animate-spin" : ""}`}
                     />
-                    {status === "loading" ? "Scanning..." : "Run Scan"}
+                    {status === "loading"
+                      ? "Scanning..."
+                      : status === "no-key"
+                        ? "Set API Key"
+                        : "Run Scan"}
                   </button>
                 </div>
               </div>
@@ -403,336 +499,19 @@ const App: React.FC = () => {
                   </p>
                 </div>
               ) : (
-                <div className="bg-slate-900/50 border border-slate-800/50 rounded-2xl overflow-hidden backdrop-blur-sm">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-slate-800/50 text-[10px] uppercase tracking-wider font-bold text-slate-500">
-                          <th className="px-6 py-3 border-b border-slate-800/50">
-                            Match
-                          </th>
-                          <th className="px-6 py-3 border-b border-slate-800/50">
-                            Selection
-                          </th>
-                          <th className="px-6 py-3 border-b border-slate-800/50 text-right">
-                            True Odds
-                          </th>
-                          <th className="px-6 py-3 border-b border-slate-800/50">
-                            Exchange
-                          </th>
-                          <th className="px-6 py-3 border-b border-slate-800/50 text-right">
-                            Odds
-                          </th>
-                          <th className="px-6 py-3 border-b border-slate-800/50 text-right">
-                            Edge
-                          </th>
-                          <th className="px-6 py-3 border-b border-slate-800/50 text-right">
-                            Stake
-                          </th>
-                          <th className="px-6 py-3 border-b border-slate-800/50 text-center">
-                            Action
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {bets.map((bet, index) => {
-                          const isTracked = trackedBets.some(
-                            (tb) => tb.id === bet.id,
-                          );
-                          const isExpanded = expandedBetId === bet.id;
-                          const activeOffer =
-                            isExpanded && localSelectedExchangeKey
-                              ? bet.offers.find(
-                                  (o) =>
-                                    o.exchangeKey === localSelectedExchangeKey,
-                                ) || bet.offers[0]
-                              : bet.offers[0];
-
-                          const mainOffer = bet.offers[0];
-                          const kellyStake =
-                            Math.max(0, bankroll) *
-                            (activeOffer.kellyPercent / 100) *
-                            0.3;
-                          const formattedDate =
-                            bet.kickoff.toLocaleDateString("en-GB", {
-                              weekday: "short",
-                              day: "2-digit",
-                              month: "short",
-                            }) +
-                            ", " +
-                            bet.kickoff.toLocaleTimeString("en-GB", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            });
-
-                          return (
-                            <React.Fragment key={bet.id}>
-                              {/* Primary Row */}
-                              <tr
-                                className={`group hover:bg-slate-800/30 transition-colors ${index !== 0 ? "border-t border-slate-800/50" : ""}`}
-                              >
-                                <td
-                                  className="px-6 py-3.5"
-                                  rowSpan={bet.offers.length}
-                                >
-                                  <div className="font-medium text-slate-200">
-                                    {bet.homeTeam} vs {bet.awayTeam}
-                                  </div>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-[10px] font-bold uppercase text-slate-500">
-                                      {LEAGUES.find(
-                                        (l) => l.key === bet.sportKey,
-                                      )?.name || bet.sport}
-                                    </span>
-                                    <span className="text-[11px] text-slate-500">
-                                      {formattedDate}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td
-                                  className="px-6 py-3.5"
-                                  rowSpan={bet.offers.length}
-                                >
-                                  <div className="text-[15px] font-extrabold text-white">
-                                    {bet.selection}
-                                  </div>
-                                </td>
-                                <td
-                                  className="px-6 py-3.5 text-right"
-                                  rowSpan={bet.offers.length}
-                                >
-                                  <div className="font-semibold text-slate-500">
-                                    {bet.fairPrice.toFixed(2)}
-                                  </div>
-                                </td>
-                                {/* Exchange specific cells for main offer */}
-                                <td className="px-6 py-3.5">
-                                  <div className="font-bold text-slate-300">
-                                    {mainOffer.exchangeName}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-3.5 text-right">
-                                  <div className="font-bold text-white tabular-nums">
-                                    {mainOffer.price.toFixed(2)}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-3.5 text-right">
-                                  <div className="font-bold text-emerald-400">
-                                    {mainOffer.netEdgePercent > 0 ? "+" : ""}
-                                    {mainOffer.netEdgePercent.toFixed(1)}%
-                                  </div>
-                                </td>
-                                <td
-                                  className="px-6 py-3.5 text-right"
-                                  rowSpan={bet.offers.length}
-                                >
-                                  <div className="font-extrabold text-white">
-                                    £{kellyStake.toFixed(2)}
-                                  </div>
-                                </td>
-                                <td
-                                  className="px-6 py-3.5 text-center"
-                                  rowSpan={bet.offers.length}
-                                >
-                                  {isTracked ? (
-                                    <span className="text-slate-600 text-sm font-medium">
-                                      Tracked
-                                    </span>
-                                  ) : (
-                                    <button
-                                      onClick={() => {
-                                        if (expandedBetId === bet.id) {
-                                          setExpandedBetId(null);
-                                        } else {
-                                          setExpandedBetId(bet.id);
-                                          setLocalSelectedExchangeKey(
-                                            mainOffer.exchangeKey,
-                                          );
-                                        }
-                                      }}
-                                      className={`px-4 py-1.5 rounded-lg font-bold text-sm transition-colors shadow-lg ${
-                                        expandedBetId === bet.id
-                                          ? "bg-slate-700 text-slate-300 shadow-none"
-                                          : "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20"
-                                      }`}
-                                    >
-                                      {expandedBetId === bet.id
-                                        ? "Cancel"
-                                        : "Track Bet"}
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                              {/* Sub-rows for additional offers */}
-                              {bet.offers.slice(1).map((offer) => (
-                                <tr
-                                  key={offer.exchangeKey}
-                                  className="group hover:bg-slate-800/30 transition-colors border-none"
-                                >
-                                  <td className="px-6 py-1.5">
-                                    <div className="font-normal text-slate-500">
-                                      {offer.exchangeName}
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-1.5 text-right">
-                                    <div className="font-semibold text-slate-500 tabular-nums">
-                                      {offer.price.toFixed(2)}
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-1.5 text-right">
-                                    <div className="font-medium text-slate-500">
-                                      {offer.netEdgePercent > 0 ? "+" : ""}
-                                      {offer.netEdgePercent.toFixed(1)}%
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-
-                              {/* Expansion Row for Commission Picker */}
-                              {expandedBetId === bet.id && (
-                                <tr className="bg-slate-950/50 border-t border-slate-800 animate-in fade-in slide-in-from-top-1 duration-200">
-                                  <td colSpan={8} className="px-6 py-4">
-                                    <div className="flex items-center justify-end gap-6">
-                                      <div className="flex items-center gap-3">
-                                        <span className="text-[10px] uppercase font-bold text-slate-500 whitespace-nowrap">
-                                          Commission:
-                                        </span>
-                                        <div className="flex gap-2">
-                                          <button
-                                            disabled={isTracking}
-                                            onClick={() =>
-                                              handleCommissionSelect(bet, 0)
-                                            }
-                                            className="px-3 py-1 text-xs font-bold rounded-md bg-emerald-900/30 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-900/50 transition-colors disabled:opacity-50"
-                                          >
-                                            0%
-                                          </button>
-                                          <button
-                                            disabled={isTracking}
-                                            onClick={() =>
-                                              handleCommissionSelect(bet, 2)
-                                            }
-                                            className="px-3 py-1 text-xs font-bold rounded-md bg-amber-900/30 text-amber-400 border border-amber-500/30 hover:bg-amber-900/50 transition-colors disabled:opacity-50"
-                                          >
-                                            2%
-                                          </button>
-                                          <div className="flex items-center gap-2">
-                                            <input
-                                              type="text"
-                                              inputMode="decimal"
-                                              disabled={isTracking}
-                                              value={customCommission}
-                                              onChange={(e) => {
-                                                const val = e.target.value;
-                                                if (
-                                                  val === "" ||
-                                                  /^\d*\.?\d{0,2}$/.test(val)
-                                                ) {
-                                                  setCustomCommission(val);
-                                                }
-                                              }}
-                                              onKeyDown={(e) => {
-                                                if (e.key === "Enter") {
-                                                  handleCommissionSelect(
-                                                    bet,
-                                                    parseFloat(
-                                                      customCommission,
-                                                    ),
-                                                  );
-                                                  return;
-                                                }
-
-                                                // Allow control keys
-                                                const allowedKeys = [
-                                                  "Backspace",
-                                                  "Delete",
-                                                  "Tab",
-                                                  "Escape",
-                                                  "Enter",
-                                                  "ArrowLeft",
-                                                  "ArrowRight",
-                                                  "ArrowUp",
-                                                  "ArrowDown",
-                                                  ".",
-                                                ];
-                                                if (
-                                                  !allowedKeys.includes(
-                                                    e.key,
-                                                  ) &&
-                                                  !/^\d$/.test(e.key)
-                                                ) {
-                                                  e.preventDefault();
-                                                }
-                                              }}
-                                              onBlur={() => {
-                                                if (customCommission)
-                                                  handleCommissionSelect(
-                                                    bet,
-                                                    parseFloat(
-                                                      customCommission,
-                                                    ),
-                                                  );
-                                              }}
-                                              placeholder="Custom %"
-                                              className="w-20 bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none disabled:opacity-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                            />
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      <div className="w-px h-6 bg-slate-800" />
-
-                                      <div className="flex items-center gap-3">
-                                        <span className="text-[10px] uppercase font-bold text-slate-500 whitespace-nowrap">
-                                          Exchange:
-                                        </span>
-                                        <div className="flex gap-2">
-                                          {bet.offers.map((offer) => (
-                                            <button
-                                              key={offer.exchangeKey}
-                                              disabled={isTracking}
-                                              onClick={() =>
-                                                setLocalSelectedExchangeKey(
-                                                  offer.exchangeKey,
-                                                )
-                                              }
-                                              className={`px-3 py-1 text-xs font-bold rounded-md transition-colors border ${
-                                                localSelectedExchangeKey ===
-                                                offer.exchangeKey
-                                                  ? "bg-blue-600 border-blue-500 text-white"
-                                                  : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500"
-                                              }`}
-                                            >
-                                              {offer.exchangeName}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      </div>
-
-                                      {isTracking ? (
-                                        <div className="flex items-center gap-2 text-blue-400 text-[10px] font-bold uppercase">
-                                          <RefreshCw className="w-3 h-3 animate-spin" />
-                                          Tracking...
-                                        </div>
-                                      ) : (
-                                        <button
-                                          onClick={() => setExpandedBetId(null)}
-                                          className="text-xs text-slate-500 hover:text-slate-300 font-medium transition-colors"
-                                        >
-                                          Cancel
-                                        </button>
-                                      )}
-                                    </div>
-                                  </td>
-                                </tr>
-                              )}
-                            </React.Fragment>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                <ScannerTable
+                  bets={bets}
+                  trackedBets={trackedBets}
+                  bankroll={bankroll}
+                  expandedBetId={expandedBetId}
+                  setExpandedBetId={setExpandedBetId}
+                  localSelectedExchangeKey={localSelectedExchangeKey}
+                  setLocalSelectedExchangeKey={setLocalSelectedExchangeKey}
+                  isTracking={isTracking}
+                  customCommission={customCommission}
+                  setCustomCommission={setCustomCommission}
+                  handleCommissionSelect={handleCommissionSelect}
+                />
               )}
             </div>
           </ErrorBoundary>
@@ -825,60 +604,6 @@ const App: React.FC = () => {
           </div>
         </footer>
       </div>
-
-      {showApiKeyModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowApiKeyModal(false)}
-          />
-          <div className="bg-slate-900 border border-slate-800/50 rounded-2xl p-6 w-full max-w-md relative z-10 shadow-2xl">
-            <h2 className="text-xl font-bold text-white mb-4">API Key</h2>
-
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-slate-400 mb-1.5">
-                Current Key
-              </label>
-              <div className="text-sm font-mono bg-slate-950/50 px-3 py-2 rounded-lg border border-slate-800 text-slate-300">
-                {apiKey ? `••••••••${apiKey.slice(-6)}` : "No key set"}
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-slate-400 mb-1.5">
-                New API Key
-              </label>
-              <input
-                type="text"
-                value={newApiKey}
-                onChange={(e) => setNewApiKey(e.target.value)}
-                placeholder="Paste new key here..."
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  if (newApiKey.trim()) {
-                    setApiKey(newApiKey.trim());
-                  }
-                  setShowApiKeyModal(false);
-                }}
-                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl transition-colors shadow-lg shadow-blue-600/20"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => setShowApiKeyModal(false)}
-                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

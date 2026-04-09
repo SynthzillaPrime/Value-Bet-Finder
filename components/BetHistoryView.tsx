@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { TrackedBet } from "../types";
 import { LEAGUES } from "../constants";
-import { Trash2, ChevronDown, Download, RefreshCw } from "lucide-react";
+import { Trash2, ChevronDown, Download } from "lucide-react";
 
 interface Props {
   bets: TrackedBet[];
@@ -158,11 +158,124 @@ export const BetHistoryView: React.FC<Props> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 w-full">
-      <div className="flex flex-col gap-4">
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-slate-500">
+      <div className="flex flex-wrap items-center justify-between p-4 rounded-2xl bg-slate-900/50 border border-slate-800/50 mb-6 gap-4 relative z-20">
+        <div className="flex flex-col">
+          <h1 className="text-xl font-bold text-white">Bet History</h1>
+          <span className="text-sm text-slate-500 tabular-nums">
             {bets.length} total · {filteredBets.length} shown
           </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap gap-2 mr-4">
+            {/* Competition Filter */}
+            <div className="relative">
+              <select
+                value={compFilter}
+                onChange={(e) => setCompFilter(e.target.value)}
+                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              >
+                <option>All Competitions</option>
+                {(() => {
+                  const uniqueSports = Array.from(
+                    new Set(bets.map((b) => b.sport)),
+                  );
+                  const sortedSports = uniqueSports.sort((a, b) => {
+                    const betA = bets.find((bt) => bt.sport === a);
+                    const betB = bets.find((bt) => bt.sport === b);
+                    const idxA = LEAGUES.findIndex(
+                      (l) => l.key === betA?.sportKey,
+                    );
+                    const idxB = LEAGUES.findIndex(
+                      (l) => l.key === betB?.sportKey,
+                    );
+                    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                    if (idxA !== -1) return -1;
+                    if (idxB !== -1) return 1;
+                    return a.localeCompare(b);
+                  });
+                  return sortedSports.map((sport) => {
+                    const representativeBet = bets.find(
+                      (b) => b.sport === sport,
+                    );
+                    const friendlyName = representativeBet
+                      ? LEAGUES.find(
+                          (l) => l.key === representativeBet.sportKey,
+                        )?.name || sport
+                      : sport;
+                    return (
+                      <option key={sport} value={sport}>
+                        {friendlyName}
+                      </option>
+                    );
+                  });
+                })()}
+              </select>
+              <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
+            </div>
+
+            {/* Timing Filter */}
+            <div className="relative">
+              <select
+                value={timingFilter}
+                onChange={(e) => setTimingFilter(e.target.value)}
+                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              >
+                <option>All Timing</option>
+                <option>48hr+</option>
+                <option>24-48hr</option>
+                <option>12-24hr</option>
+                <option>&lt;12hr</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
+            </div>
+
+            {/* Odds Range Filter */}
+            <div className="relative">
+              <select
+                value={oddsFilter}
+                onChange={(e) => setOddsFilter(e.target.value)}
+                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              >
+                <option>All Odds</option>
+                <option>1.50 - 3.00</option>
+                <option>3.00 - 6.00</option>
+                <option>6.00 - 10.00</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
+            </div>
+
+            {/* CLV Filter */}
+            <div className="relative">
+              <select
+                value={clvFilter}
+                onChange={(e) => setClvFilter(e.target.value)}
+                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              >
+                <option>All CLV</option>
+                <option>Positive CLV</option>
+                <option>Negative CLV</option>
+                <option>No CLV</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
+            </div>
+
+            {/* Result Filter */}
+            <div className="relative">
+              <select
+                value={resultFilter}
+                onChange={(e) => setResultFilter(e.target.value)}
+                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              >
+                <option>All Results</option>
+                <option>Won</option>
+                <option>Lost</option>
+                <option>Void</option>
+                <option>Open</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
+            </div>
+          </div>
 
           <div className="relative">
             <select
@@ -185,113 +298,6 @@ export const BetHistoryView: React.FC<Props> = ({
               </option>
             </select>
             <Download className="absolute right-2.5 top-2.5 w-3.5 h-3.5 text-white pointer-events-none" />
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {/* Competition Filter */}
-          <div className="relative">
-            <select
-              value={compFilter}
-              onChange={(e) => setCompFilter(e.target.value)}
-              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
-            >
-              <option>All Competitions</option>
-              {(() => {
-                const uniqueSports = Array.from(
-                  new Set(bets.map((b) => b.sport)),
-                );
-                const sortedSports = uniqueSports.sort((a, b) => {
-                  const betA = bets.find((bt) => bt.sport === a);
-                  const betB = bets.find((bt) => bt.sport === b);
-                  const idxA = LEAGUES.findIndex(
-                    (l) => l.key === betA?.sportKey,
-                  );
-                  const idxB = LEAGUES.findIndex(
-                    (l) => l.key === betB?.sportKey,
-                  );
-                  if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                  if (idxA !== -1) return -1;
-                  if (idxB !== -1) return 1;
-                  return a.localeCompare(b);
-                });
-                return sortedSports.map((sport) => {
-                  const representativeBet = bets.find((b) => b.sport === sport);
-                  const friendlyName = representativeBet
-                    ? LEAGUES.find((l) => l.key === representativeBet.sportKey)
-                        ?.name || sport
-                    : sport;
-                  return (
-                    <option key={sport} value={sport}>
-                      {friendlyName}
-                    </option>
-                  );
-                });
-              })()}
-            </select>
-            <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
-          </div>
-
-          {/* Timing Filter */}
-          <div className="relative">
-            <select
-              value={timingFilter}
-              onChange={(e) => setTimingFilter(e.target.value)}
-              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
-            >
-              <option>All Timing</option>
-              <option>48hr+</option>
-              <option>24-48hr</option>
-              <option>12-24hr</option>
-              <option>&lt;12hr</option>
-            </select>
-            <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
-          </div>
-
-          {/* Odds Range Filter */}
-          <div className="relative">
-            <select
-              value={oddsFilter}
-              onChange={(e) => setOddsFilter(e.target.value)}
-              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
-            >
-              <option>All Odds</option>
-              <option>1.50 - 3.00</option>
-              <option>3.00 - 6.00</option>
-              <option>6.00 - 10.00</option>
-            </select>
-            <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
-          </div>
-
-          {/* CLV Filter */}
-          <div className="relative">
-            <select
-              value={clvFilter}
-              onChange={(e) => setClvFilter(e.target.value)}
-              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
-            >
-              <option>All CLV</option>
-              <option>Positive CLV</option>
-              <option>Negative CLV</option>
-              <option>No CLV</option>
-            </select>
-            <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
-          </div>
-
-          {/* Result Filter */}
-          <div className="relative">
-            <select
-              value={resultFilter}
-              onChange={(e) => setResultFilter(e.target.value)}
-              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
-            >
-              <option>All Results</option>
-              <option>Won</option>
-              <option>Lost</option>
-              <option>Void</option>
-              <option>Open</option>
-            </select>
-            <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
           </div>
         </div>
       </div>
@@ -473,15 +479,6 @@ export const BetHistoryView: React.FC<Props> = ({
                     </td>
                     <td className="py-4 px-0 pr-4 text-center align-middle">
                       <div className="flex items-center justify-center gap-1">
-                        {bet.result && (
-                          <button
-                            onClick={() => onSettleBet(bet.id)}
-                            className="h-8 w-8 flex items-center justify-center text-slate-600 hover:text-emerald-400 hover:bg-emerald-900/20 transition-all rounded"
-                            title="Re-settle bet (refresh CLV & result)"
-                          >
-                            <RefreshCw className="w-4 h-4" />
-                          </button>
-                        )}
                         <button
                           onClick={() => handleDeleteClick(bet.id)}
                           className={`transition-all rounded flex items-center justify-center w-[50px] ${

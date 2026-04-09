@@ -1,5 +1,5 @@
 {
   "name": "Value Bet Finder",
-  "description": "A real-time sports betting utility that finds value bets by comparing exchange odds against Pinnacle's sharp lines after removing the vigorish.",
+  "description": "finds value bets by comparing exchange odds against Pinnacle's sharp lines as a fair value benchmark",
   "requestFramePermissions": []
 }

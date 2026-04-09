@@ -289,6 +289,15 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
       <SummaryStats bets={bets} />
 
       <div className="space-y-12">
+        {/* Action Bar */}
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-900/50 border border-slate-800/50 mb-6 gap-4 relative z-20">
+          <div className="flex flex-col">
+            <h1 className="text-xl font-bold text-white">
+              Performance Analysis
+            </h1>
+          </div>
+        </div>
+
         {/* 1. Bankroll */}
         <section className="w-full">
           <h3 className="text-lg font-bold text-slate-300 mb-4">Bankroll</h3>
@@ -422,16 +431,16 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                 {
                   label: "Match",
                   render: (row) => (
-                    <span className="font-medium text-slate-200">
+                    <div className="font-medium text-slate-200 max-w-[200px] truncate">
                       {row.match}
-                    </span>
+                    </div>
                   ),
                 },
                 {
                   label: "Edge %",
                   align: "right",
                   render: (row) => (
-                    <span className="text-slate-400">
+                    <span className="text-slate-400 whitespace-nowrap">
                       {row.edge.toFixed(1)}%
                     </span>
                   ),
@@ -441,7 +450,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   align: "right",
                   render: (row) => (
                     <span
-                      className={`tabular-nums ${
+                      className={`tabular-nums whitespace-nowrap ${
                         row.clv !== undefined
                           ? row.clv > 0
                             ? "text-emerald-400"
@@ -459,7 +468,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   label: "Kelly Stake",
                   align: "right",
                   render: (row) => (
-                    <span className="text-slate-200 tabular-nums">
+                    <span className="text-slate-200 tabular-nums whitespace-nowrap">
                       £{row.stake.toFixed(2)}
                     </span>
                   ),
@@ -469,7 +478,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   align: "right",
                   render: (row) => (
                     <span
-                      className={`tabular-nums ${row.expectedGain >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                      className={`tabular-nums whitespace-nowrap ${row.expectedGain >= 0 ? "text-emerald-400" : "text-red-400"}`}
                     >
                       £{row.expectedGain.toFixed(2)}
                     </span>
@@ -480,7 +489,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   align: "right",
                   render: (row) => (
                     <span
-                      className={`tabular-nums font-bold ${row.actualGain >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                      className={`tabular-nums font-bold whitespace-nowrap ${row.actualGain >= 0 ? "text-emerald-400" : "text-red-400"}`}
                     >
                       {row.actualGain > 0 ? "+" : ""}£
                       {row.actualGain.toFixed(2)}
@@ -491,7 +500,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   label: "Bankroll",
                   align: "right",
                   render: (row) => (
-                    <span className="tabular-nums text-slate-200 font-bold">
+                    <span className="tabular-nums text-slate-200 font-bold whitespace-nowrap">
                       £{row.actual.toFixed(2)}
                     </span>
                   ),
@@ -668,35 +677,41 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
           ) : (
             <div className="space-y-6 w-full">
               <div className="bg-slate-900/50 border border-slate-800/50 rounded-2xl p-6 backdrop-blur-sm">
-                <div className="w-full h-[350px]">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="w-full">
+                  <ResponsiveContainer
+                    width="100%"
+                    height={Math.max(300, competitionData.length * 35)}
+                  >
                     <BarChart
                       data={competitionData}
-                      margin={{ left: 0, right: 0, top: 10, bottom: 30 }}
+                      layout="vertical"
+                      margin={{ left: 10, right: 20, top: 10, bottom: 10 }}
                     >
                       <CartesianGrid
                         strokeDasharray="3 3"
                         stroke="#1e293b"
-                        vertical={false}
+                        horizontal={false}
                       />
                       <XAxis
-                        dataKey="name"
+                        type="number"
                         stroke="#64748b"
                         fontSize={10}
-                        interval={0}
                         tick={{
                           fontFamily: "DM Sans, sans-serif",
                           fontSize: 10,
                         }}
+                        tickFormatter={(v) => `${v}%`}
                       />
                       <YAxis
+                        type="category"
+                        dataKey="name"
                         stroke="#64748b"
-                        fontSize={12}
+                        fontSize={10}
+                        width={100}
                         tick={{
                           fontFamily: "DM Sans, sans-serif",
-                          fontSize: 12,
+                          fontSize: 10,
                         }}
-                        tickFormatter={(v) => `${v}%`}
                       />
                       <Tooltip
                         contentStyle={{
@@ -716,8 +731,8 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                           "ROI",
                         ]}
                       />
-                      <ReferenceLine y={0} stroke="#475569" strokeWidth={2} />
-                      <Bar dataKey="roi">
+                      <ReferenceLine x={0} stroke="#475569" strokeWidth={2} />
+                      <Bar dataKey="roi" radius={[0, 4, 4, 0]}>
                         {competitionData.map((entry, index) => (
                           <Cell
                             key={`cell-${index}`}

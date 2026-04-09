@@ -113,7 +113,7 @@ export const SummaryStats: React.FC<Props> = ({ bets }) => {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8 w-full">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8 w-full font-sans">
       {stats.map((stat, i) => (
         <div
           key={i}

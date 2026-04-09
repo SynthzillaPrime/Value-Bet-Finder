@@ -239,23 +239,23 @@ export const BankrollView: React.FC<Props> = ({
                     key={stats.name}
                     className="hover:bg-slate-800/30 transition-colors"
                   >
-                    <td className="px-6 py-3 font-bold text-slate-300 whitespace-nowrap text-xs">
+                    <td className="px-6 py-3 font-bold text-slate-300 whitespace-nowrap text-sm">
                       {stats.name}
                     </td>
-                    <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-xs">
+                    <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-sm">
                       £{stats.netDeposits.toFixed(2)}
                     </td>
-                    <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-xs">
+                    <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-sm">
                       £{stats.balance.toFixed(2)}
                     </td>
-                    <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-xs">
+                    <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-sm">
                       {stats.bets}
                     </td>
-                    <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-xs">
+                    <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-sm">
                       £{stats.staked.toFixed(2)}
                     </td>
                     <td
-                      className={`px-6 py-3 tabular-nums font-bold text-right whitespace-nowrap text-xs ${
+                      className={`px-6 py-3 tabular-nums font-bold text-right whitespace-nowrap text-sm ${
                         stats.profitLoss >= 0
                           ? "text-emerald-400"
                           : "text-red-400"
@@ -265,7 +265,7 @@ export const BankrollView: React.FC<Props> = ({
                       {Math.abs(stats.profitLoss).toFixed(2)}
                     </td>
                     <td
-                      className={`px-6 py-3 tabular-nums font-bold text-right whitespace-nowrap text-xs ${
+                      className={`px-6 py-3 tabular-nums font-bold text-right whitespace-nowrap text-sm ${
                         stats.stakeRoi !== null
                           ? stats.stakeRoi >= 0
                             ? "text-emerald-400"
@@ -280,7 +280,7 @@ export const BankrollView: React.FC<Props> = ({
                         : "—"}
                     </td>
                     <td
-                      className={`px-6 py-3 tabular-nums font-bold text-right whitespace-nowrap text-xs ${
+                      className={`px-6 py-3 tabular-nums font-bold text-right whitespace-nowrap text-sm ${
                         stats.ret !== null
                           ? stats.ret >= 0
                             ? "text-emerald-400"
@@ -356,7 +356,7 @@ export const BankrollView: React.FC<Props> = ({
           </div>
 
           {/* Sparkline Chart */}
-          <div className="flex-1 p-4 min-h-[100px] max-h-[160px] flex flex-col justify-between">
+          <div className="flex-1 p-4 min-h-[100px] max-h-[180px] flex flex-col justify-between">
             <div className="flex justify-between items-start mb-2">
               <div>
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
@@ -572,8 +572,11 @@ export const BankrollView: React.FC<Props> = ({
               </div>
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto font-sans">
+            <table
+              className="w-full text-left border-collapse"
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
               <thead>
                 <tr className="text-slate-500 border-b border-slate-800/50 text-[10px] uppercase tracking-wider bg-slate-800/50 font-bold">
                   <th className="px-6 py-3 whitespace-nowrap">Date & Time</th>

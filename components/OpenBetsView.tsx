@@ -156,188 +156,191 @@ export const OpenBetsView: React.FC<Props> = ({
     return { label: "Ready to settle", color: "text-emerald-400" };
   };
 
-  if (openBets.length === 0) {
-    return (
-      <div className="space-y-8 animate-in fade-in duration-500">
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-900/50 border border-slate-800/50 mb-6 gap-4 relative z-20">
+        <div className="flex flex-col">
+          <h1 className="text-xl font-bold text-white">Open Bets</h1>
+          {openBets.length > 0 && (
+            <span className="text-sm text-slate-500 tabular-nums">
+              {openBets.length} open
+              {readyToSettle.length > 0 &&
+                ` · ${readyToSettle.length} ready to settle`}
+              {inPlay.length > 0 && ` · ${inPlay.length} in play`}
+            </span>
+          )}
+        </div>
+
+        {openBets.length > 0 && (
+          <button
+            onClick={handleSettleAll}
+            disabled={settlingAll || readyToSettle.length === 0}
+            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg shadow-emerald-900/20 transition-all flex items-center gap-2 tabular-nums"
+          >
+            {settlingAll ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Settling {settleProgress?.current}/{settleProgress?.total}...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4" />
+                Settle All ({readyToSettle.length})
+              </>
+            )}
+          </button>
+        )}
+      </div>
+
+      {openBets.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
           <h3 className="text-xl font-semibold text-slate-300">No open bets</h3>
         </div>
-      </div>
-    );
-  }
+      ) : (
+        <div className="bg-slate-900/50 border border-slate-800/50 rounded-2xl overflow-hidden backdrop-blur-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-800/50 text-[10px] uppercase tracking-wider font-bold text-slate-500">
+                  <th className="px-6 py-3 border-b border-slate-800/50 font-bold">
+                    Match
+                  </th>
+                  <th className="px-6 py-3 border-b border-slate-800/50 font-bold">
+                    Selection
+                  </th>
+                  <th className="px-6 py-3 border-b border-slate-800/50 font-bold">
+                    Exchange
+                  </th>
+                  <th className="px-6 py-3 border-b border-slate-800/50 text-right font-bold">
+                    Odds
+                  </th>
+                  <th className="px-6 py-3 border-b border-slate-800/50 text-right font-bold">
+                    Edge
+                  </th>
+                  <th className="px-6 py-3 border-b border-slate-800/50 text-right font-bold">
+                    Stake
+                  </th>
+                  <th className="px-6 py-3 border-b border-slate-800/50 text-center font-bold">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/50">
+                {/* Ready to Settle Section */}
+                {readyToSettle.length > 0 && (
+                  <>
+                    <tr className="bg-emerald-500/5">
+                      <td
+                        colSpan={7}
+                        className="px-6 py-2 border-b border-slate-800/50"
+                      >
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Ready to Settle
+                        </div>
+                      </td>
+                    </tr>
+                    {readyToSettle.map((bet) => (
+                      <BetRow
+                        key={bet.id}
+                        bet={bet}
+                        timeStatus={getTimeStatus(bet.kickoff)}
+                        formatKickoff={formatKickoff}
+                        onSettle={(res) => handleSettleSingle(bet.id, res)}
+                        onResetFailure={() => {
+                          setFailedSettleIds((prev) => {
+                            const next = new Set(prev);
+                            next.delete(bet.id);
+                            return next;
+                          });
+                        }}
+                        settling={settlingId === bet.id || settlingAll}
+                        isConfirming={confirmDeleteId === bet.id}
+                        onDelete={() => handleDeleteClick(bet.id)}
+                        autoFailed={failedSettleIds.has(bet.id)}
+                      />
+                    ))}
+                  </>
+                )}
 
-  return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <span className="text-sm text-slate-500 tabular-nums">
-          {openBets.length} open
-          {readyToSettle.length > 0 &&
-            ` · ${readyToSettle.length} ready to settle`}
-          {inPlay.length > 0 && ` · ${inPlay.length} in play`}
-        </span>
+                {/* In Play Section */}
+                {inPlay.length > 0 && (
+                  <>
+                    <tr className="bg-yellow-500/5">
+                      <td
+                        colSpan={7}
+                        className="px-6 py-2 border-b border-slate-800/50"
+                      >
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-yellow-400 uppercase tracking-widest">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          In Play — settle after full time
+                        </div>
+                      </td>
+                    </tr>
+                    {inPlay.map((bet) => (
+                      <BetRow
+                        key={bet.id}
+                        bet={bet}
+                        timeStatus={getTimeStatus(bet.kickoff)}
+                        formatKickoff={formatKickoff}
+                        onSettle={(res) => handleSettleSingle(bet.id, res)}
+                        onResetFailure={() => {
+                          setFailedSettleIds((prev) => {
+                            const next = new Set(prev);
+                            next.delete(bet.id);
+                            return next;
+                          });
+                        }}
+                        settling={settlingId === bet.id}
+                        isConfirming={confirmDeleteId === bet.id}
+                        onDelete={() => handleDeleteClick(bet.id)}
+                        autoFailed={failedSettleIds.has(bet.id)}
+                      />
+                    ))}
+                  </>
+                )}
 
-        <button
-          onClick={handleSettleAll}
-          disabled={settlingAll || readyToSettle.length === 0}
-          className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg shadow-emerald-900/20 transition-all flex items-center gap-2 tabular-nums"
-        >
-          {settlingAll ? (
-            <>
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              Settling {settleProgress?.current}/{settleProgress?.total}...
-            </>
-          ) : (
-            <>
-              <CheckCircle2 className="w-4 h-4" />
-              Settle All ({readyToSettle.length})
-            </>
-          )}
-        </button>
-      </div>
-
-      <div className="bg-slate-900/50 border border-slate-800/50 rounded-2xl overflow-hidden backdrop-blur-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-800/50 text-[10px] uppercase tracking-wider font-bold text-slate-500">
-                <th className="px-6 py-3 border-b border-slate-800/50 font-bold">
-                  Match
-                </th>
-                <th className="px-6 py-3 border-b border-slate-800/50 font-bold">
-                  Selection
-                </th>
-                <th className="px-6 py-3 border-b border-slate-800/50 font-bold">
-                  Exchange
-                </th>
-                <th className="px-6 py-3 border-b border-slate-800/50 text-right font-bold">
-                  Odds
-                </th>
-                <th className="px-6 py-3 border-b border-slate-800/50 text-right font-bold">
-                  Edge
-                </th>
-                <th className="px-6 py-3 border-b border-slate-800/50 text-right font-bold">
-                  Stake
-                </th>
-                <th className="px-6 py-3 border-b border-slate-800/50 text-center font-bold">
-                  Action
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/50">
-              {/* Ready to Settle Section */}
-              {readyToSettle.length > 0 && (
-                <>
-                  <tr className="bg-emerald-500/5">
-                    <td
-                      colSpan={7}
-                      className="px-6 py-2 border-b border-slate-800/50"
-                    >
-                      <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Ready to Settle
-                      </div>
-                    </td>
-                  </tr>
-                  {readyToSettle.map((bet) => (
-                    <BetRow
-                      key={bet.id}
-                      bet={bet}
-                      timeStatus={getTimeStatus(bet.kickoff)}
-                      formatKickoff={formatKickoff}
-                      onSettle={(res) => handleSettleSingle(bet.id, res)}
-                      onResetFailure={() => {
-                        setFailedSettleIds((prev) => {
-                          const next = new Set(prev);
-                          next.delete(bet.id);
-                          return next;
-                        });
-                      }}
-                      settling={settlingId === bet.id || settlingAll}
-                      isConfirming={confirmDeleteId === bet.id}
-                      onDelete={() => handleDeleteClick(bet.id)}
-                      autoFailed={failedSettleIds.has(bet.id)}
-                    />
-                  ))}
-                </>
-              )}
-
-              {/* In Play Section */}
-              {inPlay.length > 0 && (
-                <>
-                  <tr className="bg-yellow-500/5">
-                    <td
-                      colSpan={7}
-                      className="px-6 py-2 border-b border-slate-800/50"
-                    >
-                      <div className="flex items-center gap-2 text-[10px] font-bold text-yellow-400 uppercase tracking-widest">
-                        <AlertCircle className="w-3.5 h-3.5" />
-                        In Play — settle after full time
-                      </div>
-                    </td>
-                  </tr>
-                  {inPlay.map((bet) => (
-                    <BetRow
-                      key={bet.id}
-                      bet={bet}
-                      timeStatus={getTimeStatus(bet.kickoff)}
-                      formatKickoff={formatKickoff}
-                      onSettle={(res) => handleSettleSingle(bet.id, res)}
-                      onResetFailure={() => {
-                        setFailedSettleIds((prev) => {
-                          const next = new Set(prev);
-                          next.delete(bet.id);
-                          return next;
-                        });
-                      }}
-                      settling={settlingId === bet.id}
-                      isConfirming={confirmDeleteId === bet.id}
-                      onDelete={() => handleDeleteClick(bet.id)}
-                      autoFailed={failedSettleIds.has(bet.id)}
-                    />
-                  ))}
-                </>
-              )}
-
-              {/* Upcoming Section */}
-              {upcoming.length > 0 && (
-                <>
-                  <tr className="bg-slate-800/20">
-                    <td
-                      colSpan={7}
-                      className="px-6 py-2 border-b border-slate-800/50"
-                    >
-                      <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                        <Clock className="w-3.5 h-3.5" />
-                        Upcoming
-                      </div>
-                    </td>
-                  </tr>
-                  {upcoming.map((bet) => (
-                    <BetRow
-                      key={bet.id}
-                      bet={bet}
-                      timeStatus={getTimeStatus(bet.kickoff)}
-                      formatKickoff={formatKickoff}
-                      onSettle={(res) => handleSettleSingle(bet.id, res)}
-                      onResetFailure={() => {
-                        setFailedSettleIds((prev) => {
-                          const next = new Set(prev);
-                          next.delete(bet.id);
-                          return next;
-                        });
-                      }}
-                      settling={settlingId === bet.id}
-                      isConfirming={confirmDeleteId === bet.id}
-                      onDelete={() => handleDeleteClick(bet.id)}
-                      autoFailed={failedSettleIds.has(bet.id)}
-                    />
-                  ))}
-                </>
-              )}
-            </tbody>
-          </table>
+                {/* Upcoming Section */}
+                {upcoming.length > 0 && (
+                  <>
+                    <tr className="bg-slate-800/20">
+                      <td
+                        colSpan={7}
+                        className="px-6 py-2 border-b border-slate-800/50"
+                      >
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                          <Clock className="w-3.5 h-3.5" />
+                          Upcoming
+                        </div>
+                      </td>
+                    </tr>
+                    {upcoming.map((bet) => (
+                      <BetRow
+                        key={bet.id}
+                        bet={bet}
+                        timeStatus={getTimeStatus(bet.kickoff)}
+                        formatKickoff={formatKickoff}
+                        onSettle={(res) => handleSettleSingle(bet.id, res)}
+                        onResetFailure={() => {
+                          setFailedSettleIds((prev) => {
+                            const next = new Set(prev);
+                            next.delete(bet.id);
+                            return next;
+                          });
+                        }}
+                        settling={settlingId === bet.id}
+                        isConfirming={confirmDeleteId === bet.id}
+                        onDelete={() => handleDeleteClick(bet.id)}
+                        autoFailed={failedSettleIds.has(bet.id)}
+                      />
+                    ))}
+                  </>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
@@ -416,7 +419,7 @@ const BetRow: React.FC<BetRowProps> = ({
           £{bet.kellyStake.toFixed(2)}
         </div>
       </td>
-      <td className="px-6 py-4 text-center min-w-[180px]">
+      <td className="px-6 py-4 text-center min-w-[120px]">
         <div className="flex items-center justify-center gap-3">
           {/* Fixed-width container for Settle/Manual buttons to prevent jitter */}
           <div className="w-[85px] flex items-center justify-center relative">
@@ -458,7 +461,7 @@ const BetRow: React.FC<BetRowProps> = ({
               <button
                 onClick={() => onSettle()}
                 disabled={settling || !isReady}
-                className="w-full px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-emerald-900/20 disabled:opacity-50 disabled:bg-slate-800 disabled:text-slate-500 disabled:shadow-none"
+                className="w-full px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-emerald-900/20 disabled:opacity-50 disabled:bg-slate-800 disabled:text-slate-500 disabled:shadow-none"
               >
                 {settling ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin mx-auto" />
@@ -469,7 +472,7 @@ const BetRow: React.FC<BetRowProps> = ({
             )}
           </div>
 
-          <div className="w-[44px] flex justify-center border-l border-slate-800/50 pl-3">
+          <div className="w-[70px] flex justify-center border-l border-slate-800/50 pl-3">
             <button
               onClick={onDelete}
               className={`transition-all rounded-lg flex items-center justify-center h-8 ${
