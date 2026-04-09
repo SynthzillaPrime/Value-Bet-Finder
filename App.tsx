@@ -79,6 +79,7 @@ const App: React.FC = () => {
     handleAddTransaction,
     loadTransactions,
     addTransactionDirect,
+    updateTransactionByBetId,
   } = useBankroll(setErrorMessage);
 
   const {
@@ -91,6 +92,7 @@ const App: React.FC = () => {
   } = useTrackedBets(
     bankroll,
     addTransactionDirect,
+    updateTransactionByBetId,
     setErrorMessage,
     apiKey || "",
   );

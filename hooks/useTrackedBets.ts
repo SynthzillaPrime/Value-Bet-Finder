@@ -21,6 +21,10 @@ import { fetchClosingLine, fetchMatchResult } from "../services/edgeFinder";
 export const useTrackedBets = (
   bankroll: number,
   addTransactionDirect: (t: BankrollTransaction) => Promise<void>,
+  updateTransactionByBetId: (
+    betId: string,
+    updates: { type: BankrollTransaction["type"]; amount: number },
+  ) => Promise<void>,
   onError: (msg: string) => void,
   apiKey: string,
 ) => {
@@ -122,39 +126,37 @@ export const useTrackedBets = (
 
   const handleUpdateTrackedBet = async (updatedBet: TrackedBet) => {
     const oldBet = trackedBets.find((b) => b.id === updatedBet.id);
-    let transaction: BankrollTransaction | null = null;
+    let settlementUpdate: {
+      type: BankrollTransaction["type"];
+      amount: number;
+    } | null = null;
 
-    // If the bet just settled, create a bankroll transaction
+    // If the bet just settled, prepare to update the existing transaction
     if (
       oldBet &&
       !oldBet.result &&
       updatedBet.result &&
       updatedBet.kellyPL !== undefined
     ) {
-      const amount = updatedBet.kellyStake + updatedBet.kellyPL;
-      const bankrollKey: keyof ExchangeBankroll =
-        (updatedBet.exchangeKey as keyof ExchangeBankroll) || "matchbook";
-
       let type: BankrollTransaction["type"] = "bet_win";
-      if (updatedBet.result === "lost") type = "bet_loss";
-      else if (updatedBet.result === "void") type = "bet_void";
+      let amount = updatedBet.kellyPL; // Profit for win, -stake for loss
 
-      transaction = {
-        id: `settle-${updatedBet.id}-${Date.now()}`,
-        timestamp: Date.now(),
-        exchange: bankrollKey,
-        type,
-        amount: amount,
-        betId: updatedBet.id,
-      };
+      if (updatedBet.result === "lost") {
+        type = "bet_loss";
+      } else if (updatedBet.result === "void") {
+        type = "bet_void";
+        amount = 0;
+      }
+
+      settlementUpdate = { type, amount };
     }
 
     try {
-      // Persist to Supabase: Update bet first, then insert transaction
+      // Persist to Supabase: Update bet first
       await supabaseUpdateBet(updatedBet);
 
-      if (transaction) {
-        await addTransactionDirect(transaction);
+      if (settlementUpdate) {
+        await updateTransactionByBetId(updatedBet.id, settlementUpdate);
       }
 
       // Update local state

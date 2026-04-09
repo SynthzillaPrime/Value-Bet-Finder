@@ -1,6 +1,10 @@
 import { useState, useMemo, useCallback } from "react";
 import { BankrollTransaction, ExchangeBankroll } from "../types";
-import { fetchAllTransactions, insertTransaction } from "../services/supabase";
+import {
+  fetchAllTransactions,
+  insertTransaction,
+  updateTransaction,
+} from "../services/supabase";
 
 export const useBankroll = (onError: (msg: string) => void) => {
   const [transactions, setTransactions] = useState<BankrollTransaction[]>([]);
@@ -61,6 +65,41 @@ export const useBankroll = (onError: (msg: string) => void) => {
     [addTransactionDirect, onError],
   );
 
+  const updateTransactionByBetId = useCallback(
+    async (
+      betId: string,
+      updates: { type: BankrollTransaction["type"]; amount: number },
+    ) => {
+      const original = transactions.find(
+        (t) => t.betId === betId && t.type === "bet_placed",
+      );
+
+      if (!original) {
+        console.warn(
+          `No 'bet_placed' transaction found for bet ${betId}. This is expected for legacy bets.`,
+        );
+        return;
+      }
+
+      const updatedTx: BankrollTransaction = {
+        ...original,
+        ...updates,
+        timestamp: Date.now(),
+      };
+
+      try {
+        await updateTransaction(updatedTx);
+        setTransactions((prev) =>
+          prev.map((t) => (t.id === updatedTx.id ? updatedTx : t)),
+        );
+      } catch (error) {
+        console.error("Failed to update transaction:", error);
+        throw error;
+      }
+    },
+    [transactions],
+  );
+
   return {
     transactions,
     exchangeBankrolls,
@@ -68,5 +107,6 @@ export const useBankroll = (onError: (msg: string) => void) => {
     handleAddTransaction,
     loadTransactions,
     addTransactionDirect,
+    updateTransactionByBetId,
   };
 };

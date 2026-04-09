@@ -253,3 +253,16 @@ export const insertTransaction = async (
     throw new Error("Failed to insert transaction: " + error.message);
   }
 };
+
+export const updateTransaction = async (
+  tx: BankrollTransaction,
+): Promise<void> => {
+  const { error } = await supabase
+    .from("bankroll_transactions")
+    .update(txToRow(tx))
+    .eq("id", tx.id);
+
+  if (error) {
+    throw new Error("Failed to update transaction: " + error.message);
+  }
+};

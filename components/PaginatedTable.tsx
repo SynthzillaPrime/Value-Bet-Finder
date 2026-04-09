@@ -11,6 +11,7 @@ interface Props<T> {
   data: T[];
   pageSize?: number;
   keyFn: (row: T) => string;
+  onHeaderClick?: (label: string) => void;
 }
 
 export const PaginatedTable = <T,>({
@@ -18,6 +19,7 @@ export const PaginatedTable = <T,>({
   data,
   pageSize = 10,
   keyFn,
+  onHeaderClick,
 }: Props<T>) => {
   const [page, setPage] = useState(1);
 
@@ -42,7 +44,10 @@ export const PaginatedTable = <T,>({
             {columns.map((col, idx) => (
               <th
                 key={idx}
-                className={`px-4 py-3 ${col.align === "right" ? "text-right" : ""}`}
+                onClick={() => onHeaderClick?.(col.label)}
+                className={`px-4 py-3 ${col.align === "right" ? "text-right" : ""} ${
+                  onHeaderClick ? "cursor-pointer hover:text-slate-300" : ""
+                }`}
               >
                 {col.label}
               </th>

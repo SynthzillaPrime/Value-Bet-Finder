@@ -175,7 +175,7 @@ export const OpenBetsView: React.FC<Props> = ({
           <button
             onClick={handleSettleAll}
             disabled={settlingAll || readyToSettle.length === 0}
-            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg shadow-emerald-900/20 transition-all flex items-center gap-2 tabular-nums"
+            className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-950 font-bold rounded-lg shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-2 tabular-nums"
           >
             {settlingAll ? (
               <>
