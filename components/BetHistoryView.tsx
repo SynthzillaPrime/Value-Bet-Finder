@@ -355,7 +355,7 @@ export const BetHistoryView: React.FC<Props> = ({
                     key={bet.id}
                     className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors"
                   >
-                    <td className="p-4 align-middle">
+                    <td className="px-6 py-3.5 align-middle">
                       <div className="h-[48px] overflow-hidden flex flex-col justify-center">
                         <div className="font-semibold text-slate-200 whitespace-normal line-clamp-2">
                           {bet.homeTeam} vs {bet.awayTeam}
@@ -388,30 +388,30 @@ export const BetHistoryView: React.FC<Props> = ({
                         </div>
                       </div>
                     </td>
-                    <td className="p-4 align-middle">
+                    <td className="px-6 py-3.5 align-middle">
                       <div className="h-[48px] overflow-hidden flex flex-col justify-center">
                         <div className="text-[15px] font-extrabold text-white whitespace-normal line-clamp-2">
                           {bet.selection}
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-2 align-middle">
+                    <td className="py-3.5 px-2 align-middle">
                       <div className="text-xs text-slate-400 font-medium">
                         {bet.exchangeName}
                       </div>
                     </td>
-                    <td className="py-4 px-2 text-right align-middle">
+                    <td className="py-3.5 px-2 text-right align-middle">
                       <div className="tabular-nums text-white font-bold">
                         {bet.exchangePrice.toFixed(2)}
                       </div>
                     </td>
-                    <td className="py-4 px-2 text-right align-middle">
+                    <td className="py-3.5 px-2 text-right align-middle">
                       <span className="text-emerald-400 font-bold tabular-nums">
                         {edge > 0 ? "+" : ""}
                         {edge.toFixed(1)}%
                       </span>
                     </td>
-                    <td className="py-4 px-2 text-right align-middle">
+                    <td className="py-3.5 px-2 text-right align-middle">
                       {bet.closingFairPrice !== undefined ? (
                         <div className="font-semibold tabular-nums text-slate-500">
                           {bet.closingFairPrice.toFixed(2)}
@@ -420,7 +420,7 @@ export const BetHistoryView: React.FC<Props> = ({
                         <span className="text-slate-600">—</span>
                       )}
                     </td>
-                    <td className="py-4 px-2 text-right align-middle">
+                    <td className="py-3.5 px-2 text-right align-middle">
                       {bet.clvPercent !== undefined ? (
                         <span
                           className={`tabular-nums ${
@@ -438,7 +438,7 @@ export const BetHistoryView: React.FC<Props> = ({
                         <span className="text-slate-600">—</span>
                       )}
                     </td>
-                    <td className="py-4 px-2 text-right align-middle">
+                    <td className="py-3.5 px-2 text-right align-middle">
                       {bet.result === "won" && (
                         <span className="text-emerald-400 font-bold uppercase text-[10px]">
                           Won
@@ -460,12 +460,12 @@ export const BetHistoryView: React.FC<Props> = ({
                         </span>
                       )}
                     </td>
-                    <td className="py-4 px-2 text-right align-middle">
+                    <td className="py-3.5 px-2 text-right align-middle">
                       <div className="font-bold text-white tabular-nums">
                         £{bet.kellyStake.toFixed(2)}
                       </div>
                     </td>
-                    <td className="py-4 px-2 text-right align-middle">
+                    <td className="py-3.5 px-2 text-right align-middle">
                       {bet.kellyPL !== undefined ? (
                         <div
                           className={`font-bold tabular-nums ${bet.kellyPL >= 0 ? "text-emerald-400" : "text-red-400"}`}
@@ -478,17 +478,17 @@ export const BetHistoryView: React.FC<Props> = ({
                       )}
                     </td>
                     <td className="py-4 px-0 pr-4 text-center align-middle">
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex items-center justify-center w-[70px] mx-auto">
                         <button
                           onClick={() => handleDeleteClick(bet.id)}
-                          className={`transition-all rounded flex items-center justify-center w-[50px] ${
+                          className={`transition-all rounded-lg flex items-center justify-center h-8 ${
                             confirmDeleteId === bet.id
-                              ? "h-8 bg-red-900/40 text-red-400 text-[10px] font-bold uppercase tracking-wider"
-                              : "h-8 text-slate-600 hover:text-red-400 hover:bg-red-900/20"
+                              ? "w-full bg-red-600 text-white text-[10px] font-bold uppercase tracking-tight"
+                              : "w-8 text-slate-500 hover:text-red-400 hover:bg-red-500/10"
                           }`}
                         >
                           {confirmDeleteId === bet.id ? (
-                            "?"
+                            "Yes?"
                           ) : (
                             <Trash2 className="w-4 h-4" />
                           )}
@@ -501,41 +501,41 @@ export const BetHistoryView: React.FC<Props> = ({
             )}
           </tbody>
         </table>
-      </div>
 
-      {/* Pagination Bar */}
-      {sortedBets.length > 0 && (
-        <div className="flex items-center justify-between bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3">
-          <div className="text-sm text-slate-400">
-            Showing{" "}
-            <span className="font-medium text-slate-200 tabular-nums">
-              {Math.min((page - 1) * ITEMS_PER_PAGE + 1, sortedBets.length)}-
-              {Math.min(page * ITEMS_PER_PAGE, sortedBets.length)}
-            </span>{" "}
-            of{" "}
-            <span className="font-medium text-slate-200 tabular-nums">
-              {sortedBets.length}
-            </span>{" "}
-            bets
+        {/* Pagination Bar */}
+        {sortedBets.length > 0 && (
+          <div className="flex items-center justify-between bg-slate-800/20 border-t border-slate-800 px-4 py-3">
+            <div className="text-xs text-slate-500">
+              Showing{" "}
+              <span className="font-bold text-slate-300">
+                {Math.min((page - 1) * ITEMS_PER_PAGE + 1, sortedBets.length)}-
+                {Math.min(page * ITEMS_PER_PAGE, sortedBets.length)}
+              </span>{" "}
+              of{" "}
+              <span className="font-bold text-slate-300">
+                {sortedBets.length}
+              </span>{" "}
+              bets
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 bg-slate-900/50 border border-slate-700 rounded-lg text-[10px] uppercase tracking-wider font-bold text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages || totalPages === 0}
+                className="px-3 py-1.5 bg-slate-900/50 border border-slate-700 rounded-lg text-[10px] uppercase tracking-wider font-bold text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                Next
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages || totalPages === 0}
-              className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

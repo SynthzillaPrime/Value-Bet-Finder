@@ -485,7 +485,7 @@ const App: React.FC = () => {
               </div>
 
               {status === "loading" ? (
-                <div className="flex flex-col items-center justify-center py-24 bg-slate-900/20 rounded-[2rem] border-2 border-dashed border-slate-800/50">
+                <div className="flex flex-col items-center justify-center py-24 bg-slate-900/20 rounded-2xl border-2 border-dashed border-slate-800/50">
                   <div className="relative">
                     <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
                     <Search className="w-6 h-6 text-emerald-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
@@ -495,7 +495,7 @@ const App: React.FC = () => {
                   </p>
                 </div>
               ) : status === "empty" ? (
-                <div className="text-center py-20 bg-slate-900/20 rounded-[2rem] border-2 border-dashed border-slate-800/50">
+                <div className="text-center py-20 bg-slate-900/20 rounded-2xl border-2 border-dashed border-slate-800/50">
                   <p className="text-slate-400 font-medium">
                     No value bets found for selected leagues.
                   </p>

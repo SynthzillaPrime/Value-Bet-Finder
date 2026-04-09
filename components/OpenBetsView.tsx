@@ -193,7 +193,7 @@ export const OpenBetsView: React.FC<Props> = ({
       </div>
 
       {openBets.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
+        <div className="flex flex-col items-center justify-center py-20 bg-slate-900/20 rounded-2xl border-2 border-dashed border-slate-800/50">
           <h3 className="text-xl font-semibold text-slate-300">No open bets</h3>
         </div>
       ) : (
@@ -373,7 +373,7 @@ const BetRow: React.FC<BetRowProps> = ({
 
   return (
     <tr className="group hover:bg-slate-800/30 transition-colors">
-      <td className="px-6 py-4">
+      <td className="px-6 py-3.5">
         <div className="font-medium text-slate-200">
           {bet.homeTeam} vs {bet.awayTeam}
         </div>
@@ -393,20 +393,20 @@ const BetRow: React.FC<BetRowProps> = ({
           </div>
         </div>
       </td>
-      <td className="px-6 py-4">
+      <td className="px-6 py-3.5">
         <div className="text-[15px] font-extrabold text-white">
           {bet.selection}
         </div>
       </td>
-      <td className="px-6 py-4">
+      <td className="px-6 py-3.5">
         <div className="font-bold text-slate-300">{bet.exchangeName}</div>
       </td>
-      <td className="px-6 py-4 text-right">
+      <td className="px-6 py-3.5 text-right">
         <div className="font-bold text-white tabular-nums">
           {bet.exchangePrice.toFixed(2)}
         </div>
       </td>
-      <td className="px-6 py-4 text-right">
+      <td className="px-6 py-3.5 text-right">
         <div
           className={`font-bold tabular-nums ${edge > 0 ? "text-emerald-400" : "text-slate-500"}`}
         >
@@ -414,12 +414,12 @@ const BetRow: React.FC<BetRowProps> = ({
           {edge.toFixed(1)}%
         </div>
       </td>
-      <td className="px-6 py-4 text-right">
+      <td className="px-6 py-3.5 text-right">
         <div className="font-extrabold text-white tabular-nums">
           £{bet.kellyStake.toFixed(2)}
         </div>
       </td>
-      <td className="px-6 py-4 text-center min-w-[120px]">
+      <td className="px-6 py-3.5 text-center min-w-[120px]">
         <div className="flex items-center justify-center gap-3">
           {/* Fixed-width container for Settle/Manual buttons to prevent jitter */}
           <div className="w-[85px] flex items-center justify-center relative">

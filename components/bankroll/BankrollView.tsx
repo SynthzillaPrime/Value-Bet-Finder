@@ -514,7 +514,7 @@ export const BankrollView: React.FC<Props> = ({
                     setExchangeFilter(e.target.value);
                     setPage(1);
                   }}
-                  className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8 min-w-[130px]"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8 min-w-[130px]"
                 >
                   <option>All Exchanges</option>
                   <option>Matchbook</option>
@@ -529,7 +529,7 @@ export const BankrollView: React.FC<Props> = ({
                     setTypeFilter(e.target.value);
                     setPage(1);
                   }}
-                  className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8 min-w-[130px]"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8 min-w-[130px]"
                 >
                   <option>All Types</option>
                   <option>Deposit</option>

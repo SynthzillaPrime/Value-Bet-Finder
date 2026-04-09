@@ -74,23 +74,27 @@ export const PaginatedTable = <T,>({
       </table>
 
       {total > pageSize && (
-        <div className="bg-slate-800/50 border-t border-slate-800/50 px-4 py-3 flex justify-between items-center font-sans">
-          <span className="text-xs text-slate-500">
-            Showing {Math.min(startIndex + 1, total)}-
-            {Math.min(startIndex + pageSize, total)} of {total}
-          </span>
-          <div className="flex gap-4">
+        <div className="bg-slate-800/20 border-t border-slate-800 px-4 py-3 flex justify-between items-center font-sans">
+          <div className="text-xs text-slate-500">
+            Showing{" "}
+            <span className="font-bold text-slate-300">
+              {Math.min(startIndex + 1, total)}-
+              {Math.min(startIndex + pageSize, total)}
+            </span>{" "}
+            of <span className="font-bold text-slate-300">{total}</span>
+          </div>
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="text-xs text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+              className="px-3 py-1.5 bg-slate-900/50 border border-slate-700 rounded-lg text-[10px] uppercase tracking-wider font-bold text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             >
               Previous
             </button>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="text-xs text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+              className="px-3 py-1.5 bg-slate-900/50 border border-slate-700 rounded-lg text-[10px] uppercase tracking-wider font-bold text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             >
               Next
             </button>
