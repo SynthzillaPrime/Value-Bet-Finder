@@ -625,7 +625,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
                   label: "Odds",
                   align: "right",
                   render: (row) => (
-                    <span className="tabular-nums text-blue-300 font-bold">
+                    <span className="tabular-nums text-white font-bold">
                       {row.odds.toFixed(2)}
                     </span>
                   ),
