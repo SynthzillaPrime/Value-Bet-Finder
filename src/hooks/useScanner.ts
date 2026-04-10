@@ -5,8 +5,7 @@ import {
   calculateEdges,
   fetchLeagueFixtureCounts,
 } from "../services/edgeFinder";
-import { LEAGUES } from "../constants";
-import { HARDCODED_API_KEY } from "../constants";
+import { LEAGUES, HARDCODED_API_KEY } from "../constants";
 
 const STORAGE_KEY = "ods_api_key";
 

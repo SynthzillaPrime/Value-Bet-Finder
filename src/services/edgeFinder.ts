@@ -5,6 +5,9 @@ import {
   HistoryResponse,
   ExchangeOffer,
   TrackedBet,
+  Bookmaker,
+  Market,
+  Outcome,
 } from "../types";
 import { calculateBetStake } from "./betSettlement";
 
@@ -70,7 +73,7 @@ export const fetchLeagueFixtureCounts = async (
         results.push({ key: leagueKey, count: 0 });
       } else {
         const events = (await response.json()) as any[];
-        const upcomingCount = events.filter((event) => {
+        const upcomingCount = events.filter((event: any) => {
           const kickoff = new Date(event.commence_time);
           return kickoff > now && kickoff <= maxKickoff;
         }).length;
@@ -206,15 +209,17 @@ export const calculateEdges = (matches: MatchResponse[]): BetEdge[] => {
   });
 
   for (const match of upcomingMatches) {
-    const pinnacle = match.bookmakers.find((b) => b.key === "pinnacle");
+    const pinnacle = match.bookmakers.find(
+      (b: Bookmaker) => b.key === "pinnacle",
+    );
 
     if (!pinnacle) continue;
 
     const matchDate = new Date(match.commence_time);
 
-    for (const pinnMarket of pinnacle.markets) {
+    for (const pinnMarket of pinnacle.markets as Market[]) {
       // Get fair prices for this market from Pinnacle
-      const fairPrices = stripVig(pinnMarket.outcomes);
+      const fairPrices = stripVig(pinnMarket.outcomes as Outcome[]);
       if (!fairPrices) continue;
 
       // Only process h2h markets
@@ -233,15 +238,17 @@ export const calculateEdges = (matches: MatchResponse[]): BetEdge[] => {
 
         for (const exConfig of EXCHANGES) {
           const exchangeBookie = match.bookmakers.find(
-            (b) => b.key === exConfig.key,
+            (b: Bookmaker) => b.key === exConfig.key,
           );
           if (!exchangeBookie) continue;
 
-          const exMarket = exchangeBookie.markets.find((m) => m.key === "h2h");
+          const exMarket = exchangeBookie.markets.find(
+            (m: Market) => m.key === "h2h",
+          );
           if (!exMarket) continue;
 
           const exOutcome = exMarket.outcomes.find(
-            (o) => o.name === outcome.name,
+            (o: Outcome) => o.name === outcome.name,
           );
           if (!exOutcome) continue;
 
@@ -353,23 +360,27 @@ export const fetchClosingLine = async (
 
     const json = (await response.json()) as HistoryResponse;
     const match = json.data.find(
-      (m) =>
+      (m: MatchResponse) =>
         m.id.split(":")[0] === bet.id.split("-")[0] ||
         m.home_team === bet.homeTeam,
     );
 
     if (!match) return null;
 
-    const pinnacle = match.bookmakers.find((b) => b.key === "pinnacle");
+    const pinnacle = match.bookmakers.find(
+      (b: Bookmaker) => b.key === "pinnacle",
+    );
     if (!pinnacle) return null;
 
     // Map market name back to key - only h2h supported
     if (bet.market !== "Match Result") return null;
-    const market = pinnacle.markets.find((m) => m.key === "h2h");
+    const market = pinnacle.markets.find((m: Market) => m.key === "h2h");
 
     if (!market) return null;
 
-    const outcome = market.outcomes.find((o) => o.name === bet.selection);
+    const outcome = market.outcomes.find(
+      (o: Outcome) => o.name === bet.selection,
+    );
     if (!outcome) return null;
 
     // Calculate fair prices for the whole market at close

@@ -8,6 +8,8 @@ import { ScannerTable } from "./components/ScannerTable";
 import { MobileScanner } from "./components/mobile/MobileScanner";
 import { MobileOpenBets } from "./components/mobile/MobileOpenBets";
 import { MobileHistory } from "./components/mobile/MobileHistory";
+import { MobileChrome } from "./components/mobile/MobileChrome";
+import { ExchangeOffer, BetEdge } from "./types";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { PinLock } from "./components/PinLock";
 import {
@@ -131,7 +133,7 @@ const App: React.FC = () => {
   const handleTrackAll = async () => {
     // Filter for bets that aren't already tracked on this specific exchange
     // We check for matchId + selection + exchangeKey to avoid duplicates
-    const untrackedBets = bets.filter((bet) => {
+    const untrackedBets = bets.filter((bet: BetEdge) => {
       const alreadyTracked = trackedBets.some(
         (tb) =>
           tb.id === bet.id &&
@@ -141,7 +143,7 @@ const App: React.FC = () => {
 
       // Only track if it hasn't been tracked and it actually has an offer for the selected exchange
       const hasExchangeOffer = bet.offers.some(
-        (o) => o.exchangeKey === batchExchange,
+        (o: ExchangeOffer) => o.exchangeKey === batchExchange,
       );
 
       return !alreadyTracked && hasExchangeOffer;
@@ -150,11 +152,8 @@ const App: React.FC = () => {
     if (untrackedBets.length === 0) return;
 
     setIsTracking(true);
-    setBatchTrackingStatus({
-      current: 0,
-      total: untrackedBets.length,
-      done: false,
-    });
+    const total = untrackedBets.length;
+    setBatchTrackingStatus({ current: 0, total, done: false });
 
     for (let i = 0; i < untrackedBets.length; i++) {
       const bet = untrackedBets[i];
@@ -242,152 +241,108 @@ const App: React.FC = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-50 font-sans selection:bg-emerald-500/30">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <header className="flex items-center justify-between mb-12 p-1">
-          <div className="flex items-center gap-3">
-            <div className="bg-emerald-500 p-2 rounded-xl shadow-lg shadow-emerald-500/20">
-              <Trophy className="w-6 h-6 text-slate-950" />
-            </div>
-            <h1 className="text-2xl font-black text-white tracking-tight hidden sm:block">
-              VALUE<span className="text-emerald-500">BET</span>
-            </h1>
-          </div>
+  const settingsDropdownContent = (
+    <>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+          Settings
+        </h3>
+        <button
+          onClick={() => setShowSettings(false)}
+          className="text-slate-500 hover:text-slate-300"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
 
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-
-              {showSettings && (
-                <div className="absolute right-0 mt-2 w-72 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 p-4 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                      Settings
-                    </h3>
-                    <button
-                      onClick={() => setShowSettings(false)}
-                      className="text-slate-500 hover:text-slate-300"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">
-                        Odds API Key
-                      </label>
-                      {showApiKeyInput || !apiKey ? (
-                        <div className="space-y-2">
-                          <input
-                            type="password"
-                            value={newApiKey}
-                            onChange={(e) => setNewApiKey(e.target.value)}
-                            placeholder="Enter API Key"
-                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-1 focus:ring-emerald-500 outline-none"
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => {
-                                setApiKey(newApiKey);
-                                setShowApiKeyInput(false);
-                              }}
-                              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-lg transition-colors"
-                            >
-                              Save
-                            </button>
-                            {apiKey && (
-                              <button
-                                onClick={() => setShowApiKeyInput(false)}
-                                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2 rounded-lg transition-colors"
-                              >
-                                Cancel
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center justify-between bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2">
-                            <span className="text-xs text-slate-400 tabular-nums">
-                              ••••••••{apiKey.slice(-4)}
-                            </span>
-                            <div className="flex gap-1">
-                              <button
-                                onClick={() => {
-                                  setNewApiKey(apiKey);
-                                  setShowApiKeyInput(true);
-                                }}
-                                className="text-[10px] font-bold text-blue-400 hover:text-blue-300 px-1"
-                              >
-                                Change
-                              </button>
-                              <button
-                                onClick={() => setApiKey("")}
-                                className="text-[10px] font-bold text-red-400 hover:text-red-300 px-1"
-                              >
-                                Clear
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <nav className="flex items-center bg-slate-900/50 p-1 rounded-2xl border border-slate-800/50 backdrop-blur-sm">
-              {[
-                { id: "scanner", label: "Scanner" },
-                { id: "openbets", label: "Open Bets" },
-                { id: "history", label: "History" },
-                { id: "analysis", label: "Analysis" },
-                { id: "bankroll", label: "Bankroll" },
-              ].map((item) => (
+      <div className="space-y-4">
+        <div>
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">
+            Odds API Key
+          </label>
+          {showApiKeyInput || !apiKey ? (
+            <div className="space-y-2">
+              <input
+                type="password"
+                value={newApiKey}
+                onChange={(e) => setNewApiKey(e.target.value)}
+                placeholder="Enter API Key"
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-1 focus:ring-emerald-500 outline-none"
+              />
+              <div className="flex gap-2">
                 <button
-                  key={item.id}
-                  onClick={() => setView(item.id as any)}
-                  className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${
-                    view === item.id
-                      ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/10"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-                  }`}
+                  onClick={() => {
+                    setApiKey(newApiKey);
+                    setShowApiKeyInput(false);
+                  }}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-lg transition-colors"
                 >
-                  {item.label}
+                  Save
                 </button>
-              ))}
-            </nav>
-          </div>
-        </header>
-
-        {(errorMessage || loadError) && (
-          <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4">
-            <div className="flex items-center gap-3 text-red-400">
-              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-              <p className="text-sm font-medium">{errorMessage || loadError}</p>
+                {apiKey && (
+                  <button
+                    onClick={() => setShowApiKeyInput(false)}
+                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
             </div>
-            <button
-              onClick={() =>
-                errorMessage ? setErrorMessage("") : setLoadError(null)
-              }
-              className="text-xs font-bold uppercase tracking-wider text-red-400/60 hover:text-red-400 transition-colors"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
+          ) : (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2">
+                <span className="text-xs text-slate-400 tabular-nums">
+                  ••••••••{apiKey.slice(-4)}
+                </span>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => {
+                      setNewApiKey(apiKey);
+                      setShowApiKeyInput(true);
+                    }}
+                    className="text-[10px] font-bold text-blue-400 hover:text-blue-300 px-1"
+                  >
+                    Change
+                  </button>
+                  <button
+                    onClick={() => setApiKey("")}
+                    className="text-[10px] font-bold text-red-400 hover:text-red-300 px-1"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
 
-        {view === "scanner" ? (
-          <ErrorBoundary key="scanner" fallbackLabel="Scanner">
-            <div className="space-y-6">
+  const errorBanner = (errorMessage || loadError) && (
+    <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4">
+      <div className="flex items-center gap-3 text-red-400">
+        <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+        <p className="text-sm font-medium">{errorMessage || loadError}</p>
+      </div>
+      <button
+        onClick={() =>
+          errorMessage ? setErrorMessage("") : setLoadError(null)
+        }
+        className="text-xs font-bold uppercase tracking-wider text-red-400/60 hover:text-red-400 transition-colors"
+      >
+        Dismiss
+      </button>
+    </div>
+  );
+
+  const currentView = (
+    <>
+      {view === "scanner" ? (
+        <ErrorBoundary key="scanner" fallbackLabel="Scanner">
+          <div className="space-y-6">
+            {!isMobile && (
               <div className="flex flex-col md:flex-row items-center justify-between bg-slate-900/50 p-4 rounded-2xl border border-slate-800/50 backdrop-blur-sm gap-4 relative z-20">
                 <div className="flex items-center gap-6">
                   <LeagueSelector
@@ -424,9 +379,10 @@ const App: React.FC = () => {
                         disabled={
                           isTracking ||
                           !bets.some(
-                            (bet) =>
+                            (bet: BetEdge) =>
                               bet.offers.some(
-                                (o) => o.exchangeKey === batchExchange,
+                                (o: ExchangeOffer) =>
+                                  o.exchangeKey === batchExchange,
                               ) &&
                               !trackedBets.some(
                                 (tb) =>
@@ -479,7 +435,9 @@ const App: React.FC = () => {
                     }`}
                   >
                     <RefreshCw
-                      className={`w-4.5 h-4.5 ${status === "loading" ? "animate-spin" : ""}`}
+                      className={`w-4.5 h-4.5 ${
+                        status === "loading" ? "animate-spin" : ""
+                      }`}
                     />
                     {status === "loading"
                       ? "Scanning..."
@@ -489,170 +447,264 @@ const App: React.FC = () => {
                   </button>
                 </div>
               </div>
+            )}
 
-              {status === "loading" ? (
-                <div className="flex flex-col items-center justify-center py-24 bg-slate-900/20 rounded-2xl border-2 border-dashed border-slate-800/50">
-                  <div className="relative">
-                    <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
-                    <Search className="w-6 h-6 text-emerald-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                  </div>
-                  <p className="mt-6 text-slate-400 font-medium animate-pulse">
-                    Scanning exchange markets...
-                  </p>
+            {status === "loading" ? (
+              <div className="flex flex-col items-center justify-center py-24 bg-slate-900/20 rounded-2xl border-2 border-dashed border-slate-800/50">
+                <div className="relative">
+                  <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
+                  <Search className="w-6 h-6 text-emerald-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                 </div>
-              ) : status === "empty" ? (
-                <div className="text-center py-20 bg-slate-900/20 rounded-2xl border-2 border-dashed border-slate-800/50">
-                  <p className="text-slate-400 font-medium">
-                    No value bets found for selected leagues.
-                  </p>
-                </div>
-              ) : isMobile ? (
-                <MobileScanner
-                  bets={bets}
-                  trackedBets={trackedBets}
-                  bankroll={bankroll}
-                  expandedBetId={expandedBetId}
-                  setExpandedBetId={setExpandedBetId}
-                  localSelectedExchangeKey={localSelectedExchangeKey}
-                  setLocalSelectedExchangeKey={setLocalSelectedExchangeKey}
-                  isTracking={isTracking}
-                  customCommission={customCommission}
-                  setCustomCommission={setCustomCommission}
-                  handleCommissionSelect={handleCommissionSelect}
-                />
-              ) : (
-                <ScannerTable
-                  bets={bets}
-                  trackedBets={trackedBets}
-                  bankroll={bankroll}
-                  expandedBetId={expandedBetId}
-                  setExpandedBetId={setExpandedBetId}
-                  localSelectedExchangeKey={localSelectedExchangeKey}
-                  setLocalSelectedExchangeKey={setLocalSelectedExchangeKey}
-                  isTracking={isTracking}
-                  customCommission={customCommission}
-                  setCustomCommission={setCustomCommission}
-                  handleCommissionSelect={handleCommissionSelect}
-                />
-              )}
-            </div>
-          </ErrorBoundary>
-        ) : view === "openbets" ? (
-          <ErrorBoundary key="openbets" fallbackLabel="Open Bets">
-            {isMobile ? (
-              <MobileOpenBets
-                bets={trackedBets}
-                onDeleteBet={handleDeleteTrackedBet}
-                onSettleBet={settleBet}
-                onSettleAll={settleAll}
-              />
-            ) : (
-              <OpenBetsView
-                bets={trackedBets}
-                onDeleteBet={handleDeleteTrackedBet}
-                onSettleBet={settleBet}
-                onSettleAll={settleAll}
-              />
-            )}
-          </ErrorBoundary>
-        ) : view === "history" ? (
-          <ErrorBoundary key="history" fallbackLabel="History">
-            {isMobile ? (
-              <MobileHistory
-                bets={trackedBets}
-                onDeleteBet={handleDeleteTrackedBet}
-              />
-            ) : (
-              <BetHistoryView
-                bets={trackedBets}
-                onDeleteBet={handleDeleteTrackedBet}
-              />
-            )}
-          </ErrorBoundary>
-        ) : view === "analysis" ? (
-          <ErrorBoundary key="analysis" fallbackLabel="Analysis">
-            {isMobile ? (
-              <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                <div>Analysis is best viewed on desktop</div>
+                <p className="mt-6 text-slate-400 font-medium animate-pulse">
+                  Scanning exchange markets...
+                </p>
               </div>
-            ) : (
-              <AnalysisView bets={trackedBets} transactions={transactions} />
-            )}
-          </ErrorBoundary>
-        ) : (
-          <ErrorBoundary key="bankroll" fallbackLabel="Bankroll">
-            {isMobile ? (
-              <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                <div>Bankroll is best viewed on desktop</div>
+            ) : status === "empty" ? (
+              <div className="text-center py-20 bg-slate-900/20 rounded-2xl border-2 border-dashed border-slate-800/50">
+                <p className="text-slate-400 font-medium">
+                  No value bets found for selected leagues.
+                </p>
               </div>
-            ) : (
-              <BankrollView
-                transactions={transactions}
-                exchangeBankrolls={exchangeBankrolls}
-                onAddTransaction={handleAddTransaction}
+            ) : isMobile ? (
+              <MobileScanner
+                bets={bets}
                 trackedBets={trackedBets}
+                bankroll={bankroll}
+                expandedBetId={expandedBetId}
+                setExpandedBetId={setExpandedBetId}
+                localSelectedExchangeKey={localSelectedExchangeKey}
+                setLocalSelectedExchangeKey={setLocalSelectedExchangeKey}
+                isTracking={isTracking}
+                customCommission={customCommission}
+                setCustomCommission={setCustomCommission}
+                handleCommissionSelect={handleCommissionSelect}
+              />
+            ) : (
+              <ScannerTable
+                bets={bets}
+                trackedBets={trackedBets}
+                bankroll={bankroll}
+                expandedBetId={expandedBetId}
+                setExpandedBetId={setExpandedBetId}
+                localSelectedExchangeKey={localSelectedExchangeKey}
+                setLocalSelectedExchangeKey={setLocalSelectedExchangeKey}
+                isTracking={isTracking}
+                customCommission={customCommission}
+                setCustomCommission={setCustomCommission}
+                handleCommissionSelect={handleCommissionSelect}
               />
             )}
-          </ErrorBoundary>
-        )}
-
-        <footer className="mt-12 pb-8 flex justify-center">
-          <div className="flex flex-col gap-1.5 bg-slate-900 px-6 py-3 rounded-full border border-slate-800 w-64 shadow-lg">
-            <div className="flex justify-center items-center text-xs text-slate-400">
-              <span className="text-slate-300 font-medium">
-                {requestsUsed !== null && requestsRemaining !== null ? (
-                  <>
-                    API: {requestsUsed.toLocaleString()} /{" "}
-                    {(requestsUsed + requestsRemaining).toLocaleString()} used
-                  </>
-                ) : (
-                  "—"
-                )}
-              </span>
+          </div>
+        </ErrorBoundary>
+      ) : view === "openbets" ? (
+        <ErrorBoundary key="openbets" fallbackLabel="Open Bets">
+          {isMobile ? (
+            <MobileOpenBets
+              bets={trackedBets}
+              onDeleteBet={handleDeleteTrackedBet}
+              onSettleBet={settleBet}
+              onSettleAll={settleAll}
+            />
+          ) : (
+            <OpenBetsView
+              bets={trackedBets}
+              onDeleteBet={handleDeleteTrackedBet}
+              onSettleBet={settleBet}
+              onSettleAll={settleAll}
+            />
+          )}
+        </ErrorBoundary>
+      ) : view === "history" ? (
+        <ErrorBoundary key="history" fallbackLabel="History">
+          {isMobile ? (
+            <MobileHistory
+              bets={trackedBets}
+              onDeleteBet={handleDeleteTrackedBet}
+            />
+          ) : (
+            <BetHistoryView
+              bets={trackedBets}
+              onDeleteBet={handleDeleteTrackedBet}
+            />
+          )}
+        </ErrorBoundary>
+      ) : view === "analysis" ? (
+        <ErrorBoundary key="analysis" fallbackLabel="Analysis">
+          {isMobile ? (
+            <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+              <div>Analysis is best viewed on desktop</div>
             </div>
-            <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
-              <div
-                className={`h-full transition-all duration-1000 ${
-                  requestsUsed === null || requestsRemaining === null
-                    ? "w-0"
+          ) : (
+            <AnalysisView bets={trackedBets} transactions={transactions} />
+          )}
+        </ErrorBoundary>
+      ) : (
+        <ErrorBoundary key="bankroll" fallbackLabel="Bankroll">
+          {isMobile ? (
+            <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+              <div>Bankroll is best viewed on desktop</div>
+            </div>
+          ) : (
+            <BankrollView
+              transactions={transactions}
+              exchangeBankrolls={exchangeBankrolls}
+              onAddTransaction={handleAddTransaction}
+              trackedBets={trackedBets}
+            />
+          )}
+        </ErrorBoundary>
+      )}
+    </>
+  );
+
+  const desktopLayout = (
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      <header className="flex items-center justify-between mb-12 p-1">
+        <div className="flex items-center gap-3">
+          <div className="bg-emerald-500 p-2 rounded-xl shadow-lg shadow-emerald-500/20">
+            <Trophy className="w-6 h-6 text-slate-950" />
+          </div>
+          <h1 className="text-2xl font-black text-white tracking-tight hidden sm:block">
+            VALUE<span className="text-emerald-500">BET</span>
+          </h1>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+
+            {showSettings && (
+              <div className="absolute right-0 mt-2 w-72 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 p-4 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                {settingsDropdownContent}
+              </div>
+            )}
+          </div>
+
+          <nav className="flex items-center bg-slate-900/50 p-1 rounded-2xl border border-slate-800/50 backdrop-blur-sm">
+            {[
+              { id: "scanner", label: "Scanner" },
+              { id: "openbets", label: "Open Bets" },
+              { id: "history", label: "History" },
+              { id: "analysis", label: "Analysis" },
+              { id: "bankroll", label: "Bankroll" },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setView(item.id as any)}
+                className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${
+                  view === item.id
+                    ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/10"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      </header>
+
+      {errorBanner}
+
+      {currentView}
+
+      <footer className="mt-12 pb-8 flex justify-center">
+        <div className="flex flex-col gap-1.5 bg-slate-900 px-6 py-3 rounded-full border border-slate-800 w-64 shadow-lg">
+          <div className="flex justify-center items-center text-xs text-slate-400">
+            <span className="text-slate-300 font-medium">
+              {requestsUsed !== null && requestsRemaining !== null ? (
+                <>
+                  API: {requestsUsed.toLocaleString()} /{" "}
+                  {(requestsUsed + requestsRemaining).toLocaleString()} used
+                </>
+              ) : (
+                "—"
+              )}
+            </span>
+          </div>
+          <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all duration-1000 ${
+                requestsUsed === null || requestsRemaining === null
+                  ? "w-0"
+                  : (requestsUsed / (requestsUsed + requestsRemaining)) * 100 >=
+                      90
+                    ? "bg-red-500"
                     : (requestsUsed / (requestsUsed + requestsRemaining)) *
                           100 >=
-                        90
-                      ? "bg-red-500"
-                      : (requestsUsed / (requestsUsed + requestsRemaining)) *
-                            100 >=
-                          70
-                        ? "bg-amber-500"
-                        : "bg-emerald-500"
-                }`}
-                style={{
-                  width: `${
-                    requestsUsed === null || requestsRemaining === null
-                      ? 0
-                      : Math.min(
-                          100,
-                          Math.max(
-                            0,
-                            (requestsUsed /
-                              (requestsUsed + requestsRemaining)) *
-                              100,
-                          ),
-                        )
-                  }%`,
-                }}
-              />
-            </div>
-            <div className="text-[10px] text-slate-600 text-center">
-              Resets{" "}
-              {new Date(
-                new Date().getFullYear(),
-                new Date().getMonth() + 1,
-                1,
-              ).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-            </div>
+                        70
+                      ? "bg-amber-500"
+                      : "bg-emerald-500"
+              }`}
+              style={{
+                width: `${
+                  requestsUsed === null || requestsRemaining === null
+                    ? 0
+                    : Math.min(
+                        100,
+                        Math.max(
+                          0,
+                          (requestsUsed / (requestsUsed + requestsRemaining)) *
+                            100,
+                        ),
+                      )
+                }%`,
+              }}
+            />
           </div>
-        </footer>
-      </div>
+          <div className="text-[10px] text-slate-600 text-center">
+            Resets{" "}
+            {new Date(
+              new Date().getFullYear(),
+              new Date().getMonth() + 1,
+              1,
+            ).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-50 font-sans selection:bg-emerald-500/30">
+      {isMobile ? (
+        <>
+          <MobileChrome
+            view={view}
+            onViewChange={setView}
+            onSettingsClick={() => setShowSettings(true)}
+            scannerProps={{
+              selectedLeagues,
+              setSelectedLeagues,
+              fixtureCounts,
+              loadFixtureCounts,
+              isCheckingFixtures,
+              betsCount: bets.length,
+              status,
+              runScan,
+              apiKeyMissing: status === "no-key",
+            }}
+            errorBanner={errorBanner}
+          >
+            {currentView}
+          </MobileChrome>
+
+          {showSettings && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+              <div className="relative w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl">
+                {settingsDropdownContent}
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        desktopLayout
+      )}
     </div>
   );
 };
