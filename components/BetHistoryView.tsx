@@ -6,17 +6,9 @@ import { Trash2, ChevronDown, Download } from "lucide-react";
 interface Props {
   bets: TrackedBet[];
   onDeleteBet: (id: string) => Promise<void>;
-  onSettleBet: (
-    betId: string,
-    forceResult?: "won" | "lost" | "void",
-  ) => Promise<"settled" | "skipped" | "failed">;
 }
 
-export const BetHistoryView: React.FC<Props> = ({
-  bets,
-  onDeleteBet,
-  onSettleBet,
-}) => {
+export const BetHistoryView: React.FC<Props> = ({ bets, onDeleteBet }) => {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 

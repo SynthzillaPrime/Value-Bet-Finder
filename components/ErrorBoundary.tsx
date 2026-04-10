@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from "react";
+import { Component, ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
 interface Props {
@@ -38,8 +38,8 @@ class ErrorBoundary extends Component<Props, State> {
             </h2>
 
             <p className="text-slate-400 mb-8 leading-relaxed">
-              The {this.props.fallbackLabel || "requested"} view crashed.
-              Don't worry, your data is safe and has been saved.
+              The {this.props.fallbackLabel || "requested"} view crashed. Don't
+              worry, your data is safe and has been saved.
             </p>
 
             <button

@@ -1,10 +1,5 @@
 import { useState, useCallback } from "react";
-import {
-  TrackedBet,
-  BetEdge,
-  BankrollTransaction,
-  ExchangeBankroll,
-} from "../types";
+import { TrackedBet, BetEdge, BankrollTransaction } from "../types";
 import {
   insertBet,
   updateBet as supabaseUpdateBet,

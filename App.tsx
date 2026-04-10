@@ -531,7 +531,6 @@ const App: React.FC = () => {
             <BetHistoryView
               bets={trackedBets}
               onDeleteBet={handleDeleteTrackedBet}
-              onSettleBet={settleBet}
             />
           </ErrorBoundary>
         ) : view === "analysis" ? (
