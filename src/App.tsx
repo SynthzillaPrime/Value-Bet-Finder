@@ -5,6 +5,9 @@ import { BankrollView } from "./components/bankroll/BankrollView";
 import { OpenBetsView } from "./components/OpenBetsView";
 import { BetHistoryView } from "./components/BetHistoryView";
 import { ScannerTable } from "./components/ScannerTable";
+import { MobileScanner } from "./components/mobile/MobileScanner";
+import { MobileOpenBets } from "./components/mobile/MobileOpenBets";
+import { MobileHistory } from "./components/mobile/MobileHistory";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { PinLock } from "./components/PinLock";
 import {
@@ -16,6 +19,7 @@ import {
 import { useTrackedBets } from "./hooks/useTrackedBets";
 import { useBankroll } from "./hooks/useBankroll";
 import { useScanner } from "./hooks/useScanner";
+import { useIsMobile } from "./hooks/useIsMobile";
 import {
   RefreshCw,
   AlertTriangle,
@@ -28,6 +32,8 @@ import {
 } from "lucide-react";
 
 const App: React.FC = () => {
+  const isMobile = useIsMobile();
+
   // Auth and Navigation State
   const [authState, setAuthState] = useState<
     "loading" | "setup" | "locked" | "unlocked"
@@ -500,6 +506,20 @@ const App: React.FC = () => {
                     No value bets found for selected leagues.
                   </p>
                 </div>
+              ) : isMobile ? (
+                <MobileScanner
+                  bets={bets}
+                  trackedBets={trackedBets}
+                  bankroll={bankroll}
+                  expandedBetId={expandedBetId}
+                  setExpandedBetId={setExpandedBetId}
+                  localSelectedExchangeKey={localSelectedExchangeKey}
+                  setLocalSelectedExchangeKey={setLocalSelectedExchangeKey}
+                  isTracking={isTracking}
+                  customCommission={customCommission}
+                  setCustomCommission={setCustomCommission}
+                  handleCommissionSelect={handleCommissionSelect}
+                />
               ) : (
                 <ScannerTable
                   bets={bets}
@@ -519,32 +539,60 @@ const App: React.FC = () => {
           </ErrorBoundary>
         ) : view === "openbets" ? (
           <ErrorBoundary key="openbets" fallbackLabel="Open Bets">
-            <OpenBetsView
-              bets={trackedBets}
-              onDeleteBet={handleDeleteTrackedBet}
-              onSettleBet={settleBet}
-              onSettleAll={settleAll}
-            />
+            {isMobile ? (
+              <MobileOpenBets
+                bets={trackedBets}
+                onDeleteBet={handleDeleteTrackedBet}
+                onSettleBet={settleBet}
+                onSettleAll={settleAll}
+              />
+            ) : (
+              <OpenBetsView
+                bets={trackedBets}
+                onDeleteBet={handleDeleteTrackedBet}
+                onSettleBet={settleBet}
+                onSettleAll={settleAll}
+              />
+            )}
           </ErrorBoundary>
         ) : view === "history" ? (
           <ErrorBoundary key="history" fallbackLabel="History">
-            <BetHistoryView
-              bets={trackedBets}
-              onDeleteBet={handleDeleteTrackedBet}
-            />
+            {isMobile ? (
+              <MobileHistory
+                bets={trackedBets}
+                onDeleteBet={handleDeleteTrackedBet}
+              />
+            ) : (
+              <BetHistoryView
+                bets={trackedBets}
+                onDeleteBet={handleDeleteTrackedBet}
+              />
+            )}
           </ErrorBoundary>
         ) : view === "analysis" ? (
           <ErrorBoundary key="analysis" fallbackLabel="Analysis">
-            <AnalysisView bets={trackedBets} transactions={transactions} />
+            {isMobile ? (
+              <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+                <div>Analysis is best viewed on desktop</div>
+              </div>
+            ) : (
+              <AnalysisView bets={trackedBets} transactions={transactions} />
+            )}
           </ErrorBoundary>
         ) : (
           <ErrorBoundary key="bankroll" fallbackLabel="Bankroll">
-            <BankrollView
-              transactions={transactions}
-              exchangeBankrolls={exchangeBankrolls}
-              onAddTransaction={handleAddTransaction}
-              trackedBets={trackedBets}
-            />
+            {isMobile ? (
+              <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+                <div>Bankroll is best viewed on desktop</div>
+              </div>
+            ) : (
+              <BankrollView
+                transactions={transactions}
+                exchangeBankrolls={exchangeBankrolls}
+                onAddTransaction={handleAddTransaction}
+                trackedBets={trackedBets}
+              />
+            )}
           </ErrorBoundary>
         )}
 
