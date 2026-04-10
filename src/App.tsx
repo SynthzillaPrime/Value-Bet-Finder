@@ -501,7 +501,6 @@ const App: React.FC = () => {
           {isMobile ? (
             <MobileOpenBets
               bets={trackedBets}
-              onDeleteBet={handleDeleteTrackedBet}
               onSettleBet={settleBet}
               onSettleAll={settleAll}
             />
