@@ -8,6 +8,8 @@ import { ScannerTable } from "./components/ScannerTable";
 import { MobileScanner } from "./components/mobile/MobileScanner";
 import { MobileOpenBets } from "./components/mobile/MobileOpenBets";
 import { MobileHistory } from "./components/mobile/MobileHistory";
+import { MobileAnalysis } from "./components/mobile/MobileAnalysis";
+import { MobileBankroll } from "./components/mobile/MobileBankroll";
 import { MobileChrome } from "./components/mobile/MobileChrome";
 import { ExchangeOffer, BetEdge } from "./types";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -112,14 +114,18 @@ const App: React.FC = () => {
     }
   }, [status, apiKey]);
 
-  const handleCommissionSelect = async (bet: any, commission: number) => {
+  const handleCommissionSelect = async (
+    bet: any,
+    commission: number,
+    exchangeKey?: string,
+  ) => {
     if (isNaN(commission) || commission < 0 || commission > 100) return;
     setIsTracking(true);
     try {
       await handleTrackBet(
         bet,
         commission,
-        localSelectedExchangeKey || bet.offers[0].exchangeKey,
+        exchangeKey || localSelectedExchangeKey || bet.offers[0].exchangeKey,
       );
       setExpandedBetId(null);
       setCustomCommission("");
@@ -530,9 +536,7 @@ const App: React.FC = () => {
       ) : view === "analysis" ? (
         <ErrorBoundary key="analysis" fallbackLabel="Analysis">
           {isMobile ? (
-            <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-              <div>Analysis is best viewed on desktop</div>
-            </div>
+            <MobileAnalysis bets={trackedBets} transactions={transactions} />
           ) : (
             <AnalysisView bets={trackedBets} transactions={transactions} />
           )}
@@ -540,9 +544,11 @@ const App: React.FC = () => {
       ) : (
         <ErrorBoundary key="bankroll" fallbackLabel="Bankroll">
           {isMobile ? (
-            <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-              <div>Bankroll is best viewed on desktop</div>
-            </div>
+            <MobileBankroll
+              transactions={transactions}
+              exchangeBankrolls={exchangeBankrolls}
+              trackedBets={trackedBets}
+            />
           ) : (
             <BankrollView
               transactions={transactions}

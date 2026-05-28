@@ -14,7 +14,11 @@ interface MobileScannerProps {
   isTracking: boolean;
   customCommission: string;
   setCustomCommission: (val: string) => void;
-  handleCommissionSelect: (bet: BetEdge, commission: number) => void;
+  handleCommissionSelect: (
+    bet: BetEdge,
+    commission: number,
+    exchangeKey?: string,
+  ) => void;
 }
 
 export const MobileScanner: React.FC<MobileScannerProps> = ({
@@ -24,7 +28,7 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
   expandedBetId: _expandedBetId,
   setExpandedBetId: _setExpandedBetId,
   localSelectedExchangeKey: _localSelectedExchangeKey,
-  setLocalSelectedExchangeKey,
+  setLocalSelectedExchangeKey: _setLocalSelectedExchangeKey,
   isTracking,
   customCommission: _customCommission,
   setCustomCommission: _setCustomCommission,
@@ -179,8 +183,7 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
                 if (isTracking) return;
                 const bestOffer = bet.offers[0];
                 if (!bestOffer) return;
-                setLocalSelectedExchangeKey(bestOffer.exchangeKey);
-                handleCommissionSelect(bet, 2);
+                handleCommissionSelect(bet, 2, bestOffer.exchangeKey);
               }}
               className="w-full h-12 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors"
             >
