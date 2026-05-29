@@ -100,6 +100,30 @@ export interface TrackedBet extends BetEdge {
 
   // Legacy fields for migration
   smarketsPrice?: number;
+
+  arb_group_id?: string | null;
+}
+
+export interface ArbLeg {
+  exchangeName: string;
+  selectionName: string;
+  decimalOdds: number;
+  betType: "back" | "lay";
+  recommendedStake: number;
+  liability?: number; // for lay legs
+}
+
+export interface ArbOpportunity {
+  id: string;
+  sportKey: string;
+  matchName: string;
+  commenceTime: string;
+  arbType: "back-back" | "back-lay";
+  arbPercentage: number; // net, after commission
+  guaranteedProfit: number; // at default stake
+  totalStake: number;
+  totalLayLiability?: number;
+  legs: ArbLeg[];
 }
 
 export interface ExchangeBankroll {

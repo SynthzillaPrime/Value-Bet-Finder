@@ -5,6 +5,7 @@ import {
   calculateEdges,
   fetchLeagueFixtureCounts,
 } from "../services/edgeFinder";
+import { findArbitrageOpportunities } from "../services/arbFinder";
 import { LEAGUES, HARDCODED_API_KEY } from "../constants";
 
 const STORAGE_KEY = "ods_api_key";
@@ -41,6 +42,13 @@ export const useScanner = () => {
   const bets = useMemo(() => {
     if (rawMatches.length === 0) return [];
     return calculateEdges(rawMatches);
+  }, [rawMatches]);
+
+  const arbs = useMemo(() => {
+    if (rawMatches.length === 0) return [];
+    const results = findArbitrageOpportunities(rawMatches);
+    console.log(`Arb scan complete: found ${results.length} arbs`, results);
+    return results;
   }, [rawMatches]);
 
   const runScan = useCallback(async () => {
@@ -138,5 +146,6 @@ export const useScanner = () => {
     runScan,
     setApiKey,
     handleClearKey,
+    arbs,
   };
 };
