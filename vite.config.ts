@@ -13,7 +13,7 @@ export default defineConfig({
         name: "Value Bet Finder",
         short_name: "VBF",
         description: "Find value bets across major exchanges",
-        theme_color: "#10b981", // emerald-500
+        theme_color: "#020617", // slate-950
         background_color: "#020617", // slate-950
         display: "standalone",
         start_url: "/",
