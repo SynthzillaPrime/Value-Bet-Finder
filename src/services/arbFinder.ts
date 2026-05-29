@@ -134,8 +134,6 @@ export const findArbitrageOpportunities = (
     // Rule: Lay leg net win = stake_lay * 0.98
     // Rule: Back leg loss = stake_back
 
-    // TODO: lay data not present in current scan response (h2h_lay market not requested in constants.ts)
-    // Checking for presence of h2h_lay market to confirm
     const mbLayMarket = matchbook.markets.find(
       (m: Market) => m.key === "h2h_lay",
     );
@@ -143,9 +141,8 @@ export const findArbitrageOpportunities = (
       (m: Market) => m.key === "h2h_lay",
     );
 
+    // Only proceed if at least one exchange provides lay data for this event
     if (mbLayMarket || smLayMarket) {
-      // If lay data were present, we would iterate through outcomes here
-      // For now, this block remains for future implementation when h2h_lay is added
       for (let i = 0; i < mbMarket.outcomes.length; i++) {
         const outcomeName = mbMarket.outcomes[i].name;
 

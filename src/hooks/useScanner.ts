@@ -38,6 +38,7 @@ export const useScanner = () => {
   );
   const [isCheckingFixtures, setIsCheckingFixtures] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [arbMatches, setArbMatches] = useState<MatchResponse[]>([]);
 
   const bets = useMemo(() => {
     if (rawMatches.length === 0) return [];
@@ -45,11 +46,11 @@ export const useScanner = () => {
   }, [rawMatches]);
 
   const arbs = useMemo(() => {
-    if (rawMatches.length === 0) return [];
-    const results = findArbitrageOpportunities(rawMatches);
+    if (arbMatches.length === 0) return [];
+    const results = findArbitrageOpportunities(arbMatches);
     console.log(`Arb scan complete: found ${results.length} arbs`, results);
     return results;
-  }, [rawMatches]);
+  }, [arbMatches]);
 
   const runScan = useCallback(async () => {
     if (!apiKey) {
@@ -61,36 +62,79 @@ export const useScanner = () => {
     setErrorMessage("");
 
     try {
-      // Filter selected leagues to only those with known fixtures (if counts are loaded)
+      // 1. Value Bet Scan (Football/Selected Leagues)
       const hasFixtureData = Object.keys(fixtureCounts).length > 0;
       const activeSelected = hasFixtureData
         ? selectedLeagues.filter((key) => (fixtureCounts[key] || 0) > 0)
         : selectedLeagues;
 
-      if (activeSelected.length === 0 && selectedLeagues.length > 0) {
-        setRawMatches([]);
-        setStatus("empty");
-        return;
+      if (activeSelected.length > 0 || selectedLeagues.length === 0) {
+        const {
+          matches,
+          remainingRequests: remaining,
+          usedRequests: used,
+        } = await fetchOddsData(
+          apiKey,
+          activeSelected.length > 0 ? activeSelected : selectedLeagues,
+        );
+        setRawMatches(matches);
+        setRequestsRemaining(remaining);
+        setRequestsUsed(used);
+
+        if (matches.length === 0 && activeSelected.length > 0) {
+          setStatus("empty");
+        } else {
+          setStatus("idle");
+        }
       }
 
-      const {
-        matches,
-        remainingRequests: remaining,
-        usedRequests: used,
-      } = await fetchOddsData(
-        apiKey,
-        activeSelected.length > 0 ? activeSelected : selectedLeagues,
-      );
-      setRawMatches(matches);
-      setRequestsRemaining(remaining);
-      setRequestsUsed(used);
+      // 2. Dedicated Arb Scan (Tennis/US Sports)
+      const usSportKeys = [
+        "americanfootball_nfl",
+        "basketball_nba",
+        "icehockey_nhl",
+      ];
+
+      try {
+        // Dynamically discover active tennis tournament keys
+        const sportsUrl = `https://api.the-odds-api.com/v4/sports/?apiKey=${apiKey}`;
+        const sportsResponse = await fetch(sportsUrl);
+        let tennisKeys: string[] = [];
+
+        if (sportsResponse.ok) {
+          const allSports = (await sportsResponse.json()) as any[];
+          tennisKeys = allSports
+            .filter((s: any) => s.group === "Tennis" && s.active === true)
+            .map((s: any) => s.key);
+        }
+
+        const arbSportKeys = [...tennisKeys, ...usSportKeys];
+
+        // Dedicated arb fetch with regions=uk,eu to capture Smarkets/Matchbook
+        const arbResults: MatchResponse[] = [];
+        const now = new Date();
+
+        for (const key of arbSportKeys) {
+          const url = `https://api.the-odds-api.com/v4/sports/${key}/odds?apiKey=${apiKey}&regions=uk,eu&markets=h2h&oddsFormat=decimal&bookmakers=matchbook,smarkets`;
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = (await res.json()) as MatchResponse[];
+            const preMatchCount = data.filter(
+              (m) => new Date(m.commence_time) > now,
+            ).length;
+            console.log(
+              `Arb Fetch [${key}]: ${preMatchCount} pre-match events`,
+            );
+            arbResults.push(...data);
+          }
+        }
+        setArbMatches(arbResults);
+      } catch (arbErr) {
+        console.error("Arb-specific fetch failed:", arbErr);
+        // Continue without failing the main scan
+      }
+
       setLastUpdated(new Date());
-
-      if (matches.length === 0) {
-        setStatus("empty");
-      } else {
-        setStatus("idle");
-      }
     } catch (error: any) {
       console.error("Scan failed:", error);
       setStatus("error");
