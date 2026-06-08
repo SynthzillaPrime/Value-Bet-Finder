@@ -11,13 +11,13 @@ jobs:
     steps:
       - name: Delete old rows
         run: |
-          curl -X DELETE "${{ secrets.SUPABASE_URL }}/keep_alive?pinged_at=lt.$(date -u -d '30 days ago' +%Y-%m-%dT%H:%M:%SZ)" \
+          curl -X DELETE "${{ secrets.SUPABASE_URL }}/rest/v1/keep_alive?pinged_at=lt.$(date -u -d '30 days ago' +%Y-%m-%dT%H:%M:%SZ)" \
           -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
           -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
 
       - name: Insert ping row
         run: |
-          curl -X POST "${{ secrets.SUPABASE_URL }}/keep_alive" \
+          curl -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/keep_alive" \
           -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
           -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
           -H "Content-Type: application/json" \
