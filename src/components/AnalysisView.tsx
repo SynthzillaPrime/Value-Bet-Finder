@@ -66,6 +66,31 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
     dir: "desc",
   });
 
+  const seasons = useMemo(() => {
+    const s = Array.from(new Set(bets.map((b) => b.season).filter(Boolean)));
+    return s.sort((a, b) => b.localeCompare(a));
+  }, [bets]);
+
+  const [seasonFilter, setSeasonFilter] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (seasonFilter === null && seasons.length > 0) {
+      setSeasonFilter(seasons[0]);
+    }
+  }, [seasons, seasonFilter]);
+
+  const filteredBets = useMemo(() => {
+    if (seasonFilter === null) return [];
+    if (seasonFilter === "All seasons") return bets;
+    return bets.filter((b) => b.season === seasonFilter);
+  }, [bets, seasonFilter]);
+
+  const filteredTransactions = useMemo(() => {
+    if (seasonFilter === null) return [];
+    if (seasonFilter === "All seasons") return transactions;
+    return transactions.filter((t) => t.season === seasonFilter);
+  }, [transactions, seasonFilter]);
+
   const handleCompHeaderClick = (label: string) => {
     const labelMap: Record<string, string> = {
       Competition: "name",
@@ -86,16 +111,18 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
   };
 
   const settled = useMemo(() => {
-    return bets.filter((b) => b.result !== undefined && b.result !== "void");
-  }, [bets]);
+    return filteredBets.filter(
+      (b) => b.result !== undefined && b.result !== "void",
+    );
+  }, [filteredBets]);
 
   // 1. Combined Bankroll & Expected Data
   const bankrollData = useMemo(() => {
-    const settledBets = [...bets]
+    const settledBets = [...filteredBets]
       .filter((b) => b.result !== undefined && b.result !== "void")
       .sort((a, b) => a.placedAt - b.placedAt);
 
-    const nonBetTransactions = transactions.filter(
+    const nonBetTransactions = filteredTransactions.filter(
       (t) =>
         t.type === "deposit" ||
         t.type === "withdrawal" ||
@@ -136,11 +163,11 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
       });
       return acc;
     }, []);
-  }, [bets, transactions]);
+  }, [filteredBets, filteredTransactions]);
 
   // 3. CLV Data
   const clvData = useMemo(() => {
-    const clvBets = bets
+    const clvBets = filteredBets
       .filter((b) => b.clvPercent !== undefined)
       .sort((a, b) => a.placedAt - b.placedAt);
 
@@ -172,7 +199,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
       beatRate,
       totalCount: clvBets.length,
     };
-  }, [bets]);
+  }, [filteredBets]);
 
   // 4. Competition Data
   const competitionData = useMemo(() => {
@@ -321,8 +348,30 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Action Bar */}
       <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-900/50 border border-slate-800/50 mb-6 gap-4 relative z-20">
-        <div className="flex flex-col">
-          <h1 className="text-xl font-bold text-white">Performance Analysis</h1>
+        <div className="flex items-center gap-6">
+          <div className="flex flex-col">
+            <h1 className="text-xl font-bold text-white">
+              Performance Analysis
+            </h1>
+          </div>
+
+          {/* Season Filter */}
+          <div className="relative">
+            <select
+              value={seasonFilter || ""}
+              onChange={(e) => setSeasonFilter(e.target.value)}
+              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+            >
+              {!seasonFilter && <option value="">Loading...</option>}
+              <option value="All seasons">All seasons</option>
+              {seasons.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
+          </div>
         </div>
 
         <div className="relative" ref={dropdownRef}>
@@ -374,7 +423,7 @@ export const AnalysisView: React.FC<Props> = ({ bets, transactions }) => {
         </div>
       </div>
 
-      <SummaryStats bets={bets} />
+      <SummaryStats bets={filteredBets} />
 
       <div className="space-y-12">
         {/* 1. Bankroll */}

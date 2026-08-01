@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { BankrollTransaction, ExchangeBankroll } from "../types";
+import { CURRENT_SEASON } from "../constants";
 import {
   fetchAllTransactions,
   insertTransaction,
@@ -12,7 +13,7 @@ export const useBankroll = (onError: (msg: string) => void) => {
   const exchangeBankrolls = useMemo(() => {
     const totals: ExchangeBankroll = { matchbook: 0, smarkets: 0 };
     transactions.forEach((t) => {
-      if (totals[t.exchange] !== undefined) {
+      if (t.season === CURRENT_SEASON && totals[t.exchange] !== undefined) {
         totals[t.exchange] += t.amount;
       }
     });

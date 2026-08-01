@@ -73,6 +73,7 @@ export interface BetEdge {
 export interface TrackedBet extends BetEdge {
   placedAt: number; // Timestamp
   fairPriceAtBet: number; // Snapshot of fair price when placed
+  season: string;
   closingRawPrice?: number; // Pinnacle raw price at kickoff
   closingFairPrice?: number; // Pinnacle no-vig price at kickoff
   clvPercent?: number; // (MyOdds / ClosingFairPrice - 1) * 100
@@ -110,6 +111,7 @@ export interface ExchangeBankroll {
 export interface BankrollTransaction {
   id: string;
   timestamp: number;
+  season: string;
   exchange: "matchbook" | "smarkets";
   type:
     | "deposit"

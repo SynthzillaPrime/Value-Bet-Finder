@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { TrackedBet } from "../../types";
 import { LEAGUES } from "../../constants";
+import { ChevronDown } from "lucide-react";
 
 interface MobileHistoryProps {
   bets: TrackedBet[];
@@ -8,9 +9,29 @@ interface MobileHistoryProps {
 }
 
 export const MobileHistory: React.FC<MobileHistoryProps> = ({ bets }) => {
+  const seasons = useMemo(() => {
+    const s = Array.from(new Set(bets.map((b) => b.season).filter(Boolean)));
+    return s.sort((a, b) => b.localeCompare(a));
+  }, [bets]);
+
+  const [seasonFilter, setSeasonFilter] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (seasonFilter === null && seasons.length > 0) {
+      setSeasonFilter(seasons[0]);
+    }
+  }, [seasons, seasonFilter]);
+
   // 1. Filter and sort: settled bets only, kickoff descending
   const settledBets = bets
-    .filter((bet) => bet.result !== undefined && bet.result !== null)
+    .filter((bet) => {
+      const isSettled = bet.result !== undefined && bet.result !== null;
+      if (!isSettled) return false;
+      if (seasonFilter === null) return false;
+      if (seasonFilter !== "All seasons" && bet.season !== seasonFilter)
+        return false;
+      return true;
+    })
     .sort(
       (a, b) => new Date(b.kickoff).getTime() - new Date(a.kickoff).getTime(),
     );
@@ -44,6 +65,26 @@ export const MobileHistory: React.FC<MobileHistoryProps> = ({ bets }) => {
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-950">
+      {/* Filters Area */}
+      <div className="px-5 pt-4 pb-2">
+        <div className="relative inline-block">
+          <select
+            value={seasonFilter || ""}
+            onChange={(e) => setSeasonFilter(e.target.value)}
+            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-[11px] font-semibold text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+          >
+            {!seasonFilter && <option value="">Loading...</option>}
+            <option value="All seasons">All seasons</option>
+            {seasons.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
+        </div>
+      </div>
+
       {/* Summary Strip */}
       <div className="px-5 py-3 flex items-center justify-between">
         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">

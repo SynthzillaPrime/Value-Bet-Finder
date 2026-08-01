@@ -11,6 +11,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { BankrollTransaction, ExchangeBankroll, TrackedBet } from "../../types";
+import { CURRENT_SEASON } from "../../constants";
 
 interface Props {
   transactions: BankrollTransaction[];
@@ -77,6 +78,7 @@ export const BankrollView: React.FC<Props> = ({
       await onAddTransaction({
         id: `tx-${Date.now()}`,
         timestamp: Date.now(),
+        season: CURRENT_SEASON,
         exchange: newTx.exchange,
         type: newTx.type,
         amount: newTx.type === "withdrawal" ? -Math.abs(amount) : amount,

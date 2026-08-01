@@ -133,6 +133,7 @@ const rowToBet = (row: any): TrackedBet => ({
   exchangePrice: Number(row.exchange_price),
   fairPrice: Number(row.fair_price),
   fairPriceAtBet: Number(row.fair_price_at_bet),
+  season: row.season,
   edgePercent: Number(row.edge_percent),
   netEdgePercent: Number(row.net_edge_percent),
   kellyPercent: Number(row.kelly_percent),
@@ -220,6 +221,7 @@ const txToRow = (tx: BankrollTransaction): Record<string, any> => ({
 const rowToTx = (row: any): BankrollTransaction => ({
   id: row.id,
   timestamp: Number(row.timestamp),
+  season: row.season,
   exchange: row.exchange || "matchbook",
   type: row.type,
   amount: Number(row.amount),

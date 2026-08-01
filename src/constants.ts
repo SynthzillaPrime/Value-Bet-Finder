@@ -7,6 +7,8 @@ import { LeagueOption } from "./types";
 export const HARDCODED_API_KEY: string =
   import.meta.env.VITE_ODDS_API_KEY || "";
 
+export const CURRENT_SEASON: string = "2026/27";
+
 export const LEAGUES: LeagueOption[] = [
   // Top European
   { key: "soccer_epl", name: "Premier League", group: "Top European" },

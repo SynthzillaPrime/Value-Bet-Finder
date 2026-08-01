@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { TrackedBet, BetEdge, BankrollTransaction } from "../types";
+import { CURRENT_SEASON } from "../constants";
 import {
   insertBet,
   updateBet as supabaseUpdateBet,
@@ -67,6 +68,7 @@ export const useTrackedBets = (
     const stakeTransaction: BankrollTransaction = {
       id: `stake-${bet.id}-${now}`,
       timestamp: now,
+      season: CURRENT_SEASON,
       exchange: selectedExchange as "matchbook" | "smarkets",
       type: "bet_placed",
       amount: -fractionalKellyStake,
@@ -93,6 +95,7 @@ export const useTrackedBets = (
       exchangePrice: offer.price,
       placedAt: now,
       fairPriceAtBet: bet.fairPrice,
+      season: CURRENT_SEASON,
       status: "open",
       hoursBeforeKickoff,
       timingBucket,

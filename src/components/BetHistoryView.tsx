@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { TrackedBet } from "../types";
 import { LEAGUES } from "../constants";
 import { Trash2, ChevronDown, Download } from "lucide-react";
@@ -32,6 +32,18 @@ export const BetHistoryView: React.FC<Props> = ({ bets, onDeleteBet }) => {
   const [oddsFilter, setOddsFilter] = useState("All Odds");
   const [clvFilter, setClvFilter] = useState("All CLV");
   const [resultFilter, setResultFilter] = useState("All Results");
+  const [seasonFilter, setSeasonFilter] = useState<string | null>(null);
+
+  const seasons = useMemo<string[]>(() => {
+    const s = Array.from(new Set(bets.map((b) => b.season).filter(Boolean)));
+    return s.sort((a, b) => b.localeCompare(a));
+  }, [bets]);
+
+  useEffect(() => {
+    if (seasonFilter === null && seasons.length > 0) {
+      setSeasonFilter(seasons[0]);
+    }
+  }, [seasons, seasonFilter]);
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -104,9 +116,19 @@ export const BetHistoryView: React.FC<Props> = ({ bets, onDeleteBet }) => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [compFilter, timingFilter, oddsFilter, clvFilter, resultFilter]);
+  }, [
+    compFilter,
+    timingFilter,
+    oddsFilter,
+    clvFilter,
+    resultFilter,
+    seasonFilter,
+  ]);
 
   const filteredBets = bets.filter((bet) => {
+    if (seasonFilter === null) return false;
+    if (seasonFilter !== "All seasons" && bet.season !== seasonFilter)
+      return false;
     if (compFilter !== "All Competitions" && bet.sport !== compFilter)
       return false;
     if (timingFilter !== "All Timing" && bet.timingBucket !== timingFilter)
@@ -159,7 +181,25 @@ export const BetHistoryView: React.FC<Props> = ({ bets, onDeleteBet }) => {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex flex-wrap gap-2 mr-4">
+          <div className="flex flex-wrap gap-2 items-center">
+            {/* Season Filter */}
+            <div className="relative">
+              <select
+                value={seasonFilter || ""}
+                onChange={(e) => setSeasonFilter(e.target.value)}
+                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8"
+              >
+                {!seasonFilter && <option value="">Loading...</option>}
+                <option value="All seasons">All seasons</option>
+                {seasons.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-slate-500 pointer-events-none" />
+            </div>
+
             {/* Competition Filter */}
             <div className="relative">
               <select
