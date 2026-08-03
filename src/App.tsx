@@ -552,7 +552,6 @@ const App: React.FC = () => {
           ) : (
             <BankrollView
               transactions={transactions}
-              exchangeBankrolls={exchangeBankrolls}
               onAddTransaction={handleAddTransaction}
               trackedBets={trackedBets}
             />

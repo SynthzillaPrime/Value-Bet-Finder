@@ -10,19 +10,17 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import { BankrollTransaction, ExchangeBankroll, TrackedBet } from "../../types";
+import { BankrollTransaction, TrackedBet } from "../../types";
 import { CURRENT_SEASON } from "../../constants";
 
 interface Props {
   transactions: BankrollTransaction[];
-  exchangeBankrolls: ExchangeBankroll;
   onAddTransaction: (t: BankrollTransaction) => Promise<void>;
   trackedBets: TrackedBet[];
 }
 
 export const BankrollView: React.FC<Props> = ({
   transactions,
-  exchangeBankrolls,
   onAddTransaction,
   trackedBets,
 }) => {
@@ -232,6 +230,72 @@ export const BankrollView: React.FC<Props> = ({
     return data;
   }, [filteredBets, filteredTransactions]);
 
+  const seasonStats = useMemo(() => {
+    if (seasonFilter !== "All seasons") return [];
+
+    const statsMap = new Map<
+      string,
+      {
+        season: string;
+        deposits: number;
+        volume: number;
+        profitLoss: number;
+        endBankroll: number;
+      }
+    >();
+
+    // Sort seasons to process them chronologically to track ending bankroll
+    const sortedSeasons = [...seasons].sort((a, b) => a.localeCompare(b));
+
+    let runningBankroll = 0;
+
+    sortedSeasons.forEach((season) => {
+      const seasonTxs = transactions.filter((t) => t.season === season);
+
+      const deposits = seasonTxs
+        .filter((t) => ["deposit", "withdrawal", "adjustment"].includes(t.type))
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const volume = Math.abs(
+        seasonTxs
+          .filter((t) => t.type === "bet_placed")
+          .reduce((sum, t) => sum + t.amount, 0),
+      );
+
+      const profitLoss = seasonTxs
+        .filter((t) =>
+          ["bet_placed", "bet_win", "bet_loss", "bet_void"].includes(t.type),
+        )
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      runningBankroll += deposits + profitLoss;
+
+      statsMap.set(season, {
+        season,
+        deposits,
+        volume,
+        profitLoss,
+        endBankroll: runningBankroll,
+      });
+    });
+
+    // Return in reverse chronological order for the table
+    return sortedSeasons
+      .map((s) => statsMap.get(s)!)
+      .sort((a, b) => b.season.localeCompare(a.season));
+  }, [transactions, seasons, seasonFilter]);
+
+  const totalSeasonStats = useMemo(() => {
+    return seasonStats.reduce(
+      (acc, curr) => ({
+        deposits: acc.deposits + curr.deposits,
+        volume: acc.volume + curr.volume,
+        profitLoss: acc.profitLoss + curr.profitLoss,
+      }),
+      { deposits: 0, volume: 0, profitLoss: 0 },
+    );
+  }, [seasonStats]);
+
   const isPositivePL = totalStats.profitLoss >= 0;
 
   return (
@@ -240,163 +304,247 @@ export const BankrollView: React.FC<Props> = ({
         {/* Left Panel: Summary Table + Chart Stacked */}
         <div className="flex-1 bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse table-fixed">
-              <colgroup>
-                <col className="w-auto" />
-                <col className="w-[85px]" />
-                <col className="w-[85px]" />
-                <col className="w-[50px]" />
-                <col className="w-[85px]" />
-                <col className="w-[80px]" />
-                <col className="w-[70px]" />
-                <col className="w-[70px]" />
-              </colgroup>
-              <thead>
-                <tr className="text-slate-500 border-b border-slate-800 text-[10px] uppercase tracking-wider bg-slate-800/50 font-bold">
-                  <th className="px-6 py-3 whitespace-nowrap">Exchange</th>
-                  <th className="px-6 py-3 text-right whitespace-nowrap">
-                    Net Dep.
-                  </th>
-                  <th className="px-6 py-3 text-right whitespace-nowrap">
-                    Balance
-                  </th>
-                  <th className="px-6 py-3 text-right whitespace-nowrap">
-                    Bets
-                  </th>
-                  <th className="px-6 py-3 text-right whitespace-nowrap">
-                    Staked
-                  </th>
-                  <th className="px-6 py-3 text-right whitespace-nowrap">
-                    P/L
-                  </th>
-                  <th className="px-6 py-3 text-right whitespace-nowrap">
-                    ROI
-                  </th>
-                  <th className="px-6 py-3 text-right whitespace-nowrap">
-                    Return
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/50">
-                {[matchbookStats, smarketsStats].map((stats) => (
-                  <tr
-                    key={stats.name}
-                    className="hover:bg-slate-800/30 transition-colors"
-                  >
-                    <td className="px-6 py-3 font-bold text-slate-300 whitespace-nowrap text-sm">
-                      {stats.name}
+            {seasonFilter === "All seasons" ? (
+              <table className="w-full text-left border-collapse table-fixed">
+                <colgroup>
+                  <col className="w-auto" />
+                  <col className="w-[100px]" />
+                  <col className="w-[100px]" />
+                  <col className="w-[100px]" />
+                  <col className="w-[120px]" />
+                </colgroup>
+                <thead>
+                  <tr className="text-slate-500 border-b border-slate-800 text-[10px] uppercase tracking-wider bg-slate-800/50 font-bold">
+                    <th className="px-6 py-3 whitespace-nowrap">Season</th>
+                    <th className="px-6 py-3 text-right whitespace-nowrap">
+                      Deposits
+                    </th>
+                    <th className="px-6 py-3 text-right whitespace-nowrap">
+                      Volume
+                    </th>
+                    <th className="px-6 py-3 text-right whitespace-nowrap">
+                      P/L
+                    </th>
+                    <th className="px-6 py-3 text-right whitespace-nowrap">
+                      End Bankroll
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/50">
+                  {seasonStats.map((stats) => (
+                    <tr
+                      key={stats.season}
+                      className="hover:bg-slate-800/30 transition-colors"
+                    >
+                      <td className="px-6 py-3 font-bold text-slate-300 whitespace-nowrap text-sm">
+                        {stats.season}
+                      </td>
+                      <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-sm">
+                        £{stats.deposits.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-sm">
+                        £{stats.volume.toFixed(2)}
+                      </td>
+                      <td
+                        className={`px-6 py-3 tabular-nums font-bold text-right whitespace-nowrap text-sm ${
+                          stats.profitLoss >= 0
+                            ? "text-emerald-400"
+                            : "text-red-400"
+                        }`}
+                      >
+                        {stats.profitLoss >= 0 ? "+£" : "-£"}
+                        {Math.abs(stats.profitLoss).toFixed(2)}
+                      </td>
+                      <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-sm">
+                        £{stats.endBankroll.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="bg-slate-950/50">
+                    <td className="px-6 py-3 text-[13px] font-extrabold text-white whitespace-nowrap">
+                      Total
                     </td>
-                    <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-sm">
-                      £{stats.netDeposits.toFixed(2)}
+                    <td className="px-6 py-3 text-[13px] font-extrabold text-white tabular-nums text-right whitespace-nowrap">
+                      £{totalSeasonStats.deposits.toFixed(2)}
                     </td>
-                    <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-sm">
-                      £{stats.balance.toFixed(2)}
-                    </td>
-                    <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-sm">
-                      {stats.bets}
-                    </td>
-                    <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-sm">
-                      £{stats.staked.toFixed(2)}
+                    <td className="px-6 py-3 text-[13px] font-extrabold text-white tabular-nums text-right whitespace-nowrap">
+                      £{totalSeasonStats.volume.toFixed(2)}
                     </td>
                     <td
-                      className={`px-6 py-3 tabular-nums font-bold text-right whitespace-nowrap text-sm ${
-                        stats.profitLoss >= 0
+                      className={`px-6 py-3 text-[13px] font-extrabold tabular-nums text-right whitespace-nowrap ${
+                        totalSeasonStats.profitLoss >= 0
                           ? "text-emerald-400"
                           : "text-red-400"
                       }`}
                     >
-                      {stats.profitLoss >= 0 ? "+£" : "-£"}
-                      {Math.abs(stats.profitLoss).toFixed(2)}
+                      {totalSeasonStats.profitLoss >= 0 ? "+£" : "-£"}
+                      {Math.abs(totalSeasonStats.profitLoss).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-3 text-[13px] font-extrabold text-white tabular-nums text-right whitespace-nowrap">
+                      £{totalStats.balance.toFixed(2)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            ) : (
+              <table className="w-full text-left border-collapse table-fixed">
+                <colgroup>
+                  <col className="w-auto" />
+                  <col className="w-[85px]" />
+                  <col className="w-[85px]" />
+                  <col className="w-[50px]" />
+                  <col className="w-[85px]" />
+                  <col className="w-[80px]" />
+                  <col className="w-[70px]" />
+                  <col className="w-[70px]" />
+                </colgroup>
+                <thead>
+                  <tr className="text-slate-500 border-b border-slate-800 text-[10px] uppercase tracking-wider bg-slate-800/50 font-bold">
+                    <th className="px-6 py-3 whitespace-nowrap">Exchange</th>
+                    <th className="px-6 py-3 text-right whitespace-nowrap">
+                      Net Dep.
+                    </th>
+                    <th className="px-6 py-3 text-right whitespace-nowrap">
+                      Balance
+                    </th>
+                    <th className="px-6 py-3 text-right whitespace-nowrap">
+                      Bets
+                    </th>
+                    <th className="px-6 py-3 text-right whitespace-nowrap">
+                      Staked
+                    </th>
+                    <th className="px-6 py-3 text-right whitespace-nowrap">
+                      P/L
+                    </th>
+                    <th className="px-6 py-3 text-right whitespace-nowrap">
+                      ROI
+                    </th>
+                    <th className="px-6 py-3 text-right whitespace-nowrap">
+                      Return
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/50">
+                  {[matchbookStats, smarketsStats].map((stats) => (
+                    <tr
+                      key={stats.name}
+                      className="hover:bg-slate-800/30 transition-colors"
+                    >
+                      <td className="px-6 py-3 font-bold text-slate-300 whitespace-nowrap text-sm">
+                        {stats.name}
+                      </td>
+                      <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-sm">
+                        £{stats.netDeposits.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-sm">
+                        £{stats.balance.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-sm">
+                        {stats.bets}
+                      </td>
+                      <td className="px-6 py-3 tabular-nums font-bold text-right text-white whitespace-nowrap text-sm">
+                        £{stats.staked.toFixed(2)}
+                      </td>
+                      <td
+                        className={`px-6 py-3 tabular-nums font-bold text-right whitespace-nowrap text-sm ${
+                          stats.profitLoss >= 0
+                            ? "text-emerald-400"
+                            : "text-red-400"
+                        }`}
+                      >
+                        {stats.profitLoss >= 0 ? "+£" : "-£"}
+                        {Math.abs(stats.profitLoss).toFixed(2)}
+                      </td>
+                      <td
+                        className={`px-6 py-3 tabular-nums font-bold text-right whitespace-nowrap text-sm ${
+                          stats.stakeRoi !== null
+                            ? stats.stakeRoi >= 0
+                              ? "text-emerald-400"
+                              : "text-red-400"
+                            : "text-slate-500"
+                        }`}
+                      >
+                        {stats.stakeRoi !== null
+                          ? `${stats.stakeRoi >= 0 ? "+" : ""}${stats.stakeRoi.toFixed(
+                              1,
+                            )}%`
+                          : "—"}
+                      </td>
+                      <td
+                        className={`px-6 py-3 tabular-nums font-bold text-right whitespace-nowrap text-sm ${
+                          stats.ret !== null
+                            ? stats.ret >= 0
+                              ? "text-emerald-400"
+                              : "text-red-400"
+                            : "text-slate-500"
+                        }`}
+                      >
+                        {stats.ret !== null
+                          ? `${stats.ret >= 0 ? "+" : ""}${stats.ret.toFixed(1)}%`
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="bg-slate-950/50">
+                    <td className="px-6 py-3 text-[13px] font-extrabold text-white whitespace-nowrap">
+                      Total
+                    </td>
+                    <td className="px-6 py-3 text-[13px] font-extrabold text-white tabular-nums text-right whitespace-nowrap">
+                      £{totalStats.netDeposits.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-3 text-[13px] font-extrabold text-white tabular-nums text-right whitespace-nowrap">
+                      £{totalStats.balance.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-3 text-[13px] font-extrabold text-white tabular-nums text-right whitespace-nowrap">
+                      {totalStats.bets}
+                    </td>
+                    <td className="px-6 py-3 text-[13px] font-extrabold text-white tabular-nums text-right whitespace-nowrap">
+                      £{totalStats.staked.toFixed(2)}
                     </td>
                     <td
-                      className={`px-6 py-3 tabular-nums font-bold text-right whitespace-nowrap text-sm ${
-                        stats.stakeRoi !== null
-                          ? stats.stakeRoi >= 0
+                      className={`px-6 py-3 text-[13px] font-extrabold tabular-nums text-right whitespace-nowrap ${
+                        totalStats.profitLoss >= 0
+                          ? "text-emerald-400"
+                          : "text-red-400"
+                      }`}
+                    >
+                      {totalStats.profitLoss >= 0 ? "+£" : "-£"}
+                      {Math.abs(totalStats.profitLoss).toFixed(2)}
+                    </td>
+                    <td
+                      className={`px-6 py-3 text-[13px] font-extrabold tabular-nums text-right whitespace-nowrap ${
+                        totalStats.stakeRoi !== null
+                          ? totalStats.stakeRoi >= 0
                             ? "text-emerald-400"
                             : "text-red-400"
                           : "text-slate-500"
                       }`}
                     >
-                      {stats.stakeRoi !== null
-                        ? `${stats.stakeRoi >= 0 ? "+" : ""}${stats.stakeRoi.toFixed(
+                      {totalStats.stakeRoi !== null
+                        ? `${
+                            totalStats.stakeRoi >= 0 ? "+" : ""
+                          }${totalStats.stakeRoi.toFixed(1)}%`
+                        : "—"}
+                    </td>
+                    <td
+                      className={`px-6 py-3 text-[13px] font-extrabold tabular-nums text-right whitespace-nowrap ${
+                        totalStats.ret !== null
+                          ? totalStats.ret >= 0
+                            ? "text-emerald-400"
+                            : "text-red-400"
+                          : "text-slate-500"
+                      }`}
+                    >
+                      {totalStats.ret !== null
+                        ? `${totalStats.ret >= 0 ? "+" : ""}${totalStats.ret.toFixed(
                             1,
                           )}%`
                         : "—"}
                     </td>
-                    <td
-                      className={`px-6 py-3 tabular-nums font-bold text-right whitespace-nowrap text-sm ${
-                        stats.ret !== null
-                          ? stats.ret >= 0
-                            ? "text-emerald-400"
-                            : "text-red-400"
-                          : "text-slate-500"
-                      }`}
-                    >
-                      {stats.ret !== null
-                        ? `${stats.ret >= 0 ? "+" : ""}${stats.ret.toFixed(1)}%`
-                        : "—"}
-                    </td>
                   </tr>
-                ))}
-                <tr className="bg-slate-950/50">
-                  <td className="px-6 py-3 text-[13px] font-extrabold text-white whitespace-nowrap">
-                    Total
-                  </td>
-                  <td className="px-6 py-3 text-[13px] font-extrabold text-white tabular-nums text-right whitespace-nowrap">
-                    £{totalStats.netDeposits.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-3 text-[13px] font-extrabold text-white tabular-nums text-right whitespace-nowrap">
-                    £{totalStats.balance.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-3 text-[13px] font-extrabold text-white tabular-nums text-right whitespace-nowrap">
-                    {totalStats.bets}
-                  </td>
-                  <td className="px-6 py-3 text-[13px] font-extrabold text-white tabular-nums text-right whitespace-nowrap">
-                    £{totalStats.staked.toFixed(2)}
-                  </td>
-                  <td
-                    className={`px-6 py-3 text-[13px] font-extrabold tabular-nums text-right whitespace-nowrap ${
-                      totalStats.profitLoss >= 0
-                        ? "text-emerald-400"
-                        : "text-red-400"
-                    }`}
-                  >
-                    {totalStats.profitLoss >= 0 ? "+£" : "-£"}
-                    {Math.abs(totalStats.profitLoss).toFixed(2)}
-                  </td>
-                  <td
-                    className={`px-6 py-3 text-[13px] font-extrabold tabular-nums text-right whitespace-nowrap ${
-                      totalStats.stakeRoi !== null
-                        ? totalStats.stakeRoi >= 0
-                          ? "text-emerald-400"
-                          : "text-red-400"
-                        : "text-slate-500"
-                    }`}
-                  >
-                    {totalStats.stakeRoi !== null
-                      ? `${
-                          totalStats.stakeRoi >= 0 ? "+" : ""
-                        }${totalStats.stakeRoi.toFixed(1)}%`
-                      : "—"}
-                  </td>
-                  <td
-                    className={`px-6 py-3 text-[13px] font-extrabold tabular-nums text-right whitespace-nowrap ${
-                      totalStats.ret !== null
-                        ? totalStats.ret >= 0
-                          ? "text-emerald-400"
-                          : "text-red-400"
-                        : "text-slate-500"
-                    }`}
-                  >
-                    {totalStats.ret !== null
-                      ? `${totalStats.ret >= 0 ? "+" : ""}${totalStats.ret.toFixed(
-                          1,
-                        )}%`
-                      : "—"}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            )}
           </div>
 
           {/* Sparkline Chart */}
