@@ -384,14 +384,14 @@ export const BankrollView: React.FC<Props> = ({
             ) : (
               <table className="w-full text-left border-collapse table-fixed">
                 <colgroup>
-                  <col className="w-auto" />
-                  <col className="w-[85px]" />
-                  <col className="w-[85px]" />
-                  <col className="w-[50px]" />
-                  <col className="w-[85px]" />
-                  <col className="w-[80px]" />
-                  <col className="w-[70px]" />
-                  <col className="w-[70px]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[9%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[10%]" />
                 </colgroup>
                 <thead>
                   <tr className="text-slate-500 border-b border-slate-800 text-[10px] uppercase tracking-wider bg-slate-800/50 font-bold">
