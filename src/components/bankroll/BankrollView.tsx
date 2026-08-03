@@ -11,7 +11,11 @@ import {
   CartesianGrid,
 } from "recharts";
 import { BankrollTransaction, TrackedBet } from "../../types";
-import { CURRENT_SEASON } from "../../constants";
+import {
+  CURRENT_SEASON,
+  isNonBetTransaction,
+  isBetTransaction,
+} from "../../constants";
 
 interface Props {
   transactions: BankrollTransaction[];
@@ -147,7 +151,7 @@ export const BankrollView: React.FC<Props> = ({
     const exBets = betsSource.filter((b) => b.exchangeKey === ex);
 
     const netDeposits = exTransactions
-      .filter((t) => ["deposit", "withdrawal", "adjustment"].includes(t.type))
+      .filter(isNonBetTransaction)
       .reduce((sum, t) => sum + t.amount, 0);
 
     const balance = exTransactions.reduce((sum, t) => sum + t.amount, 0);
@@ -156,9 +160,7 @@ export const BankrollView: React.FC<Props> = ({
     const staked = exBets.reduce((sum, b) => sum + b.kellyStake, 0);
 
     const profitLoss = exTransactions
-      .filter((t) =>
-        ["bet_placed", "bet_win", "bet_loss", "bet_void"].includes(t.type),
-      )
+      .filter(isBetTransaction)
       .reduce((sum, t) => sum + t.amount, 0);
 
     return {
@@ -211,7 +213,7 @@ export const BankrollView: React.FC<Props> = ({
 
     // Starting balance = total net deposits from non-bet transactions
     const startingBalance = filteredTransactions
-      .filter((t) => !t.betId)
+      .filter(isNonBetTransaction)
       .reduce((sum, t) => sum + t.amount, 0);
 
     let runningBalance = startingBalance;
@@ -252,15 +254,13 @@ export const BankrollView: React.FC<Props> = ({
       const seasonBets = trackedBets.filter((b) => b.season === season);
 
       const deposits = seasonTxs
-        .filter((t) => ["deposit", "withdrawal", "adjustment"].includes(t.type))
+        .filter(isNonBetTransaction)
         .reduce((sum, t) => sum + t.amount, 0);
 
       const volume = seasonBets.reduce((sum, b) => sum + b.kellyStake, 0);
 
       const profitLoss = seasonTxs
-        .filter((t) =>
-          ["bet_placed", "bet_win", "bet_loss", "bet_void"].includes(t.type),
-        )
+        .filter(isBetTransaction)
         .reduce((sum, t) => sum + t.amount, 0);
 
       const endBankroll = deposits + profitLoss;

@@ -141,3 +141,13 @@ export const EXCHANGES = [
 
 export const BOOKMAKERS = `pinnacle,${EXCHANGES.map((e) => e.key).join(",")}`;
 export const MARKETS = "h2h";
+
+import { BankrollTransaction } from "./types";
+
+export const isNonBetTransaction = (t: BankrollTransaction): boolean => {
+  return ["deposit", "withdrawal", "adjustment"].includes(t.type);
+};
+
+export const isBetTransaction = (t: BankrollTransaction): boolean => {
+  return ["bet_placed", "bet_win", "bet_loss", "bet_void"].includes(t.type);
+};
