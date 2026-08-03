@@ -131,7 +131,7 @@ const App: React.FC = () => {
   }, [status, apiKey]);
 
   const handleCommissionSelect = async (
-    bet: any,
+    bet: BetEdge,
     commission: number,
     exchangeKey?: string,
   ) => {
