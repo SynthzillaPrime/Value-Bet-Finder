@@ -247,20 +247,15 @@ export const BankrollView: React.FC<Props> = ({
     // Sort seasons to process them chronologically to track ending bankroll
     const sortedSeasons = [...seasons].sort((a, b) => a.localeCompare(b));
 
-    let runningBankroll = 0;
-
     sortedSeasons.forEach((season) => {
       const seasonTxs = transactions.filter((t) => t.season === season);
+      const seasonBets = trackedBets.filter((b) => b.season === season);
 
       const deposits = seasonTxs
         .filter((t) => ["deposit", "withdrawal", "adjustment"].includes(t.type))
         .reduce((sum, t) => sum + t.amount, 0);
 
-      const volume = Math.abs(
-        seasonTxs
-          .filter((t) => t.type === "bet_placed")
-          .reduce((sum, t) => sum + t.amount, 0),
-      );
+      const volume = seasonBets.reduce((sum, b) => sum + b.kellyStake, 0);
 
       const profitLoss = seasonTxs
         .filter((t) =>
@@ -268,22 +263,22 @@ export const BankrollView: React.FC<Props> = ({
         )
         .reduce((sum, t) => sum + t.amount, 0);
 
-      runningBankroll += deposits + profitLoss;
+      const endBankroll = deposits + profitLoss;
 
       statsMap.set(season, {
         season,
         deposits,
         volume,
         profitLoss,
-        endBankroll: runningBankroll,
+        endBankroll,
       });
     });
 
     // Return in reverse chronological order for the table
-    return sortedSeasons
-      .map((s) => statsMap.get(s)!)
-      .sort((a, b) => b.season.localeCompare(a.season));
-  }, [transactions, seasons, seasonFilter]);
+    return Array.from(statsMap.values()).sort((a, b) =>
+      b.season.localeCompare(a.season),
+    );
+  }, [transactions, trackedBets, seasons, seasonFilter]);
 
   const totalSeasonStats = useMemo(() => {
     return seasonStats.reduce(

@@ -93,6 +93,7 @@ const betToRow = (bet: TrackedBet): Record<string, any> => ({
   exchange_price: bet.exchangePrice,
   fair_price: bet.fairPrice,
   fair_price_at_bet: bet.fairPriceAtBet,
+  season: bet.season,
   edge_percent: bet.edgePercent,
   net_edge_percent: bet.netEdgePercent,
   kelly_percent: bet.kellyPercent,
@@ -211,6 +212,7 @@ export const deleteBet = async (id: string): Promise<void> => {
 const txToRow = (tx: BankrollTransaction): Record<string, any> => ({
   id: tx.id,
   timestamp: tx.timestamp,
+  season: tx.season,
   exchange: tx.exchange,
   type: tx.type,
   amount: tx.amount,
