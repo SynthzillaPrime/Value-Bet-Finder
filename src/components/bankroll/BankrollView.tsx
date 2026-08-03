@@ -143,18 +143,20 @@ export const BankrollView: React.FC<Props> = ({
   const getExchangeStats = (
     ex: "matchbook" | "smarkets",
     txs: BankrollTransaction[],
+    betsSource: TrackedBet[],
   ) => {
     const exTransactions = txs.filter((t) => t.exchange === ex);
+    const exBets = betsSource.filter((b) => b.exchangeKey === ex);
+
     const netDeposits = exTransactions
       .filter((t) => ["deposit", "withdrawal", "adjustment"].includes(t.type))
       .reduce((sum, t) => sum + t.amount, 0);
-    const balance = exchangeBankrolls[ex];
-    const bets = exTransactions.filter((t) => t.type === "bet_placed").length;
-    const staked = Math.abs(
-      exTransactions
-        .filter((t) => t.type === "bet_placed")
-        .reduce((sum, t) => sum + t.amount, 0),
-    );
+
+    const balance = exTransactions.reduce((sum, t) => sum + t.amount, 0);
+
+    const bets = exBets.length;
+    const staked = exBets.reduce((sum, b) => sum + b.kellyStake, 0);
+
     const profitLoss = exTransactions
       .filter((t) =>
         ["bet_placed", "bet_win", "bet_loss", "bet_void"].includes(t.type),
@@ -174,12 +176,12 @@ export const BankrollView: React.FC<Props> = ({
   };
 
   const matchbookStats = useMemo(
-    () => getExchangeStats("matchbook", filteredTransactions),
-    [filteredTransactions, exchangeBankrolls],
+    () => getExchangeStats("matchbook", filteredTransactions, filteredBets),
+    [filteredTransactions, filteredBets],
   );
   const smarketsStats = useMemo(
-    () => getExchangeStats("smarkets", filteredTransactions),
-    [filteredTransactions, exchangeBankrolls],
+    () => getExchangeStats("smarkets", filteredTransactions, filteredBets),
+    [filteredTransactions, filteredBets],
   );
 
   const totalStats = useMemo(() => {
