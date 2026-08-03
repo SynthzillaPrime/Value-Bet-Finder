@@ -84,7 +84,6 @@ const App: React.FC = () => {
 
   const {
     transactions,
-    exchangeBankrolls,
     bankroll,
     handleAddTransaction,
     loadTransactions,
@@ -546,7 +545,6 @@ const App: React.FC = () => {
           {isMobile ? (
             <MobileBankroll
               transactions={transactions}
-              exchangeBankrolls={exchangeBankrolls}
               trackedBets={trackedBets}
             />
           ) : (

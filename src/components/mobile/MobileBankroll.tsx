@@ -1,69 +1,102 @@
-import React from "react";
-import {
-  BankrollTransaction,
-  ExchangeBankroll,
-  TrackedBet,
-} from "../../types";
+import React, { useState, useMemo, useEffect } from "react";
+import { BankrollTransaction, TrackedBet } from "../../types";
 
 interface MobileBankrollProps {
   transactions: BankrollTransaction[];
-  exchangeBankrolls: ExchangeBankroll;
   trackedBets: TrackedBet[];
 }
 
 export const MobileBankroll: React.FC<MobileBankrollProps> = ({
   transactions,
-  exchangeBankrolls,
+  trackedBets,
 }) => {
+  const seasons = useMemo(() => {
+    const s = Array.from(
+      new Set(transactions.map((t) => t.season).filter(Boolean)),
+    );
+    return s.sort((a, b) => b.localeCompare(a));
+  }, [transactions]);
+
+  const [seasonFilter, setSeasonFilter] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (seasonFilter === null && seasons.length > 0) {
+      setSeasonFilter(seasons[0]);
+    }
+  }, [seasons, seasonFilter]);
+
+  const filteredTransactions = useMemo(() => {
+    if (seasonFilter === null) return [];
+    if (seasonFilter === "All seasons") return transactions;
+    return transactions.filter((t) => t.season === seasonFilter);
+  }, [transactions, seasonFilter]);
+
+  const filteredBets = useMemo(() => {
+    if (seasonFilter === null) return [];
+    if (seasonFilter === "All seasons") return trackedBets;
+    return trackedBets.filter((b) => b.season === seasonFilter);
+  }, [trackedBets, seasonFilter]);
+
   const exchanges: ("matchbook" | "smarkets")[] = ["matchbook", "smarkets"];
 
-  const exchangeStats = exchanges.map((ex) => {
-    const exTransactions = transactions.filter((t) => t.exchange === ex);
+  const exchangeStats = useMemo(() => {
+    return exchanges.map((ex) => {
+      const exTransactions = filteredTransactions.filter(
+        (t) => t.exchange === ex,
+      );
+      const exBets = filteredBets.filter((b) => b.exchangeKey === ex);
 
-    const netDeposits = exTransactions
-      .filter((t) => ["deposit", "withdrawal", "adjustment"].includes(t.type))
-      .reduce((sum, t) => sum + t.amount, 0);
+      const netDeposits = exTransactions
+        .filter((t) => ["deposit", "withdrawal", "adjustment"].includes(t.type))
+        .reduce((sum, t) => sum + t.amount, 0);
 
-    const balance = exchangeBankrolls[ex];
+      const balance = exTransactions.reduce((sum, t) => sum + t.amount, 0);
 
-    const betsCount = exTransactions.filter((t) => t.type === "bet_placed")
-      .length;
+      const betsCount = exBets.length;
+      const staked = exBets.reduce((sum, b) => sum + b.kellyStake, 0);
 
-    const staked = Math.abs(
-      exTransactions
-        .filter((t) => t.type === "bet_placed")
-        .reduce((sum, t) => sum + t.amount, 0),
-    );
+      const profitLoss = exTransactions
+        .filter((t) =>
+          ["bet_placed", "bet_win", "bet_loss", "bet_void"].includes(t.type),
+        )
+        .reduce((sum, t) => sum + t.amount, 0);
 
-    const profitLoss = exTransactions
-      .filter((t) =>
-        ["bet_placed", "bet_win", "bet_loss", "bet_void"].includes(t.type),
-      )
-      .reduce((sum, t) => sum + t.amount, 0);
+      const roi = staked > 0 ? (profitLoss / staked) * 100 : null;
 
-    const roi = staked > 0 ? (profitLoss / staked) * 100 : null;
+      return {
+        key: ex,
+        name: ex.charAt(0).toUpperCase() + ex.slice(1),
+        label: ex === "matchbook" ? "Primary" : "Secondary",
+        netDeposits,
+        balance,
+        betsCount,
+        staked,
+        profitLoss,
+        roi,
+      };
+    });
+  }, [filteredTransactions, filteredBets, exchanges]);
 
-    return {
-      key: ex,
-      name: ex.charAt(0).toUpperCase() + ex.slice(1),
-      label: ex === "matchbook" ? "Primary" : "Secondary",
-      netDeposits,
-      balance,
-      betsCount,
-      staked,
-      profitLoss,
-      roi,
-    };
-  });
-
-  const totalBalance = exchangeStats.reduce((sum, s) => sum + s.balance, 0);
-  const totalPL = exchangeStats.reduce((sum, s) => sum + s.profitLoss, 0);
-  const totalDeposits = exchangeStats.reduce(
-    (sum, s) => sum + s.netDeposits,
-    0,
+  const totalBalance = useMemo(
+    () => exchangeStats.reduce((sum, s) => sum + s.balance, 0),
+    [exchangeStats],
   );
-  const totalStaked = exchangeStats.reduce((sum, s) => sum + s.staked, 0);
-  const totalROI = totalStaked > 0 ? (totalPL / totalStaked) * 100 : null;
+  const totalPL = useMemo(
+    () => exchangeStats.reduce((sum, s) => sum + s.profitLoss, 0),
+    [exchangeStats],
+  );
+  const totalDeposits = useMemo(
+    () => exchangeStats.reduce((sum, s) => sum + s.netDeposits, 0),
+    [exchangeStats],
+  );
+  const totalStaked = useMemo(
+    () => exchangeStats.reduce((sum, s) => sum + s.staked, 0),
+    [exchangeStats],
+  );
+  const totalROI = useMemo(
+    () => (totalStaked > 0 ? (totalPL / totalStaked) * 100 : null),
+    [totalStaked, totalPL],
+  );
 
   const formatPL = (val: number) => {
     const color = val >= 0 ? "text-emerald-400" : "text-red-400";
@@ -88,9 +121,21 @@ export const MobileBankroll: React.FC<MobileBankrollProps> = ({
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-950">
-      <h1 className="text-[17px] font-bold px-5 pt-4 pb-3 text-white">
-        Bankroll
-      </h1>
+      <div className="flex items-center justify-between px-5 pt-4 pb-3">
+        <h1 className="text-[17px] font-bold text-white">Bankroll</h1>
+        <select
+          className="bg-slate-900 border border-slate-800 text-slate-300 text-[13px] rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+          value={seasonFilter || ""}
+          onChange={(e) => setSeasonFilter(e.target.value)}
+        >
+          <option value="All seasons">All seasons</option>
+          {seasons.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div className="px-4 space-y-3 pb-24">
         {/* Total Summary Card */}
