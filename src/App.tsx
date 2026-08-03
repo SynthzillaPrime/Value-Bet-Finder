@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { LeagueSelector } from "./components/LeagueSelector";
 import { AnalysisView } from "./components/AnalysisView";
 import { BankrollView } from "./components/bankroll/BankrollView";
@@ -106,6 +106,23 @@ const App: React.FC = () => {
     apiKey || "",
   );
 
+  const untrackedBets = useMemo(() => {
+    return bets.filter((bet: BetEdge) => {
+      const alreadyTracked = trackedBets.some(
+        (tb) =>
+          tb.id === bet.id &&
+          tb.selection === bet.selection &&
+          tb.exchangeKey === batchExchange,
+      );
+
+      const hasExchangeOffer = bet.offers.some(
+        (o: ExchangeOffer) => o.exchangeKey === batchExchange,
+      );
+
+      return !alreadyTracked && hasExchangeOffer;
+    });
+  }, [bets, trackedBets, batchExchange]);
+
   useEffect(() => {
     if (status === "no-key" && !apiKey) {
       setShowSettings(true);
@@ -136,24 +153,6 @@ const App: React.FC = () => {
   };
 
   const handleTrackAll = async () => {
-    // Filter for bets that aren't already tracked on this specific exchange
-    // We check for matchId + selection + exchangeKey to avoid duplicates
-    const untrackedBets = bets.filter((bet: BetEdge) => {
-      const alreadyTracked = trackedBets.some(
-        (tb) =>
-          tb.id === bet.id &&
-          tb.selection === bet.selection &&
-          tb.exchangeKey === batchExchange,
-      );
-
-      // Only track if it hasn't been tracked and it actually has an offer for the selected exchange
-      const hasExchangeOffer = bet.offers.some(
-        (o: ExchangeOffer) => o.exchangeKey === batchExchange,
-      );
-
-      return !alreadyTracked && hasExchangeOffer;
-    });
-
     if (untrackedBets.length === 0) return;
 
     setIsTracking(true);
@@ -381,22 +380,7 @@ const App: React.FC = () => {
                       </span>
                       <button
                         onClick={handleTrackAll}
-                        disabled={
-                          isTracking ||
-                          !bets.some(
-                            (bet: BetEdge) =>
-                              bet.offers.some(
-                                (o: ExchangeOffer) =>
-                                  o.exchangeKey === batchExchange,
-                              ) &&
-                              !trackedBets.some(
-                                (tb) =>
-                                  tb.id === bet.id &&
-                                  tb.selection === bet.selection &&
-                                  tb.exchangeKey === batchExchange,
-                              ),
-                          )
-                        }
+                        disabled={isTracking || untrackedBets.length === 0}
                         className={`flex items-center gap-2 px-4 py-1.5 rounded-lg font-bold text-xs transition-all ${
                           batchTrackingStatus?.done
                             ? "bg-emerald-500 text-slate-950"
