@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { RefreshCw } from "lucide-react";
 import { ArrowUpCircle, History, ChevronDown, Download } from "lucide-react";
 import {
@@ -41,6 +41,33 @@ export const BankrollView: React.FC<Props> = ({
   const [exchangeFilter, setExchangeFilter] = useState("All Exchanges");
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 25;
+
+  const seasons = useMemo(() => {
+    const s = Array.from(
+      new Set(transactions.map((t) => t.season).filter(Boolean)),
+    );
+    return s.sort((a, b) => b.localeCompare(a));
+  }, [transactions]);
+
+  const [seasonFilter, setSeasonFilter] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (seasonFilter === null && seasons.length > 0) {
+      setSeasonFilter(seasons[0]);
+    }
+  }, [seasons, seasonFilter]);
+
+  const filteredTransactions = useMemo(() => {
+    if (seasonFilter === null) return [];
+    if (seasonFilter === "All seasons") return transactions;
+    return transactions.filter((t) => t.season === seasonFilter);
+  }, [transactions, seasonFilter]);
+
+  const filteredBets = useMemo(() => {
+    if (seasonFilter === null) return [];
+    if (seasonFilter === "All seasons") return trackedBets;
+    return trackedBets.filter((b) => b.season === seasonFilter);
+  }, [trackedBets, seasonFilter]);
 
   const exportTransactionsToCSV = (
     targetTxs: BankrollTransaction[] = transactions,
@@ -92,17 +119,19 @@ export const BankrollView: React.FC<Props> = ({
     }
   };
 
-  const sortedTransactions = [...transactions]
-    .sort((a, b) => b.timestamp - a.timestamp)
-    .filter((t) => {
-      const matchType =
-        typeFilter === "All Types" ||
-        t.type.replace("_", " ").toLowerCase() === typeFilter.toLowerCase();
-      const matchExchange =
-        exchangeFilter === "All Exchanges" ||
-        t.exchange.toLowerCase() === exchangeFilter.toLowerCase();
-      return matchType && matchExchange;
-    });
+  const sortedTransactions = useMemo(() => {
+    return [...filteredTransactions]
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .filter((t) => {
+        const matchType =
+          typeFilter === "All Types" ||
+          t.type.replace("_", " ").toLowerCase() === typeFilter.toLowerCase();
+        const matchExchange =
+          exchangeFilter === "All Exchanges" ||
+          t.exchange.toLowerCase() === exchangeFilter.toLowerCase();
+        return matchType && matchExchange;
+      });
+  }, [filteredTransactions, typeFilter, exchangeFilter]);
 
   const totalPages = Math.ceil(sortedTransactions.length / ITEMS_PER_PAGE);
   const paginatedTransactions = sortedTransactions.slice(
@@ -111,8 +140,11 @@ export const BankrollView: React.FC<Props> = ({
   );
 
   // Calculate Matchbook statistics
-  const getExchangeStats = (ex: "matchbook" | "smarkets") => {
-    const exTransactions = transactions.filter((t) => t.exchange === ex);
+  const getExchangeStats = (
+    ex: "matchbook" | "smarkets",
+    txs: BankrollTransaction[],
+  ) => {
+    const exTransactions = txs.filter((t) => t.exchange === ex);
     const netDeposits = exTransactions
       .filter((t) => ["deposit", "withdrawal", "adjustment"].includes(t.type))
       .reduce((sum, t) => sum + t.amount, 0);
@@ -141,36 +173,44 @@ export const BankrollView: React.FC<Props> = ({
     };
   };
 
-  const matchbookStats = getExchangeStats("matchbook");
-  const smarketsStats = getExchangeStats("smarkets");
+  const matchbookStats = useMemo(
+    () => getExchangeStats("matchbook", filteredTransactions),
+    [filteredTransactions, exchangeBankrolls],
+  );
+  const smarketsStats = useMemo(
+    () => getExchangeStats("smarkets", filteredTransactions),
+    [filteredTransactions, exchangeBankrolls],
+  );
 
-  const totalStats = {
-    netDeposits: matchbookStats.netDeposits + smarketsStats.netDeposits,
-    balance: matchbookStats.balance + smarketsStats.balance,
-    bets: matchbookStats.bets + smarketsStats.bets,
-    staked: matchbookStats.staked + smarketsStats.staked,
-    profitLoss: matchbookStats.profitLoss + smarketsStats.profitLoss,
-    stakeRoi:
-      matchbookStats.staked + smarketsStats.staked !== 0
-        ? ((matchbookStats.profitLoss + smarketsStats.profitLoss) /
-            (matchbookStats.staked + smarketsStats.staked)) *
-          100
-        : null,
-    ret:
-      matchbookStats.netDeposits + smarketsStats.netDeposits !== 0
-        ? ((matchbookStats.profitLoss + smarketsStats.profitLoss) /
-            (matchbookStats.netDeposits + smarketsStats.netDeposits)) *
-          100
-        : null,
-  };
+  const totalStats = useMemo(() => {
+    return {
+      netDeposits: matchbookStats.netDeposits + smarketsStats.netDeposits,
+      balance: matchbookStats.balance + smarketsStats.balance,
+      bets: matchbookStats.bets + smarketsStats.bets,
+      staked: matchbookStats.staked + smarketsStats.staked,
+      profitLoss: matchbookStats.profitLoss + smarketsStats.profitLoss,
+      stakeRoi:
+        matchbookStats.staked + smarketsStats.staked !== 0
+          ? ((matchbookStats.profitLoss + smarketsStats.profitLoss) /
+              (matchbookStats.staked + smarketsStats.staked)) *
+            100
+          : null,
+      ret:
+        matchbookStats.netDeposits + smarketsStats.netDeposits !== 0
+          ? ((matchbookStats.profitLoss + smarketsStats.profitLoss) /
+              (matchbookStats.netDeposits + smarketsStats.netDeposits)) *
+            100
+          : null,
+    };
+  }, [matchbookStats, smarketsStats]);
 
   const chartData = useMemo(() => {
-    const settledBets = [...trackedBets]
+    const settledBets = [...filteredBets]
       .filter((b) => b.status === "closed" && b.kellyPL !== undefined)
       .sort((a, b) => a.placedAt - b.placedAt);
 
     // Starting balance = total net deposits from non-bet transactions
-    const startingBalance = transactions
+    const startingBalance = filteredTransactions
       .filter((t) => !t.betId)
       .reduce((sum, t) => sum + t.amount, 0);
 
@@ -188,7 +228,7 @@ export const BankrollView: React.FC<Props> = ({
     }
 
     return data;
-  }, [trackedBets, transactions]);
+  }, [filteredBets, filteredTransactions]);
 
   const isPositivePL = totalStats.profitLoss >= 0;
 
@@ -521,6 +561,25 @@ export const BankrollView: React.FC<Props> = ({
                   <option>All Exchanges</option>
                   <option>Matchbook</option>
                   <option>Smarkets</option>
+                </select>
+                <ChevronDown className="absolute right-2 top-2.5 w-3 h-3 text-slate-500 pointer-events-none" />
+              </div>
+              <div className="relative flex-1 sm:flex-none">
+                <select
+                  value={seasonFilter || ""}
+                  onChange={(e) => {
+                    setSeasonFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer pr-8 min-w-[130px]"
+                >
+                  {!seasonFilter && <option value="">Loading...</option>}
+                  <option value="All seasons">All seasons</option>
+                  {seasons.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
                 </select>
                 <ChevronDown className="absolute right-2 top-2.5 w-3 h-3 text-slate-500 pointer-events-none" />
               </div>
