@@ -13,6 +13,9 @@ import { MobileBankroll } from "./components/mobile/MobileBankroll";
 import { MobileChrome } from "./components/mobile/MobileChrome";
 import { ExchangeOffer, BetEdge } from "./types";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { SettingsPanel } from "./components/SettingsPanel";
+import { ErrorBanner } from "./components/ErrorBanner";
+import { ApiUsageFooter } from "./components/ApiUsageFooter";
 import { PinLock } from "./components/PinLock";
 import {
   isPinSetUp,
@@ -26,13 +29,11 @@ import { useScanner } from "./hooks/useScanner";
 import { useIsMobile } from "./hooks/useIsMobile";
 import {
   RefreshCw,
-  AlertTriangle,
   Trophy,
   Search,
   Zap,
   CheckCircle2,
   Settings,
-  X,
 } from "lucide-react";
 
 const App: React.FC = () => {
@@ -246,99 +247,24 @@ const App: React.FC = () => {
   }
 
   const settingsDropdownContent = (
-    <>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-          Settings
-        </h3>
-        <button
-          onClick={() => setShowSettings(false)}
-          className="text-slate-500 hover:text-slate-300"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-
-      <div className="space-y-4">
-        <div>
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">
-            Odds API Key
-          </label>
-          {showApiKeyInput || !apiKey ? (
-            <div className="space-y-2">
-              <input
-                type="password"
-                value={newApiKey}
-                onChange={(e) => setNewApiKey(e.target.value)}
-                placeholder="Enter API Key"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-1 focus:ring-emerald-500 outline-none"
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setApiKey(newApiKey);
-                    setShowApiKeyInput(false);
-                  }}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-lg transition-colors"
-                >
-                  Save
-                </button>
-                {apiKey && (
-                  <button
-                    onClick={() => setShowApiKeyInput(false)}
-                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2">
-                <span className="text-xs text-slate-400 tabular-nums">
-                  ••••••••{apiKey.slice(-4)}
-                </span>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => {
-                      setNewApiKey(apiKey);
-                      setShowApiKeyInput(true);
-                    }}
-                    className="text-[10px] font-bold text-blue-400 hover:text-blue-300 px-1"
-                  >
-                    Change
-                  </button>
-                  <button
-                    onClick={() => setApiKey("")}
-                    className="text-[10px] font-bold text-red-400 hover:text-red-300 px-1"
-                  >
-                    Clear
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
+    <SettingsPanel
+      apiKey={apiKey}
+      showApiKeyInput={showApiKeyInput}
+      setShowApiKeyInput={setShowApiKeyInput}
+      newApiKey={newApiKey}
+      setNewApiKey={setNewApiKey}
+      setApiKey={setApiKey}
+      onClose={() => setShowSettings(false)}
+    />
   );
 
-  const errorBanner = (errorMessage || loadError) && (
-    <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4">
-      <div className="flex items-center gap-3 text-red-400">
-        <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-        <p className="text-sm font-medium">{errorMessage || loadError}</p>
-      </div>
-      <button
-        onClick={() =>
-          errorMessage ? setErrorMessage("") : setLoadError(null)
-        }
-        className="text-xs font-bold uppercase tracking-wider text-red-400/60 hover:text-red-400 transition-colors"
-      >
-        Dismiss
-      </button>
-    </div>
+  const errorBanner = (
+    <ErrorBanner
+      message={errorMessage || loadError}
+      onDismiss={() =>
+        errorMessage ? setErrorMessage("") : setLoadError(null)
+      }
+    />
   );
 
   const currentView = (
@@ -599,60 +525,10 @@ const App: React.FC = () => {
 
       {currentView}
 
-      <footer className="mt-12 pb-8 flex justify-center">
-        <div className="flex flex-col gap-1.5 bg-slate-900 px-6 py-3 rounded-full border border-slate-800 w-64 shadow-lg">
-          <div className="flex justify-center items-center text-xs text-slate-400">
-            <span className="text-slate-300 font-medium">
-              {requestsUsed !== null && requestsRemaining !== null ? (
-                <>
-                  API: {requestsUsed.toLocaleString()} /{" "}
-                  {(requestsUsed + requestsRemaining).toLocaleString()} used
-                </>
-              ) : (
-                "—"
-              )}
-            </span>
-          </div>
-          <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
-            <div
-              className={`h-full transition-all duration-1000 ${
-                requestsUsed === null || requestsRemaining === null
-                  ? "w-0"
-                  : (requestsUsed / (requestsUsed + requestsRemaining)) * 100 >=
-                      90
-                    ? "bg-red-500"
-                    : (requestsUsed / (requestsUsed + requestsRemaining)) *
-                          100 >=
-                        70
-                      ? "bg-amber-500"
-                      : "bg-emerald-500"
-              }`}
-              style={{
-                width: `${
-                  requestsUsed === null || requestsRemaining === null
-                    ? 0
-                    : Math.min(
-                        100,
-                        Math.max(
-                          0,
-                          (requestsUsed / (requestsUsed + requestsRemaining)) *
-                            100,
-                        ),
-                      )
-                }%`,
-              }}
-            />
-          </div>
-          <div className="text-[10px] text-slate-600 text-center">
-            Resets{" "}
-            {new Date(
-              new Date().getFullYear(),
-              new Date().getMonth() + 1,
-              1,
-            ).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-          </div>
-        </div>
-      </footer>
+      <ApiUsageFooter
+        requestsUsed={requestsUsed}
+        requestsRemaining={requestsRemaining}
+      />
     </div>
   );
 
