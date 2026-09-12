@@ -142,6 +142,8 @@ export const EXCHANGES = [
 export const BOOKMAKERS = `pinnacle,${EXCHANGES.map((e) => e.key).join(",")}`;
 export const MARKETS = "h2h";
 
+export const MAX_STAKE_FRACTION = 0.01;
+
 import { BankrollTransaction } from "./types";
 
 export const isNonBetTransaction = (t: BankrollTransaction): boolean => {

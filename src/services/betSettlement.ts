@@ -1,8 +1,10 @@
 import { TrackedBet } from "../types";
+import { EXCHANGES, MAX_STAKE_FRACTION } from "../constants";
 
 /**
  * Shared Kelly stake calculation logic.
  * Computes effective odds (post-commission), net edge, Kelly percentage, and recommended stake.
+ * Recommended stake is capped by MAX_STAKE_FRACTION of the bankroll.
  */
 export const calculateBetStake = (params: {
   price: number; // exchange odds
@@ -33,7 +35,9 @@ export const calculateBetStake = (params: {
   const kellyPercent = Math.max(0, ((b * p - q) / b) * 100);
 
   // Calculate kellyStake = bankroll * (kellyPercent / 100) * kellyFraction
-  const kellyStake = bankroll * (kellyPercent / 100) * kellyFraction;
+  // Cap the stake at MAX_STAKE_FRACTION (1%) of the bankroll
+  const rawKellyStake = bankroll * (kellyPercent / 100) * kellyFraction;
+  const kellyStake = Math.min(rawKellyStake, bankroll * MAX_STAKE_FRACTION);
 
   return {
     effectiveOdds,
@@ -42,7 +46,6 @@ export const calculateBetStake = (params: {
     kellyStake,
   };
 };
-import { EXCHANGES } from "../constants";
 
 /**
  * Get the commission rate for a bet.
