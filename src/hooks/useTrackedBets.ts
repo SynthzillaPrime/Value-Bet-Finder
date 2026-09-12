@@ -5,6 +5,7 @@ import {
   insertBet,
   updateBet as supabaseUpdateBet,
   deleteBet as supabaseDeleteBet,
+  deleteTransactionByBetId as supabaseDeleteTransactionByBetId,
   fetchAllBets,
 } from "../services/supabase";
 import {
@@ -170,6 +171,8 @@ export const useTrackedBets = (
 
   const handleDeleteTrackedBet = async (id: string) => {
     try {
+      // Delete the associated transaction first to return the stake to the bankroll
+      await supabaseDeleteTransactionByBetId(id);
       await supabaseDeleteBet(id);
       setTrackedBets((prev) => prev.filter((b) => b.id !== id));
     } catch (error) {
@@ -245,13 +248,24 @@ export const useTrackedBets = (
     settled: number;
     skipped: number;
     failed: number;
+    stale: number;
   }> => {
     const betsToSettle = trackedBets.filter((b) => !b.result);
     let settled = 0;
     let skipped = 0;
     let failed = 0;
+    let stale = 0;
+
+    const now = Date.now();
+    const STALE_THRESHOLD_MS = 72 * 60 * 60 * 1000;
 
     for (const bet of betsToSettle) {
+      // Staleness detection: Skip bets whose kickoff was more than 72 hours ago
+      if (now - bet.kickoff.getTime() > STALE_THRESHOLD_MS) {
+        stale++;
+        continue;
+      }
+
       const status = await settleBet(bet.id);
       if (status === "settled") {
         settled++;
@@ -266,7 +280,7 @@ export const useTrackedBets = (
         await new Promise((r) => setTimeout(r, 500));
       }
     }
-    return { settled, skipped, failed };
+    return { settled, skipped, failed, stale };
   };
 
   return {

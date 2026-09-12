@@ -205,6 +205,17 @@ export const deleteBet = async (id: string): Promise<void> => {
   }
 };
 
+export const deleteTransactionByBetId = async (betId: string): Promise<void> => {
+  const { error } = await supabase
+    .from("bankroll_transactions")
+    .delete()
+    .eq("bet_id", betId);
+
+  if (error) {
+    throw new Error("Failed to delete transaction: " + error.message);
+  }
+};
+
 // ============================================
 // Bankroll Transactions — CRUD
 // ============================================
