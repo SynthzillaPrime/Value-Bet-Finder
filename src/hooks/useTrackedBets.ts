@@ -189,28 +189,11 @@ export const useTrackedBets = (
     const bet = trackedBets.find((b) => b.id === betId);
     if (!bet) return "failed";
 
-    let clvData = {
-      closingRawPrice: bet.closingRawPrice,
-      closingFairPrice: bet.closingFairPrice,
-      clvPercent: bet.clvPercent,
-    };
-
-    // Fetch CLV if missing and not a manual settlement
-    if (!forceResult && clvData.clvPercent === undefined) {
-      const clvResult = await fetchClosingLine(apiKey, bet);
-      if (clvResult) {
-        clvData = {
-          closingRawPrice: clvResult.closingRawPrice,
-          closingFairPrice: clvResult.closingFairPrice,
-          clvPercent: clvResult.clvPercent,
-        };
-      }
-    }
-
     let result: "won" | "lost" | "void" | undefined = forceResult;
     let homeScore = bet.homeScore;
     let awayScore = bet.awayScore;
 
+    // Fetch match result first
     if (!result) {
       const scoreResult = await fetchMatchResult(apiKey, bet);
       if (!scoreResult) return "failed";
@@ -224,6 +207,24 @@ export const useTrackedBets = (
     }
 
     if (!result) return "failed";
+
+    let clvData = {
+      closingRawPrice: bet.closingRawPrice,
+      closingFairPrice: bet.closingFairPrice,
+      clvPercent: bet.clvPercent,
+    };
+
+    // Fetch CLV only if the match is completed and not a manual settlement
+    if (!forceResult && clvData.clvPercent === undefined) {
+      const clvResult = await fetchClosingLine(apiKey, bet);
+      if (clvResult) {
+        clvData = {
+          closingRawPrice: clvResult.closingRawPrice,
+          closingFairPrice: clvResult.closingFairPrice,
+          clvPercent: clvResult.clvPercent,
+        };
+      }
+    }
 
     const { kellyPL } = calculatePL(bet, result);
 

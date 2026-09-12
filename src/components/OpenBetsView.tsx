@@ -22,6 +22,7 @@ interface Props {
     settled: number;
     skipped: number;
     failed: number;
+    stale: number;
   }>;
 }
 
@@ -102,8 +103,11 @@ export const OpenBetsView: React.FC<Props> = ({
     setSettleProgress({ current: 0, total: readyToSettle.length });
 
     try {
-      const { settled, skipped, failed } = await onSettleAll();
+      const { settled, skipped, failed, stale } = await onSettleAll();
       let message = `Settled: ${settled}, Skipped: ${skipped}`;
+      if (stale > 0) {
+        message += `, Stale: ${stale}`;
+      }
       if (failed > 0) {
         message += `, Failed: ${failed}`;
       }
@@ -370,12 +374,22 @@ const BetRow: React.FC<BetRowProps> = ({
 }) => {
   const edge = bet.baseNetEdgePercent ?? bet.netEdgePercent;
   const isReady = timeStatus.label === "Ready to settle";
+  const isStale =
+    !bet.result &&
+    Date.now() - bet.kickoff.getTime() > 72 * 60 * 60 * 1000;
 
   return (
     <tr className="group hover:bg-slate-800/30 transition-colors">
       <td className="px-6 py-3.5">
-        <div className="font-medium text-slate-200">
-          {bet.homeTeam} vs {bet.awayTeam}
+        <div className="flex items-center gap-2">
+          <div className="font-medium text-slate-200">
+            {bet.homeTeam} vs {bet.awayTeam}
+          </div>
+          {isStale && (
+            <span className="bg-amber-500/20 text-amber-400 text-[9px] uppercase tracking-wider font-black px-1.5 py-0.5 rounded border border-amber-500/30 whitespace-nowrap">
+              Needs manual settlement
+            </span>
+          )}
         </div>
         <div className="flex flex-col mt-1">
           <span className="text-[10px] font-bold uppercase text-slate-500">

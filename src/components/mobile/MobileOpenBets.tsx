@@ -11,6 +11,7 @@ interface MobileOpenBetsProps {
     settled: number;
     skipped: number;
     failed: number;
+    stale: number;
   }>;
 }
 
@@ -81,7 +82,7 @@ export const MobileOpenBets: React.FC<MobileOpenBetsProps> = ({
     try {
       const result = await onSettleAll();
       alert(
-        `Settlement Complete:\nSettled: ${result.settled}\nSkipped: ${result.skipped}\nFailed: ${result.failed}`,
+        `Settlement Complete:\nSettled: ${result.settled}\nSkipped: ${result.skipped}\nStale: ${result.stale}\nFailed: ${result.failed}`,
       );
     } finally {
       setSettlingAll(false);
@@ -135,6 +136,9 @@ export const MobileOpenBets: React.FC<MobileOpenBetsProps> = ({
         const timeStatus = getTimeStatus(bet.kickoff);
         const isSettling = settlingBetId === bet.id;
         const canSettle = timeStatus.state === "ready" && !settlingAll;
+        const isStale =
+          !bet.result &&
+          now.getTime() - bet.kickoff.getTime() > 72 * 60 * 60 * 1000;
 
         return (
           <div
@@ -144,9 +148,16 @@ export const MobileOpenBets: React.FC<MobileOpenBetsProps> = ({
             {/* Header Section */}
             <div className="p-4 border-b border-slate-800/50">
               <div className="flex justify-between items-start mb-1">
-                <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-400/80">
-                  {bet.sport}
-                </span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-400/80">
+                    {bet.sport}
+                  </span>
+                  {isStale && (
+                    <span className="bg-amber-500/20 text-amber-400 text-[9px] uppercase tracking-wider font-black px-1.5 py-0.5 rounded border border-amber-500/30 w-fit">
+                      Needs manual settlement
+                    </span>
+                  )}
+                </div>
                 <div className="bg-slate-800/60 px-2 py-0.5 rounded-full">
                   <span
                     className={`text-[11px] font-medium ${timeStatus.color}`}
