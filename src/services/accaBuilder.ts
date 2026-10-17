@@ -67,10 +67,12 @@ export const buildLegCandidates = (
       const valueRatio = refPrice ? refPrice / pinnacleFair : null;
       const effectivePrice = refPrice ?? pinnacleFair;
 
-      // Filter: effectivePrice between minLegOdds and ACCA_MAX_LEG_ODDS
+      // Filter: effectivePrice between minLegOdds and ACCA_MAX_LEG_ODDS,
+      // and pinnacleFair must also be <= ACCA_MAX_LEG_ODDS
       if (
         effectivePrice >= BETFRED_ACCA_FLEX.minLegOdds &&
-        effectivePrice <= ACCA_MAX_LEG_ODDS
+        effectivePrice <= ACCA_MAX_LEG_ODDS &&
+        pinnacleFair <= ACCA_MAX_LEG_ODDS
       ) {
         candidates.push({
           id: `${match.id}-${outcome.name}`,
