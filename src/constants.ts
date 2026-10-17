@@ -168,7 +168,7 @@ export const BETFRED_ACCA_FLEX: AccaOffer = {
   defaultStake: 5,
 };
 
-export const ACCA_MAX_LEG_ODDS = 2.5;
+export const ACCA_MAX_LEG_ODDS = 1.9;
 
 export const MARKETS = "h2h";
 

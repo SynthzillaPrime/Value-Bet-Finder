@@ -33,6 +33,34 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
   const [history, setHistory] = useState<PaperAcca[]>([]);
   const [isLogging, setIsLogging] = useState(false);
   const [isSettling, setIsSettling] = useState(false);
+  const [logStatus, setLogStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [settleStatus, setSettleStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  const [sortField, setSortField] = useState<"kickoff" | "fair" | "refPrice" | "value">("value");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const handleSort = (field: "kickoff" | "fair" | "refPrice" | "value") => {
+    if (field === sortField) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDir(field === "kickoff" ? "asc" : "desc");
+    }
+  };
+
+  useEffect(() => {
+    if (logStatus?.type === "success") {
+      const timer = setTimeout(() => setLogStatus(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [logStatus]);
+
+  useEffect(() => {
+    if (settleStatus?.type === "success") {
+      const timer = setTimeout(() => setSettleStatus(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [settleStatus]);
 
   const loadHistory = async () => {
     try {
@@ -59,6 +87,37 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
     if (!rawMatches.length) return [];
     return buildLegCandidates(rawMatches, activeDate);
   }, [rawMatches, activeDate]);
+
+  const sortedCandidates = useMemo(() => {
+    const list = [...candidates];
+    list.sort((a, b) => {
+      let valA: number;
+      let valB: number;
+
+      switch (sortField) {
+        case "kickoff":
+          valA = a.kickoff.getTime();
+          valB = b.kickoff.getTime();
+          break;
+        case "fair":
+          valA = a.pinnacleFair;
+          valB = b.pinnacleFair;
+          break;
+        case "refPrice":
+          valA = a.refPrice ?? 0;
+          valB = b.refPrice ?? 0;
+          break;
+        case "value":
+        default:
+          valA = a.valueRatio ?? 0;
+          valB = b.valueRatio ?? 0;
+          break;
+      }
+
+      return sortDir === "asc" ? valA - valB : valB - valA;
+    });
+    return list;
+  }, [candidates, sortField, sortDir]);
 
   // Pre-tick suggested acca when candidates change or date changes
   useEffect(() => {
@@ -111,6 +170,7 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
   const handleLogAcca = async () => {
     if (!estimate || selectedLegs.length === 0) return;
     setIsLogging(true);
+    setLogStatus(null);
     try {
       const earliestKickoff = new Date(
         Math.min(...selectedLegs.map((l) => l.kickoff.getTime())),
@@ -170,8 +230,13 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
       await loadHistory();
       // Reset selection
       setSelectedLegIds(new Set());
+      setLogStatus({ type: "success", message: "Acca logged successfully!" });
     } catch (err) {
       console.error("Failed to log acca", err);
+      setLogStatus({
+        type: "error",
+        message: err instanceof Error ? err.message : "Failed to log acca",
+      });
     } finally {
       setIsLogging(false);
     }
@@ -183,6 +248,7 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
     if (openAccas.length === 0) return;
 
     setIsSettling(true);
+    setSettleStatus(null);
     try {
       // Group sports
       const sportKeys = new Set<string>();
@@ -206,8 +272,13 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
       }
 
       await loadHistory();
+      setSettleStatus({ type: "success", message: "Accas settled successfully!" });
     } catch (err) {
       console.error("Settlement failed", err);
+      setSettleStatus({
+        type: "error",
+        message: err instanceof Error ? err.message : "Settlement failed",
+      });
     } finally {
       setIsSettling(false);
     }
@@ -304,16 +375,56 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
               <thead>
                 <tr className="bg-slate-800/40 border-b border-slate-800/50">
                   <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider w-10"></th>
-                  <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider">Match</th>
-                  <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider">Kickoff</th>
-                  <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider">Selection</th>
-                  <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider text-right">Fair</th>
-                  <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider text-right">Ref Price</th>
-                  <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider text-right">Value</th>
+                  <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider text-left">Match</th>
+                  <th 
+                    onClick={() => handleSort("kickoff")}
+                    className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-300 transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      Kickoff
+                      {sortField === "kickoff" && (
+                        <span className="text-[8px]">{sortDir === "asc" ? "▲" : "▼"}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider text-left">Selection</th>
+                  <th 
+                    onClick={() => handleSort("fair")}
+                    className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:text-slate-300 transition-colors"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      Fair
+                      {sortField === "fair" && (
+                        <span className="text-[8px]">{sortDir === "asc" ? "▲" : "▼"}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort("refPrice")}
+                    className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:text-slate-300 transition-colors"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      Ref Price
+                      {sortField === "refPrice" && (
+                        <span className="text-[8px]">{sortDir === "asc" ? "▲" : "▼"}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort("value")}
+                    className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:text-slate-300 transition-colors"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      Value
+                      {sortField === "value" && (
+                        <span className="text-[8px]">{sortDir === "asc" ? "▲" : "▼"}</span>
+                      )}
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/40">
-                {candidates.map((cand) => (
+                {sortedCandidates.map((cand) => (
                   <tr
                     key={cand.id}
                     onClick={() => toggleLeg(cand)}
@@ -411,8 +522,8 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
                   <div className="flex items-center gap-2">
                     <span className="text-[9px] text-slate-500 font-black uppercase">Odds</span>
                     <input
-                      type="number"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                       value={legOdds[l.id] || ""}
                       onChange={(e) => updateOdds(l.id, e.target.value)}
                       className="w-16 bg-slate-950 border border-slate-700 rounded-lg py-1 px-2 text-xs font-mono font-bold text-white outline-none focus:ring-1 focus:ring-emerald-500"
@@ -439,9 +550,18 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500">£</span>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={stake}
-                    onChange={(e) => setStake(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || val === ".") {
+                        setStake(0);
+                      } else {
+                        const num = parseFloat(val);
+                        setStake(isNaN(num) ? 0 : num);
+                      }
+                    }}
                     className="w-24 bg-slate-950 border border-slate-700 rounded-lg py-2 pl-6 pr-3 text-sm font-mono font-bold text-white outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
@@ -520,6 +640,16 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
                 )}
                 Log Paper Acca
               </button>
+
+              {logStatus && (
+                <div
+                  className={`mt-3 text-center text-xs font-bold ${
+                    logStatus.type === "success" ? "text-emerald-400" : "text-red-400"
+                  }`}
+                >
+                  {logStatus.message}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -529,14 +659,25 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
       <div className="mt-12 space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-black text-white tracking-tight">Acca History</h2>
-          <button
-            onClick={handleSettleAccas}
-            disabled={isSettling || !apiKey}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-500 transition-all disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${isSettling ? "animate-spin" : ""}`} />
-            Settle Open Accas
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={handleSettleAccas}
+              disabled={isSettling || !apiKey}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-500 transition-all disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSettling ? "animate-spin" : ""}`} />
+              Settle Open Accas
+            </button>
+            {settleStatus && (
+              <span
+                className={`text-[10px] font-bold ${
+                  settleStatus.type === "success" ? "text-emerald-400" : "text-red-400"
+                }`}
+              >
+                {settleStatus.message}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Stats Summary */}
