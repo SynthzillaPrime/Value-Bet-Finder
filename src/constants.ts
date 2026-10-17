@@ -139,7 +139,15 @@ export const EXCHANGES = [
   { key: "matchbook", name: "Matchbook", commission: 0.02 },
 ];
 
-export const BOOKMAKERS = `pinnacle,${EXCHANGES.map((e) => e.key).join(",")},betfair_ex_uk`;
+export const ACCA_REFERENCE_BOOKMAKERS = [
+  "williamhill",
+  "paddypower",
+  "ladbrokes_uk",
+];
+
+export const BOOKMAKERS = `pinnacle,${EXCHANGES.map((e) => e.key).join(
+  ","
+)},betfair_ex_uk,${ACCA_REFERENCE_BOOKMAKERS.join(",")}`;
 export const MARKETS = "h2h";
 
 export const MAX_STAKE_FRACTION = 0.01;
