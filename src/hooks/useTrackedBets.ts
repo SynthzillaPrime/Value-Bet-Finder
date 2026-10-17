@@ -211,6 +211,7 @@ export const useTrackedBets = (
     let clvData = {
       closingRawPrice: bet.closingRawPrice,
       closingFairPrice: bet.closingFairPrice,
+      closingPinnaclePrices: bet.closingPinnaclePrices,
       clvPercent: bet.clvPercent,
     };
 
@@ -221,6 +222,7 @@ export const useTrackedBets = (
         clvData = {
           closingRawPrice: clvResult.closingRawPrice,
           closingFairPrice: clvResult.closingFairPrice,
+          closingPinnaclePrices: clvResult.closingPinnaclePrices,
           clvPercent: clvResult.clvPercent,
         };
       }

@@ -68,6 +68,8 @@ export interface BetEdge {
   kellyPercent: number; // Suggested stake % (Full Kelly) based on best offer
   homeTeam: string;
   awayTeam: string;
+  pinnaclePricesAtBet?: { home: number; draw: number; away: number };
+  betfairPrice?: number;
 }
 
 export interface TrackedBet extends BetEdge {
@@ -76,6 +78,7 @@ export interface TrackedBet extends BetEdge {
   season: string;
   closingRawPrice?: number; // Pinnacle raw price at kickoff
   closingFairPrice?: number; // Pinnacle no-vig price at kickoff
+  closingPinnaclePrices?: { home: number; draw: number; away: number };
   clvPercent?: number; // (MyOdds / ClosingFairPrice - 1) * 100
   status: "open" | "closed";
   result?: "won" | "lost" | "void";

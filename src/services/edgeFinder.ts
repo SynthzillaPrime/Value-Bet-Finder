@@ -226,6 +226,19 @@ export const calculateEdges = (matches: MatchResponse[]): BetEdge[] => {
       if (pinnMarket.key !== "h2h") continue;
       const marketName = "Match Result";
 
+      // Extract raw Pinnacle prices for storage
+      const pinnaclePricesAtBet = {
+        home:
+          pinnMarket.outcomes.find((o: Outcome) => o.name === match.home_team)
+            ?.price || 0,
+        away:
+          pinnMarket.outcomes.find((o: Outcome) => o.name === match.away_team)
+            ?.price || 0,
+        draw:
+          pinnMarket.outcomes.find((o: Outcome) => o.name === "Draw")?.price ||
+          0,
+      };
+
       // Iterate through each selection (outcome) in the Pinnacle market
       for (const outcome of pinnMarket.outcomes) {
         const selection = outcome.name;
@@ -270,8 +283,17 @@ export const calculateEdges = (matches: MatchResponse[]): BetEdge[] => {
           });
         }
 
-        // Sort offers by Net Edge (Descending)
-        offers.sort((a, b) => b.netEdgePercent - a.netEdgePercent);
+        // Look up Betfair Exchange price if available
+        const betfairBookie = match.bookmakers.find(
+          (b: Bookmaker) => b.key === "betfair_ex_uk",
+        );
+        const betfairMarket = betfairBookie?.markets.find(
+          (m: Market) => m.key === "h2h",
+        );
+        const betfairOutcome = betfairMarket?.outcomes.find(
+          (o: Outcome) => o.name === outcome.name,
+        );
+        const betfairPrice = betfairOutcome?.price;
 
         const bestOffer = offers[0];
 
@@ -306,6 +328,8 @@ export const calculateEdges = (matches: MatchResponse[]): BetEdge[] => {
             edgePercent: rawEdge,
             netEdgePercent: bestOffer.netEdgePercent,
             kellyPercent: bestOffer.kellyPercent,
+            pinnaclePricesAtBet: pinnaclePricesAtBet,
+            betfairPrice: betfairPrice,
           });
         }
       }
@@ -334,6 +358,7 @@ export const scanForEdges = async (
 export interface ClosingLineResult {
   closingRawPrice: number;
   closingFairPrice: number;
+  closingPinnaclePrices: { home: number; draw: number; away: number };
   clvPercent: number;
 }
 
@@ -390,9 +415,20 @@ export const fetchClosingLine = async (
     const closingFairPrice = fairPrices[outcome.name];
     const clvPercent = (bet.exchangePrice / closingFairPrice - 1) * 100;
 
+    const closingPinnaclePrices = {
+      home:
+        market.outcomes.find((o: Outcome) => o.name === bet.homeTeam)?.price ||
+        0,
+      away:
+        market.outcomes.find((o: Outcome) => o.name === bet.awayTeam)?.price ||
+        0,
+      draw: market.outcomes.find((o: Outcome) => o.name === "Draw")?.price || 0,
+    };
+
     return {
       closingRawPrice: outcome.price,
       closingFairPrice: closingFairPrice,
+      closingPinnaclePrices,
       clvPercent,
     };
   } catch (e) {

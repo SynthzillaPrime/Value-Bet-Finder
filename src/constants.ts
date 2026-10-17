@@ -139,7 +139,7 @@ export const EXCHANGES = [
   { key: "matchbook", name: "Matchbook", commission: 0.02 },
 ];
 
-export const BOOKMAKERS = `pinnacle,${EXCHANGES.map((e) => e.key).join(",")}`;
+export const BOOKMAKERS = `pinnacle,${EXCHANGES.map((e) => e.key).join(",")},betfair_ex_uk`;
 export const MARKETS = "h2h";
 
 export const MAX_STAKE_FRACTION = 0.01;

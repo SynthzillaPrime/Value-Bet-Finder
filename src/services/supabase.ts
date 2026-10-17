@@ -106,6 +106,7 @@ const betToRow = (bet: TrackedBet): Record<string, any> => ({
   away_score: bet.awayScore ?? null,
   closing_raw_price: bet.closingRawPrice ?? null,
   closing_fair_price: bet.closingFairPrice ?? null,
+  closing_pinnacle_prices: bet.closingPinnaclePrices ?? null,
   clv_percent: bet.clvPercent ?? null,
   hours_before_kickoff: bet.hoursBeforeKickoff,
   timing_bucket: bet.timingBucket,
@@ -118,6 +119,8 @@ const betToRow = (bet: TrackedBet): Record<string, any> => ({
   base_kelly_percent: bet.baseKellyPercent ?? null,
   base_kelly_stake: bet.baseKellyStake ?? null,
   commission: bet.commission ?? null,
+  pinnacle_prices_at_bet: bet.pinnaclePricesAtBet ?? null,
+  betfair_price: bet.betfairPrice ?? null,
 });
 
 const rowToBet = (row: any): TrackedBet => ({
@@ -149,6 +152,7 @@ const rowToBet = (row: any): TrackedBet => ({
     row.closing_raw_price != null ? Number(row.closing_raw_price) : undefined,
   closingFairPrice:
     row.closing_fair_price != null ? Number(row.closing_fair_price) : undefined,
+  closingPinnaclePrices: row.closing_pinnacle_prices ?? undefined,
   clvPercent: row.clv_percent != null ? Number(row.clv_percent) : undefined,
   hoursBeforeKickoff: Number(row.hours_before_kickoff),
   timingBucket: row.timing_bucket,
@@ -166,6 +170,8 @@ const rowToBet = (row: any): TrackedBet => ({
   baseKellyStake:
     row.base_kelly_stake != null ? Number(row.base_kelly_stake) : undefined,
   commission: row.commission != null ? Number(row.commission) : undefined,
+  pinnaclePricesAtBet: row.pinnacle_prices_at_bet ?? undefined,
+  betfairPrice: row.betfair_price != null ? Number(row.betfair_price) : undefined,
 });
 
 export const fetchAllBets = async (): Promise<TrackedBet[]> => {
