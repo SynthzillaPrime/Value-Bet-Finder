@@ -1,4 +1,4 @@
-import { LeagueOption } from "./types";
+import { LeagueOption, AccaOffer } from "./types";
 
 // ----------------------------------------------------------------------
 // OPTIONAL: PASTE YOUR API KEY BELOW TO SKIP THE INPUT SCREEN
@@ -148,6 +148,28 @@ export const ACCA_REFERENCE_BOOKMAKERS = [
 export const BOOKMAKERS = `pinnacle,${EXCHANGES.map((e) => e.key).join(
   ","
 )},betfair_ex_uk,${ACCA_REFERENCE_BOOKMAKERS.join(",")}`;
+
+export const BETFRED_ACCA_FLEX: AccaOffer = {
+  bookmaker: "Betfred",
+  minLegs: 5,
+  minLegOdds: 1.5,
+  refundType: "cash",
+  refundCap: 10,
+  freeBetValue: 0.75,
+  bonusByLegs: {
+    5: 0.05,
+    6: 0.1,
+    7: 0.15,
+    8: 0.2,
+    9: 0.25,
+    10: 0.3,
+    11: 0.4,
+  },
+  defaultStake: 5,
+};
+
+export const ACCA_MAX_LEG_ODDS = 2.5;
+
 export const MARKETS = "h2h";
 
 export const MAX_STAKE_FRACTION = 0.01;

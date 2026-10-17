@@ -131,6 +131,7 @@ export const useScanner = () => {
     isCheckingFixtures,
     loadFixtureCounts,
     lastUpdated,
+    rawMatches,
     errorMessage,
     setErrorMessage,
     selectedLeagues,

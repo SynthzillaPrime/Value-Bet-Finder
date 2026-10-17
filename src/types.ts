@@ -1,3 +1,81 @@
+export interface AccaOffer {
+  bookmaker: string;
+  minLegs: number;
+  minLegOdds: number;
+  refundType: "cash" | "free_bet";
+  refundCap: number;
+  freeBetValue: number; // e.g., 0.75 for 75% conversion
+  bonusByLegs: Record<number, number>; // e.g., { 5: 0.05, 6: 0.1 }
+  defaultStake: number;
+}
+
+export interface AccaLegCandidate {
+  id: string;
+  sportKey: string;
+  sportTitle: string;
+  homeTeam: string;
+  awayTeam: string;
+  kickoff: Date;
+  selection: string;
+  pinnacleFair: number;
+  pinnacleProb: number;
+  refPrice: number | null;
+  refBookmaker: string | null;
+  valueRatio: number | null;
+}
+
+export interface AccaEstimate {
+  combinedOdds: number;
+  probAllWin: number;
+  probExactlyOneLoses: number;
+  winPayout: number; // stake * combinedOdds
+  bonusAmount: number;
+  totalWinReturn: number; // winPayout + bonusAmount
+  refundAmount: number;
+  expectedReturn: number;
+  expectedProfit: number;
+  evPercent: number;
+}
+
+export interface AccaLeg {
+  selection: string;
+  match: string;
+  homeTeam: string;
+  awayTeam: string;
+  sportKey: string;
+  kickoff: Date;
+  odds: number;
+  refPrice: number | null;
+  pinnacleFair: number;
+  valueRatio: number | null;
+  result: "won" | "lost" | null;
+}
+
+export interface PaperAcca {
+  id: string;
+  createdAt: string;
+  season: string;
+  bookmaker: string;
+  offerType: string;
+  offerTerms: any;
+  refundCap: number;
+  stake: number;
+  legs: AccaLeg[];
+  numLegs: number;
+  combinedOdds: number;
+  firstKickoff: Date;
+  status: "open" | "closed";
+  returns: number | null;
+  freeBetFace: number | null;
+  freeBetValue: number | null;
+  netPl: number | null;
+  notes: string | null;
+  source: string;
+  estEv: number | null;
+  estPWin: number | null;
+  estPRefund: number | null;
+}
+
 /**
  * Application-wide type definitions.
  */

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { LeagueSelector } from "./components/LeagueSelector";
 import { AnalysisView } from "./components/AnalysisView";
 import { BankrollView } from "./components/bankroll/BankrollView";
+import AccaBuilderView from "./components/AccaBuilderView";
 import { OpenBetsView } from "./components/OpenBetsView";
 import { BetHistoryView } from "./components/BetHistoryView";
 import { ScannerTable } from "./components/ScannerTable";
@@ -44,9 +45,15 @@ const App: React.FC = () => {
     "loading" | "setup" | "locked" | "unlocked"
   >("loading");
   const [view, setView] = useState<
-    "scanner" | "openbets" | "history" | "analysis" | "bankroll"
+    "scanner" | "openbets" | "history" | "accas" | "analysis" | "bankroll"
   >("scanner");
   const [dataLoaded, setDataLoaded] = useState(false);
+
+  useEffect(() => {
+    if (isMobile && view === "accas") {
+      setView("scanner");
+    }
+  }, [isMobile, view]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // Modular Hooks for Scanner, Bankroll, and Tracked Bets
@@ -75,6 +82,8 @@ const App: React.FC = () => {
     fixtureCounts,
     isCheckingFixtures,
     loadFixtureCounts,
+    lastUpdated,
+    rawMatches,
     errorMessage,
     setErrorMessage,
     selectedLeagues,
@@ -442,6 +451,14 @@ const App: React.FC = () => {
             />
           )}
         </ErrorBoundary>
+      ) : view === "accas" ? (
+        <ErrorBoundary key="accas" fallbackLabel="Accas">
+          <AccaBuilderView
+            rawMatches={rawMatches}
+            lastUpdated={lastUpdated}
+            apiKey={apiKey}
+          />
+        </ErrorBoundary>
       ) : view === "analysis" ? (
         <ErrorBoundary key="analysis" fallbackLabel="Analysis">
           {isMobile ? (
@@ -502,6 +519,7 @@ const App: React.FC = () => {
               { id: "scanner", label: "Scanner" },
               { id: "openbets", label: "Open Bets" },
               { id: "history", label: "History" },
+              { id: "accas", label: "Accas" },
               { id: "analysis", label: "Analysis" },
               { id: "bankroll", label: "Bankroll" },
             ].map((item) => (
@@ -537,7 +555,7 @@ const App: React.FC = () => {
       {isMobile ? (
         <>
           <MobileChrome
-            view={view}
+            view={view === "accas" ? "scanner" : view}
             onViewChange={setView}
             onSettingsClick={() => setShowSettings(true)}
             scannerProps={{

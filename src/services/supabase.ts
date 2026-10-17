@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { TrackedBet, BankrollTransaction } from "../types";
+import { TrackedBet, BankrollTransaction, PaperAcca } from "../types";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
@@ -285,5 +285,137 @@ export const updateTransaction = async (
 
   if (error) {
     throw new Error("Failed to update transaction: " + error.message);
+  }
+};
+
+// ============================================
+// Paper Accas — CRUD
+// ============================================
+
+const accaToRow = (acca: PaperAcca): Record<string, any> => ({
+  id: acca.id,
+  created_at: acca.createdAt,
+  season: acca.season,
+  bookmaker: acca.bookmaker,
+  offer_type: acca.offerType,
+  offer_terms: acca.offerTerms,
+  refund_cap: acca.refundCap,
+  stake: acca.stake,
+  legs: acca.legs.map((leg) => ({
+    ...leg,
+    kickoff: new Date(leg.kickoff).toISOString(),
+  })),
+  num_legs: acca.numLegs,
+  combined_odds: acca.combinedOdds,
+  first_kickoff: new Date(acca.firstKickoff).toISOString(),
+  status: acca.status,
+  returns: acca.returns,
+  free_bet_face: acca.freeBetFace,
+  free_bet_value: acca.freeBetValue,
+  net_pl: acca.netPl,
+  notes: acca.notes,
+  source: acca.source,
+  est_ev: acca.estEv,
+  est_p_win: acca.estPWin,
+  est_p_refund: acca.estPRefund,
+});
+
+const rowToAcca = (row: any): PaperAcca => ({
+  id: row.id,
+  createdAt: row.created_at,
+  season: row.season,
+  bookmaker: row.bookmaker,
+  offerType: row.offer_type,
+  offerTerms: row.offer_terms,
+  refundCap: Number(row.refund_cap),
+  stake: Number(row.stake),
+  legs: (row.legs || []).map((leg: any) => ({
+    ...leg,
+    kickoff: new Date(leg.kickoff),
+    odds: Number(leg.odds),
+    refPrice: leg.refPrice != null ? Number(leg.refPrice) : null,
+    pinnacleFair: Number(leg.pinnacleFair),
+    valueRatio: leg.valueRatio != null ? Number(leg.valueRatio) : null,
+  })),
+  numLegs: Number(row.num_legs),
+  combinedOdds: Number(row.combined_odds),
+  firstKickoff: new Date(row.first_kickoff),
+  status: row.status,
+  returns: row.returns != null ? Number(row.returns) : null,
+  freeBetFace: row.free_bet_face != null ? Number(row.free_bet_face) : null,
+  freeBetValue: row.free_bet_value != null ? Number(row.free_bet_value) : null,
+  netPl: row.net_pl != null ? Number(row.net_pl) : null,
+  notes: row.notes,
+  source: row.source,
+  estEv: row.est_ev != null ? Number(row.est_ev) : null,
+  estPWin: row.est_p_win != null ? Number(row.est_p_win) : null,
+  estPRefund: row.est_p_refund != null ? Number(row.est_p_refund) : null,
+} as PaperAcca);
+
+export const fetchPaperAccas = async (): Promise<PaperAcca[]> => {
+  const { data, error } = await supabase
+    .from("paper_accas")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error("Failed to fetch accas: " + error.message);
+  }
+
+  return (data || []).map(rowToAcca);
+};
+
+export const insertPaperAcca = async (acca: PaperAcca): Promise<void> => {
+  const { error } = await supabase.from("paper_accas").insert(accaToRow(acca));
+  if (error) {
+    throw new Error("Failed to insert acca: " + error.message);
+  }
+};
+
+export const updatePaperAcca = async (
+  id: string,
+  fields: Partial<PaperAcca>,
+): Promise<void> => {
+  // Convert fields to snake_case row format
+  const rowUpdates: Record<string, any> = {};
+
+  if (fields.season !== undefined) rowUpdates.season = fields.season;
+  if (fields.bookmaker !== undefined) rowUpdates.bookmaker = fields.bookmaker;
+  if (fields.offerType !== undefined) rowUpdates.offer_type = fields.offerType;
+  if (fields.offerTerms !== undefined) rowUpdates.offer_terms = fields.offerTerms;
+  if (fields.refundCap !== undefined) rowUpdates.refund_cap = fields.refundCap;
+  if (fields.stake !== undefined) rowUpdates.stake = fields.stake;
+  if (fields.legs !== undefined) {
+    rowUpdates.legs = fields.legs.map((leg) => ({
+      ...leg,
+      kickoff: new Date(leg.kickoff).toISOString(),
+    }));
+  }
+  if (fields.numLegs !== undefined) rowUpdates.num_legs = fields.numLegs;
+  if (fields.combinedOdds !== undefined)
+    rowUpdates.combined_odds = fields.combinedOdds;
+  if (fields.firstKickoff !== undefined)
+    rowUpdates.first_kickoff = new Date(fields.firstKickoff).toISOString();
+  if (fields.status !== undefined) rowUpdates.status = fields.status;
+  if (fields.returns !== undefined) rowUpdates.returns = fields.returns;
+  if (fields.freeBetFace !== undefined)
+    rowUpdates.free_bet_face = fields.freeBetFace;
+  if (fields.freeBetValue !== undefined)
+    rowUpdates.free_bet_value = fields.freeBetValue;
+  if (fields.netPl !== undefined) rowUpdates.net_pl = fields.netPl;
+  if (fields.notes !== undefined) rowUpdates.notes = fields.notes;
+  if (fields.source !== undefined) rowUpdates.source = fields.source;
+  if (fields.estEv !== undefined) rowUpdates.est_ev = fields.estEv;
+  if (fields.estPWin !== undefined) rowUpdates.est_p_win = fields.estPWin;
+  if (fields.estPRefund !== undefined)
+    rowUpdates.est_p_refund = fields.estPRefund;
+
+  const { error } = await supabase
+    .from("paper_accas")
+    .update(rowUpdates)
+    .eq("id", id);
+
+  if (error) {
+    throw new Error("Failed to update acca: " + error.message);
   }
 };
