@@ -108,6 +108,10 @@ const App: React.FC = () => {
     handleDeleteTrackedBet,
     settleBet,
     settleAll,
+    isSettlingAll,
+    settleAllProgress,
+    lastSettleAllResult,
+    clearLastSettleAllResult,
   } = useTrackedBets(
     bankroll,
     addTransactionDirect,
@@ -427,6 +431,10 @@ const App: React.FC = () => {
               bets={trackedBets}
               onSettleBet={settleBet}
               onSettleAll={settleAll}
+              isSettlingAll={isSettlingAll}
+              settleAllProgress={settleAllProgress}
+              lastSettleAllResult={lastSettleAllResult}
+              clearLastSettleAllResult={clearLastSettleAllResult}
             />
           ) : (
             <OpenBetsView
@@ -434,6 +442,10 @@ const App: React.FC = () => {
               onDeleteBet={handleDeleteTrackedBet}
               onSettleBet={settleBet}
               onSettleAll={settleAll}
+              isSettlingAll={isSettlingAll}
+              settleAllProgress={settleAllProgress}
+              lastSettleAllResult={lastSettleAllResult}
+              clearLastSettleAllResult={clearLastSettleAllResult}
             />
           )}
         </ErrorBoundary>

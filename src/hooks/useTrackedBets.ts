@@ -27,6 +27,22 @@ export const useTrackedBets = (
 ) => {
   const [trackedBets, setTrackedBets] = useState<TrackedBet[]>([]);
 
+  const [isSettlingAll, setIsSettlingAll] = useState(false);
+  const [settleAllProgress, setSettleAllProgress] = useState<{
+    current: number;
+    total: number;
+  } | null>(null);
+  const [lastSettleAllResult, setLastSettleAllResult] = useState<{
+    settled: number;
+    skipped: number;
+    failed: number;
+    stale: number;
+  } | null>(null);
+
+  const clearLastSettleAllResult = useCallback(() => {
+    setLastSettleAllResult(null);
+  }, []);
+
   const loadTrackedBets = useCallback(async () => {
     const bets = await fetchAllBets();
     setTrackedBets(bets);
@@ -252,8 +268,16 @@ export const useTrackedBets = (
     skipped: number;
     failed: number;
     stale: number;
-  }> => {
+  } | undefined> => {
+    if (isSettlingAll) return;
+
     const betsToSettle = trackedBets.filter((b) => !b.result);
+    if (betsToSettle.length === 0) return { settled: 0, skipped: 0, failed: 0, stale: 0 };
+
+    setIsSettlingAll(true);
+    setSettleAllProgress({ current: 0, total: betsToSettle.length });
+    setLastSettleAllResult(null);
+
     let settled = 0;
     let skipped = 0;
     let failed = 0;
@@ -262,28 +286,37 @@ export const useTrackedBets = (
     const now = Date.now();
     const STALE_THRESHOLD_MS = 72 * 60 * 60 * 1000;
 
-    for (const bet of betsToSettle) {
-      // Staleness detection: Skip bets whose kickoff was more than 72 hours ago
-      if (now - bet.kickoff.getTime() > STALE_THRESHOLD_MS) {
-        stale++;
-        continue;
-      }
+    try {
+      for (let i = 0; i < betsToSettle.length; i++) {
+        const bet = betsToSettle[i];
+        // Staleness detection: Skip bets whose kickoff was more than 72 hours ago
+        if (now - bet.kickoff.getTime() > STALE_THRESHOLD_MS) {
+          stale++;
+        } else {
+          const status = await settleBet(bet.id);
+          if (status === "settled") {
+            settled++;
+          } else if (status === "skipped") {
+            skipped++;
+          } else {
+            failed++;
+          }
+        }
 
-      const status = await settleBet(bet.id);
-      if (status === "settled") {
-        settled++;
-      } else if (status === "skipped") {
-        skipped++;
-      } else {
-        failed++;
-      }
+        setSettleAllProgress({ current: i + 1, total: betsToSettle.length });
 
-      // Small delay to avoid API rate limits
-      if (settled + skipped + failed < betsToSettle.length) {
-        await new Promise((r) => setTimeout(r, 500));
+        // Small delay to avoid API rate limits
+        if (i < betsToSettle.length - 1) {
+          await new Promise((r) => setTimeout(r, 500));
+        }
       }
+      const result = { settled, skipped, failed, stale };
+      setLastSettleAllResult(result);
+      return result;
+    } finally {
+      setIsSettlingAll(false);
+      setSettleAllProgress(null);
     }
-    return { settled, skipped, failed, stale };
   };
 
   return {
@@ -295,5 +328,9 @@ export const useTrackedBets = (
     handleDeleteTrackedBet,
     settleBet,
     settleAll,
+    isSettlingAll,
+    settleAllProgress,
+    lastSettleAllResult,
+    clearLastSettleAllResult,
   };
 };

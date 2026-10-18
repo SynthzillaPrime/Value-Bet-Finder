@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { TrackedBet } from "../types";
 import { LEAGUES } from "../constants";
 
@@ -23,7 +23,16 @@ interface Props {
     skipped: number;
     failed: number;
     stale: number;
-  }>;
+  } | undefined>;
+  isSettlingAll: boolean;
+  settleAllProgress: { current: number; total: number } | null;
+  lastSettleAllResult: {
+    settled: number;
+    skipped: number;
+    failed: number;
+    stale: number;
+  } | null;
+  clearLastSettleAllResult: () => void;
 }
 
 export const OpenBetsView: React.FC<Props> = ({
@@ -31,6 +40,10 @@ export const OpenBetsView: React.FC<Props> = ({
   onDeleteBet,
   onSettleBet,
   onSettleAll,
+  isSettlingAll,
+  settleAllProgress,
+  lastSettleAllResult,
+  clearLastSettleAllResult,
 }) => {
   const [settlingId, setSettlingId] = useState<string | null>(null);
   const [failedSettleIds, setFailedSettleIds] = useState<Set<string>>(
@@ -38,11 +51,6 @@ export const OpenBetsView: React.FC<Props> = ({
   );
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [settlingAll, setSettlingAll] = useState(false);
-  const [settleProgress, setSettleProgress] = useState<{
-    current: number;
-    total: number;
-  } | null>(null);
 
   const openBets = bets
     .filter((b) => b.status === "open")
@@ -98,25 +106,20 @@ export const OpenBetsView: React.FC<Props> = ({
   };
 
   const handleSettleAll = async () => {
-    if (readyToSettle.length === 0) return;
-    setSettlingAll(true);
-    setSettleProgress({ current: 0, total: readyToSettle.length });
-
-    try {
-      const { settled, skipped, failed, stale } = await onSettleAll();
-      let message = `Settled: ${settled}, Skipped: ${skipped}`;
-      if (stale > 0) {
-        message += `, Stale: ${stale}`;
-      }
-      if (failed > 0) {
-        message += `, Failed: ${failed}`;
-      }
-      alert(message);
-    } finally {
-      setSettlingAll(false);
-      setSettleProgress(null);
-    }
+    if (readyToSettle.length === 0 || isSettlingAll) return;
+    await onSettleAll();
   };
+
+  useEffect(() => {
+    if (lastSettleAllResult) {
+      const { settled, skipped, failed, stale } = lastSettleAllResult;
+      let message = `Settlement Complete:\nSettled: ${settled}, Skipped: ${skipped}`;
+      if (stale > 0) message += `, Stale: ${stale}`;
+      if (failed > 0) message += `, Failed: ${failed}`;
+      alert(message);
+      clearLastSettleAllResult();
+    }
+  }, [lastSettleAllResult, clearLastSettleAllResult]);
 
   const formatKickoff = (kickoff: Date) => {
     return (
@@ -178,13 +181,13 @@ export const OpenBetsView: React.FC<Props> = ({
         {openBets.length > 0 && (
           <button
             onClick={handleSettleAll}
-            disabled={settlingAll || readyToSettle.length === 0}
+            disabled={isSettlingAll || readyToSettle.length === 0}
             className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-950 font-bold rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-2 tabular-nums"
           >
-            {settlingAll ? (
+            {isSettlingAll ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                Settling {settleProgress?.current}/{settleProgress?.total}...
+                Settling {settleAllProgress?.current}/{settleAllProgress?.total}...
               </>
             ) : (
               <>
@@ -258,7 +261,11 @@ export const OpenBetsView: React.FC<Props> = ({
                             return next;
                           });
                         }}
-                        settling={settlingId === bet.id || settlingAll}
+                        settling={
+                          settlingId === bet.id ||
+                          (isSettlingAll &&
+                            readyToSettle.some((rb) => rb.id === bet.id))
+                        }
                         isConfirming={confirmDeleteId === bet.id}
                         onDelete={() => handleDeleteClick(bet.id)}
                         autoFailed={failedSettleIds.has(bet.id)}
@@ -295,7 +302,11 @@ export const OpenBetsView: React.FC<Props> = ({
                             return next;
                           });
                         }}
-                        settling={settlingId === bet.id}
+                        settling={
+                          settlingId === bet.id ||
+                          (isSettlingAll &&
+                            readyToSettle.some((rb) => rb.id === bet.id))
+                        }
                         isConfirming={confirmDeleteId === bet.id}
                         onDelete={() => handleDeleteClick(bet.id)}
                         autoFailed={failedSettleIds.has(bet.id)}
@@ -332,7 +343,11 @@ export const OpenBetsView: React.FC<Props> = ({
                             return next;
                           });
                         }}
-                        settling={settlingId === bet.id}
+                        settling={
+                          settlingId === bet.id ||
+                          (isSettlingAll &&
+                            readyToSettle.some((rb) => rb.id === bet.id))
+                        }
                         isConfirming={confirmDeleteId === bet.id}
                         onDelete={() => handleDeleteClick(bet.id)}
                         autoFailed={failedSettleIds.has(bet.id)}

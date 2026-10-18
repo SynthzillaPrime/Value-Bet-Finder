@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { TrackedBet } from "../../types";
 
 interface MobileOpenBetsProps {
@@ -12,7 +12,16 @@ interface MobileOpenBetsProps {
     skipped: number;
     failed: number;
     stale: number;
-  }>;
+  } | undefined>;
+  isSettlingAll: boolean;
+  settleAllProgress: { current: number; total: number } | null;
+  lastSettleAllResult: {
+    settled: number;
+    skipped: number;
+    failed: number;
+    stale: number;
+  } | null;
+  clearLastSettleAllResult: () => void;
 }
 
 type TimeStatus = {
@@ -25,8 +34,11 @@ export const MobileOpenBets: React.FC<MobileOpenBetsProps> = ({
   bets,
   onSettleBet,
   onSettleAll,
+  isSettlingAll,
+  settleAllProgress,
+  lastSettleAllResult,
+  clearLastSettleAllResult,
 }) => {
-  const [settlingAll, setSettlingAll] = useState(false);
   const [settlingBetId, setSettlingBetId] = useState<string | null>(null);
 
   const now = new Date();
@@ -78,16 +90,19 @@ export const MobileOpenBets: React.FC<MobileOpenBetsProps> = ({
   ).length;
 
   const handleSettleAll = async () => {
-    setSettlingAll(true);
-    try {
-      const result = await onSettleAll();
-      alert(
-        `Settlement Complete:\nSettled: ${result.settled}\nSkipped: ${result.skipped}\nStale: ${result.stale}\nFailed: ${result.failed}`,
-      );
-    } finally {
-      setSettlingAll(false);
-    }
+    if (readyToSettleCount === 0 || isSettlingAll) return;
+    await onSettleAll();
   };
+
+  useEffect(() => {
+    if (lastSettleAllResult) {
+      const { settled, skipped, failed, stale } = lastSettleAllResult;
+      alert(
+        `Settlement Complete:\nSettled: ${settled}\nSkipped: ${skipped}\nStale: ${stale}\nFailed: ${failed}`,
+      );
+      clearLastSettleAllResult();
+    }
+  }, [lastSettleAllResult, clearLastSettleAllResult]);
 
   const handleSettleSingle = async (betId: string) => {
     setSettlingBetId(betId);
@@ -126,16 +141,24 @@ export const MobileOpenBets: React.FC<MobileOpenBetsProps> = ({
     <div className="flex flex-col space-y-3 px-4 py-4 pb-24">
       <button
         onClick={handleSettleAll}
-        disabled={readyToSettleCount === 0 || settlingAll}
+        disabled={readyToSettleCount === 0 || isSettlingAll}
         className={`w-full h-12 rounded-xl font-bold transition-colors flex items-center justify-center bg-emerald-500 text-slate-950 active:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed`}
       >
-        {settlingAll ? "Settling..." : `Settle All (${readyToSettleCount})`}
+        {isSettlingAll ? (
+          <span className="flex items-center gap-2">
+            Settling {settleAllProgress?.current}/{settleAllProgress?.total}...
+          </span>
+        ) : (
+          `Settle All (${readyToSettleCount})`
+        )}
       </button>
 
       {openBets.map((bet) => {
         const timeStatus = getTimeStatus(bet.kickoff);
-        const isSettling = settlingBetId === bet.id;
-        const canSettle = timeStatus.state === "ready" && !settlingAll;
+        const isSettling =
+          settlingBetId === bet.id ||
+          (isSettlingAll && timeStatus.state === "ready");
+        const canSettle = timeStatus.state === "ready" && !isSettlingAll;
         const isStale =
           !bet.result &&
           now.getTime() - bet.kickoff.getTime() > 72 * 60 * 60 * 1000;
