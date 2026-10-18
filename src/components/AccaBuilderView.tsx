@@ -302,20 +302,6 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
     };
   }, [history]);
 
-  if (!lastUpdated || rawMatches.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 bg-slate-900/20 rounded-2xl border-2 border-dashed border-slate-800/50">
-        <RefreshCw className="w-12 h-12 text-slate-600 mb-4" />
-        <p className="text-slate-400 font-medium text-lg">
-          No scan data available.
-        </p>
-        <p className="text-slate-500 text-sm mt-2">
-          Run a scan in the Scanner tab first to fetch latest odds.
-        </p>
-      </div>
-    );
-  }
-
   const warnings = [];
   if (selectedLegs.length < BETFRED_ACCA_FLEX.minLegs) {
     warnings.push(`Minimum ${BETFRED_ACCA_FLEX.minLegs} legs required for insurance.`);
@@ -327,7 +313,19 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {(!lastUpdated || rawMatches.length === 0) ? (
+        <div className="flex flex-col items-center justify-center py-20 bg-slate-900/20 rounded-2xl border-2 border-dashed border-slate-800/50">
+          <RefreshCw className="w-12 h-12 text-slate-600 mb-4" />
+          <p className="text-slate-400 font-medium text-lg">
+            No scan data available.
+          </p>
+          <p className="text-slate-500 text-sm mt-2">
+            Run a scan in the Scanner tab first to fetch latest odds.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Header */}
       <div className="flex flex-col md:flex-row items-center justify-between bg-slate-900/50 p-4 rounded-2xl border border-slate-800/50 backdrop-blur-sm gap-4">
         <div className="flex items-center gap-3">
           <div className="bg-blue-500/10 p-2 rounded-lg">
@@ -654,6 +652,9 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
           )}
         </div>
       </div>
+
+        </>
+      )}
 
       {/* History Section */}
       <div className="mt-12 space-y-6">
