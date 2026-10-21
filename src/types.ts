@@ -64,7 +64,7 @@ export interface PaperAcca {
   numLegs: number;
   combinedOdds: number;
   firstKickoff: Date;
-  status: "open" | "closed";
+  status: "open" | "won" | "lost" | "refunded" | "void";
   returns: number | null;
   freeBetFace: number | null;
   freeBetValue: number | null;

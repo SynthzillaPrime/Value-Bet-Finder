@@ -29,6 +29,7 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
   const [targetDate, setTargetDate] = useState<"today" | "tomorrow">("today");
   const [selectedLegIds, setSelectedLegIds] = useState<Set<string>>(new Set());
   const [legOdds, setLegOdds] = useState<Record<string, number>>({});
+  const [oddsText, setOddsText] = useState<Record<string, string>>({});
   const [stake, setStake] = useState<number>(BETFRED_ACCA_FLEX.defaultStake);
   const [history, setHistory] = useState<PaperAcca[]>([]);
   const [isLogging, setIsLogging] = useState(false);
@@ -131,6 +132,7 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
       initialOdds[c.id] = c.refPrice ?? c.pinnacleFair;
     });
     setLegOdds(initialOdds);
+    setOddsText({});
   }, [candidates]);
 
   const toggleLeg = (cand: AccaLegCandidate) => {
@@ -150,6 +152,8 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
   };
 
   const updateOdds = (id: string, value: string) => {
+    if (!/^\d*\.?\d*$/.test(value)) return;
+    setOddsText((prev) => ({ ...prev, [id]: value }));
     const num = parseFloat(value);
     setLegOdds((prev) => ({ ...prev, [id]: isNaN(num) ? 0 : num }));
   };
@@ -374,7 +378,7 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
                 <tr className="bg-slate-800/40 border-b border-slate-800/50">
                   <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider w-10"></th>
                   <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider text-left">Match</th>
-                  <th 
+                  <th
                     onClick={() => handleSort("kickoff")}
                     className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-300 transition-colors"
                   >
@@ -386,7 +390,7 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
                     </div>
                   </th>
                   <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider text-left">Selection</th>
-                  <th 
+                  <th
                     onClick={() => handleSort("fair")}
                     className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:text-slate-300 transition-colors"
                   >
@@ -397,7 +401,7 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
                       )}
                     </div>
                   </th>
-                  <th 
+                  <th
                     onClick={() => handleSort("refPrice")}
                     className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:text-slate-300 transition-colors"
                   >
@@ -408,7 +412,7 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
                       )}
                     </div>
                   </th>
-                  <th 
+                  <th
                     onClick={() => handleSort("value")}
                     className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:text-slate-300 transition-colors"
                   >
@@ -432,8 +436,8 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
                   >
                     <td className="px-4 py-3">
                       <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${
-                        selectedLegIds.has(cand.id) 
-                          ? "bg-emerald-500 border-emerald-500" 
+                        selectedLegIds.has(cand.id)
+                          ? "bg-emerald-500 border-emerald-500"
                           : "border-slate-700 group-hover:border-slate-500"
                       }`}>
                         {selectedLegIds.has(cand.id) && <Check className="w-3.5 h-3.5 text-slate-950 stroke-[3]" />}
@@ -505,7 +509,7 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
                 {selectedLegs.length}
               </span>
             </h3>
-            
+
             <div className="space-y-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
               {selectedLegs.map((l) => (
                 <div key={l.id} className="bg-slate-800/40 border border-slate-700/50 p-3 rounded-xl flex items-center justify-between gap-4">
@@ -522,11 +526,11 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
                     <input
                       type="text"
                       inputMode="decimal"
-                      value={legOdds[l.id] || ""}
+                      value={oddsText[l.id] ?? (legOdds[l.id] ? String(legOdds[l.id]) : "")}
                       onChange={(e) => updateOdds(l.id, e.target.value)}
                       className="w-16 bg-slate-950 border border-slate-700 rounded-lg py-1 px-2 text-xs font-mono font-bold text-white outline-none focus:ring-1 focus:ring-emerald-500"
                     />
-                    <button 
+                    <button
                       onClick={() => toggleLeg(l)}
                       className="text-slate-600 hover:text-red-400 transition-colors"
                     >
@@ -575,7 +579,7 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
               </div>
 
               <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Live Estimate</h3>
-              
+
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div>
                   <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Combined Odds</p>
@@ -749,7 +753,7 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
                         acca.netPl! === 0 ? "bg-slate-500/10 text-slate-400" :
                         "bg-red-500/10 text-red-400"
                       }`}>
-                        {acca.status === "open" ? "Open" : 
+                        {acca.status === "open" ? "Open" :
                          acca.netPl! > 0 ? "Won" :
                          acca.netPl! === 0 ? "Refunded" : "Lost"}
                       </span>

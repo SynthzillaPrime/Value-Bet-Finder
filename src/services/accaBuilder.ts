@@ -18,7 +18,7 @@ export const buildLegCandidates = (
 ): AccaLegCandidate[] => {
   const candidates: AccaLegCandidate[] = [];
   const now = new Date();
-  
+
   // Format target date as local calendar string (YYYY-MM-DD)
   const targetDateStr = date.toLocaleDateString('en-CA');
 
@@ -57,7 +57,7 @@ export const buildLegCandidates = (
         const bookie = match.bookmakers.find((b) => b.key === refKey);
         const market = bookie?.markets.find((m) => m.key === "h2h");
         const selection = market?.outcomes.find((o) => o.name === outcome.name);
-        
+
         if (selection && (refPrice === null || selection.price > refPrice)) {
           refPrice = selection.price;
           refBookmaker = refKey;
@@ -110,7 +110,7 @@ export const suggestAcca = (
 
   for (const cand of candidates) {
     if (selected.length >= legCount) break;
-    
+
     // Extract match ID from candidate ID (which is matchId-selection)
     const matchId = cand.id.split('-')[0];
     if (!usedMatchIds.has(matchId)) {
@@ -129,7 +129,7 @@ export const estimateAcca = (
 ): AccaEstimate => {
   const combinedOdds = legs.reduce((acc, leg) => acc * leg.odds, 1);
   const probAllWin = legs.reduce((acc, leg) => acc * leg.prob, 1);
-  
+
   // Prob exactly one loses: Sum over each leg (P(this leg loses) * P(all other legs win))
   let probExactlyOneLoses = 0;
   for (let i = 0; i < legs.length; i++) {
@@ -142,13 +142,13 @@ export const estimateAcca = (
   }
 
   const winPayout = stake * combinedOdds;
-  
+
   // Bonus calculation
   let bonusRate = 0;
   if (legs.length >= offer.minLegs) {
     const legKeys = Object.keys(offer.bonusByLegs).map(Number).sort((a, b) => b - a);
     const maxLegsInTable = legKeys[0];
-    
+
     if (legs.length >= maxLegsInTable) {
       bonusRate = offer.bonusByLegs[maxLegsInTable];
     } else {
@@ -162,8 +162,8 @@ export const estimateAcca = (
   let refundAmount = 0;
   if (legs.length >= offer.minLegs) {
     const baseRefund = Math.min(stake, offer.refundCap);
-    refundAmount = offer.refundType === "cash" 
-      ? baseRefund 
+    refundAmount = offer.refundType === "cash"
+      ? baseRefund
       : baseRefund * offer.freeBetValue;
   }
 
@@ -308,7 +308,7 @@ export const settleAcca = (
     updatedAcca: {
       ...acca,
       legs: updatedLegs,
-      status: "closed",
+      status: resultLabel as "won" | "lost" | "refunded",
       returns,
       netPl: returns - acca.stake,
       notes: acca.notes ? `${acca.notes} (Settled: ${resultLabel})` : `Settled: ${resultLabel}`,
