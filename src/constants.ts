@@ -52,7 +52,7 @@ export const LEAGUES: LeagueOption[] = [
     group: "Top European",
   },
   {
-    key: "soccer_uefa_europa__conference_league",
+    key: "soccer_uefa_europa_conference_league",
     name: "Conference League",
     group: "Top European",
   },
