@@ -32,6 +32,7 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
   const [oddsText, setOddsText] = useState<Record<string, string>>({});
   const [stake, setStake] = useState<number>(BETFRED_ACCA_FLEX.defaultStake);
   const [history, setHistory] = useState<PaperAcca[]>([]);
+  const [expandedAccaId, setExpandedAccaId] = useState<string | null>(null);
   const [isLogging, setIsLogging] = useState(false);
   const [isSettling, setIsSettling] = useState(false);
   const [logStatus, setLogStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -730,42 +731,88 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-800/40">
                 {history.map((acca) => (
-                  <tr key={acca.id} className="text-xs font-medium text-slate-300 hover:bg-slate-800/20">
-                    <td className="px-6 py-4">
-                      {new Date(acca.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="font-bold text-white">{acca.numLegs}</span>
-                    </td>
-                    <td className="px-6 py-4 text-right font-mono">
-                      {acca.combinedOdds.toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 text-right font-mono">
-                      £{acca.stake.toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 text-right font-mono text-blue-400">
-                      {acca.estEv?.toFixed(1)}%
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-tighter ${
-                        acca.status === "open" ? "bg-blue-500/10 text-blue-400" :
-                        acca.netPl! > 0 ? "bg-emerald-500/10 text-emerald-400" :
-                        acca.netPl! === 0 ? "bg-slate-500/10 text-slate-400" :
-                        "bg-red-500/10 text-red-400"
-                      }`}>
-                        {acca.status === "open" ? "Open" :
-                         acca.netPl! > 0 ? "Won" :
-                         acca.netPl! === 0 ? "Refunded" : "Lost"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right font-mono font-bold">
-                      {acca.netPl !== null ? (
-                        <span className={acca.netPl >= 0 ? "text-emerald-400" : "text-red-400"}>
-                          {acca.netPl >= 0 ? "+" : ""}£{acca.netPl.toFixed(2)}
+                  <React.Fragment key={acca.id}>
+                    <tr
+                      onClick={() =>
+                        setExpandedAccaId(expandedAccaId === acca.id ? null : acca.id)
+                      }
+                      className="text-xs font-medium text-slate-300 hover:bg-slate-800/20 cursor-pointer"
+                    >
+                      <td className="px-6 py-4">
+                        {new Date(acca.createdAt).toLocaleDateString("en-GB")}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="font-bold text-white">{acca.numLegs}</span>
+                        <span className="text-slate-500 ml-2">
+                          {expandedAccaId === acca.id ? "▲" : "▼"}
                         </span>
-                      ) : "-"}
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="px-6 py-4 text-right font-mono">
+                        {acca.combinedOdds.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 text-right font-mono">
+                        £{acca.stake.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 text-right font-mono text-blue-400">
+                        {acca.estEv != null ? `${acca.estEv.toFixed(1)}%` : "-"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-tighter ${
+                            acca.status === "open"
+                              ? "bg-blue-500/10 text-blue-400"
+                              : acca.status === "won"
+                                ? "bg-emerald-500/10 text-emerald-400"
+                                : acca.status === "refunded"
+                                  ? "bg-slate-500/10 text-slate-400"
+                                  : "bg-red-500/10 text-red-400"
+                          }`}
+                        >
+                          {acca.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right font-mono font-bold">
+                        {acca.netPl !== null ? (
+                          <span className={acca.netPl >= 0 ? "text-emerald-400" : "text-red-400"}>
+                            {acca.netPl >= 0 ? "+" : ""}£{acca.netPl.toFixed(2)}
+                          </span>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                    </tr>
+
+                    {expandedAccaId === acca.id && (
+                      <tr className="bg-slate-950/40">
+                        <td colSpan={7} className="px-6 py-3">
+                          <div className="space-y-1.5">
+                            {acca.legs.map((leg, i) => (
+                              <div key={i} className="flex items-center justify-between text-xs">
+                                <div className="min-w-0">
+                                  <span className="font-bold text-white">{leg.selection}</span>
+                                  <span className="text-slate-500 ml-2">{leg.match}</span>
+                                </div>
+                                <div className="flex items-center gap-4 tabular-nums">
+                                  <span className="text-slate-300">{Number(leg.odds).toFixed(2)}</span>
+                                  <span
+                                    className={`w-14 text-right font-bold ${
+                                      leg.result === "won"
+                                        ? "text-emerald-400"
+                                        : leg.result === "lost"
+                                          ? "text-red-400"
+                                          : "text-slate-500"
+                                    }`}
+                                  >
+                                    {leg.result === "won" ? "Won" : leg.result === "lost" ? "Lost" : "Pending"}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
                 {history.length === 0 && (
                   <tr>
