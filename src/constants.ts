@@ -12,6 +12,16 @@ export const CURRENT_SEASON: string = "2026/27";
 export const LEAGUES: LeagueOption[] = [
   // Top European
   { key: "soccer_epl", name: "Premier League", group: "Top European" },
+  // Domestic cups: re-added Oct 2026. The 25/26 pilot started in March,
+  // when these had few or no fixtures left, so zero bets meant nothing.
+  { key: "soccer_england_efl_cup", name: "EFL Cup", group: "Domestic Cups" },
+  { key: "soccer_spain_copa_del_rey", name: "Copa del Rey", group: "Domestic Cups" },
+  { key: "soccer_italy_coppa_italia", name: "Coppa Italia", group: "Domestic Cups" },
+  { key: "soccer_germany_dfb_pokal", name: "DFB-Pokal", group: "Domestic Cups" },
+  { key: "soccer_france_coupe_de_france", name: "Coupe de France", group: "Domestic Cups" },
+  // Competitive internationals only, never friendlies.
+  { key: "soccer_uefa_nations_league", name: "UEFA Nations League", group: "Internationals" },
+  { key: "soccer_uefa_euro_qualification", name: "Euro Qualifiers", group: "Internationals" },
   { key: "soccer_spain_la_liga", name: "La Liga", group: "Top European" },
   {
     key: "soccer_germany_bundesliga",
