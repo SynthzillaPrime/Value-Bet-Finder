@@ -11,138 +11,61 @@ export const CURRENT_SEASON: string = "2026/27";
 
 export const LEAGUES: LeagueOption[] = [
   // Top European
-  { key: "soccer_epl", name: "Premier League", group: "Top European" },
-  // Domestic cups: re-added Oct 2026. The 25/26 pilot started in March,
+  // Top flights, big five
+  { key: "soccer_epl", name: "Premier League", group: "Top Leagues" },
+  { key: "soccer_spain_la_liga", name: "La Liga", group: "Top Leagues" },
+  { key: "soccer_germany_bundesliga", name: "Bundesliga", group: "Top Leagues" },
+  { key: "soccer_italy_serie_a", name: "Serie A", group: "Top Leagues" },
+  { key: "soccer_france_ligue_one", name: "Ligue 1", group: "Top Leagues" },
+
+  // Second tier and below
+  { key: "soccer_efl_champ", name: "Championship", group: "Lower Leagues" },
+  { key: "soccer_england_league1", name: "League One", group: "Lower Leagues" },
+  { key: "soccer_england_league2", name: "League Two", group: "Lower Leagues" },
+  { key: "soccer_germany_bundesliga2", name: "2. Bundesliga", group: "Lower Leagues" },
+  { key: "soccer_italy_serie_b", name: "Serie B", group: "Lower Leagues" },
+  { key: "soccer_france_ligue_two", name: "Ligue 2", group: "Lower Leagues" },
+
+  // Other European top flights
+  { key: "soccer_spl", name: "Scottish Premiership", group: "Other European" },
+  { key: "soccer_portugal_primeira_liga", name: "Primeira Liga", group: "Other European" },
+  { key: "soccer_netherlands_eredivisie", name: "Eredivisie", group: "Other European" },
+  { key: "soccer_austria_bundesliga", name: "Austrian Bundesliga", group: "Other European" },
+  { key: "soccer_belgium_first_div", name: "Belgian Pro League", group: "Other European" },
+  { key: "soccer_denmark_superliga", name: "Danish Superliga", group: "Other European" },
+  { key: "soccer_greece_super_league", name: "Greek Super League", group: "Other European" },
+  { key: "soccer_poland_ekstraklasa", name: "Ekstraklasa", group: "Other European" },
+  { key: "soccer_sweden_allsvenskan", name: "Allsvenskan", group: "Other European" },
+  { key: "soccer_turkey_super_league", name: "Süper Lig", group: "Other European" },
+
+  // UEFA club competitions
+  { key: "soccer_uefa_champs_league", name: "Champions League", group: "European Competitions" },
+  { key: "soccer_uefa_europa_league", name: "Europa League", group: "European Competitions" },
+  { key: "soccer_uefa_europa_conference_league", name: "Conference League", group: "European Competitions" },
+
+  // Domestic cups. Most re-added Oct 2026: the 25/26 pilot started in March,
   // when these had few or no fixtures left, so zero bets meant nothing.
+  { key: "soccer_fa_cup", name: "FA Cup", group: "Domestic Cups" },
   { key: "soccer_england_efl_cup", name: "EFL Cup", group: "Domestic Cups" },
   { key: "soccer_spain_copa_del_rey", name: "Copa del Rey", group: "Domestic Cups" },
   { key: "soccer_italy_coppa_italia", name: "Coppa Italia", group: "Domestic Cups" },
   { key: "soccer_germany_dfb_pokal", name: "DFB-Pokal", group: "Domestic Cups" },
   { key: "soccer_france_coupe_de_france", name: "Coupe de France", group: "Domestic Cups" },
-  // Competitive internationals only, never friendlies.
+
+  // Rest of the world
+  { key: "soccer_usa_mls", name: "MLS", group: "Rest of World" },
+  { key: "soccer_brazil_campeonato", name: "Brasileirão Série A", group: "Rest of World" },
+  { key: "soccer_brazil_serie_b", name: "Brasileirão Série B", group: "Rest of World" },
+  { key: "soccer_argentina_primera_division", name: "Argentine Primera", group: "Rest of World" },
+  { key: "soccer_chile_campeonato", name: "Chilean Primera", group: "Rest of World" },
+  { key: "soccer_conmebol_copa_libertadores", name: "Copa Libertadores", group: "Rest of World" },
+  { key: "soccer_conmebol_copa_sudamericana", name: "Copa Sudamericana", group: "Rest of World" },
+  { key: "soccer_australia_aleague", name: "A-League", group: "Rest of World" },
+  { key: "soccer_china_superleague", name: "Chinese Super League", group: "Rest of World" },
+
+  // Competitive internationals only, never friendlies
   { key: "soccer_uefa_nations_league", name: "UEFA Nations League", group: "Internationals" },
   { key: "soccer_uefa_euro_qualification", name: "Euro Qualifiers", group: "Internationals" },
-  { key: "soccer_spain_la_liga", name: "La Liga", group: "Top European" },
-  {
-    key: "soccer_germany_bundesliga",
-    name: "Bundesliga",
-    group: "Top European",
-  },
-  { key: "soccer_italy_serie_a", name: "Serie A", group: "Top European" },
-  { key: "soccer_france_ligue_one", name: "Ligue 1", group: "Top European" },
-  {
-    key: "soccer_portugal_primeira_liga",
-    name: "Primeira Liga",
-    group: "Top European",
-  },
-  {
-    key: "soccer_netherlands_eredivisie",
-    name: "Eredivisie",
-    group: "Top European",
-  },
-  { key: "soccer_spl", name: "Scottish Premiership", group: "Top European" },
-  { key: "soccer_efl_champ", name: "Championship", group: "Top European" },
-  {
-    key: "soccer_germany_bundesliga2",
-    name: "Bundesliga 2",
-    group: "Top European",
-  },
-  { key: "soccer_italy_serie_b", name: "Serie B", group: "Top European" },
-  { key: "soccer_france_ligue_two", name: "Ligue 2", group: "Top European" },
-  { key: "soccer_england_league1", name: "League One", group: "Top European" },
-  { key: "soccer_england_league2", name: "League Two", group: "Top European" },
-  {
-    key: "soccer_uefa_champs_league",
-    name: "Champions League",
-    group: "Top European",
-  },
-  {
-    key: "soccer_uefa_europa_league",
-    name: "Europa League",
-    group: "Top European",
-  },
-  {
-    key: "soccer_uefa_europa_conference_league",
-    name: "Conference League",
-    group: "Top European",
-  },
-  { key: "soccer_fa_cup", name: "FA Cup", group: "Top European" },
-
-  // Other European
-  {
-    key: "soccer_austria_bundesliga",
-    name: "Austrian Bundesliga",
-    group: "Other European",
-  },
-  {
-    key: "soccer_belgium_first_div",
-    name: "Belgian First Div",
-    group: "Other European",
-  },
-  {
-    key: "soccer_denmark_superliga",
-    name: "Denmark Superliga",
-    group: "Other European",
-  },
-  {
-    key: "soccer_greece_super_league",
-    name: "Greek Super League",
-    group: "Other European",
-  },
-  {
-    key: "soccer_poland_ekstraklasa",
-    name: "Ekstraklasa (Poland)",
-    group: "Other European",
-  },
-  {
-    key: "soccer_sweden_allsvenskan",
-    name: "Allsvenskan (Sweden)",
-    group: "Other European",
-  },
-  {
-    key: "soccer_turkey_super_league",
-    name: "Turkey Super League",
-    group: "Other European",
-  },
-
-  // Rest of World
-  {
-    key: "soccer_argentina_primera_division",
-    name: "Primera División (Argentina)",
-    group: "Rest of World",
-  },
-  { key: "soccer_australia_aleague", name: "A-League", group: "Rest of World" },
-  {
-    key: "soccer_brazil_campeonato",
-    name: "Brazil Série A",
-    group: "Rest of World",
-  },
-  {
-    key: "soccer_brazil_serie_b",
-    name: "Brazil Série B",
-    group: "Rest of World",
-  },
-  {
-    key: "soccer_chile_campeonato",
-    name: "Primera División (Chile)",
-    group: "Rest of World",
-  },
-  {
-    key: "soccer_china_superleague",
-    name: "Chinese Super League",
-    group: "Rest of World",
-  },
-  {
-    key: "soccer_conmebol_copa_libertadores",
-    name: "Copa Libertadores",
-    group: "Rest of World",
-  },
-  {
-    key: "soccer_conmebol_copa_sudamericana",
-    name: "Copa Sudamericana",
-    group: "Rest of World",
-  },
-  { key: "soccer_usa_mls", name: "MLS", group: "Rest of World" },
 ];
 
 // Commission rates used by the SCANNER for edge calculation display.

@@ -106,15 +106,7 @@ export const LeagueSelector: React.FC<Props> = ({
             </div>
           </div>
           <div className="max-h-[300px] overflow-y-auto p-1 custom-scrollbar">
-            {(
-              [
-                "Top European",
-                "Other European",
-                "Domestic Cups",
-                "International",
-                "Rest of World",
-              ] as const
-            ).map((group) => {
+            {Array.from(new Set(LEAGUES.map((l) => l.group))).map((group) => {
               const leaguesInGroup = LEAGUES.filter((l) => l.group === group);
               if (leaguesInGroup.length === 0) return null;
 
