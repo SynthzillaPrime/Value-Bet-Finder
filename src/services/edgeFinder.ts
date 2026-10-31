@@ -295,6 +295,7 @@ export const calculateEdges = (matches: MatchResponse[]): BetEdge[] => {
         );
         const betfairPrice = betfairOutcome?.price;
 
+        offers.sort((a, b) => b.netEdgePercent - a.netEdgePercent);
         const bestOffer = offers[0];
 
         // If best offer exists and meets criteria (Min 2% net edge + Odds range 1.5-10.0)

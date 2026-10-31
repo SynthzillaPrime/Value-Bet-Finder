@@ -448,6 +448,7 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
                       <div className="text-xs font-bold text-white leading-tight">
                         {cand.homeTeam}
                         <span className="block text-[10px] text-slate-500 font-medium">vs {cand.awayTeam}</span>
+                        <span className="block text-[9px] text-emerald-400/70 font-bold uppercase tracking-wide mt-0.5">{cand.sportTitle}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -519,7 +520,7 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
                       {l.selection}
                     </p>
                     <p className="text-[9px] text-slate-500 font-bold truncate">
-                      {l.homeTeam} v {l.awayTeam}
+                      {l.homeTeam} v {l.awayTeam} · {l.sportTitle}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
