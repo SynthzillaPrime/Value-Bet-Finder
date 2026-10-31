@@ -49,11 +49,6 @@ const App: React.FC = () => {
   >("scanner");
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  useEffect(() => {
-    if (isMobile && view === "accas") {
-      setView("scanner");
-    }
-  }, [isMobile, view]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // Modular Hooks for Scanner, Bankroll, and Tracked Bets
@@ -567,7 +562,7 @@ const App: React.FC = () => {
       {isMobile ? (
         <>
           <MobileChrome
-            view={view === "accas" ? "scanner" : view}
+            view={view}
             onViewChange={setView}
             onSettingsClick={() => setShowSettings(true)}
             scannerProps={{

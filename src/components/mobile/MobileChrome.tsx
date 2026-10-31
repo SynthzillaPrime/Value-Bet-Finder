@@ -7,14 +7,15 @@ import {
   BarChart3,
   Wallet,
   RefreshCw,
-  PlusCircle
+  PlusCircle,
+  Layers
 } from "lucide-react";
 import { LeagueSelector } from "../LeagueSelector";
 
 interface MobileChromeProps {
   children: React.ReactNode;
-  view: 'scanner' | 'openbets' | 'history' | 'analysis' | 'bankroll';
-  onViewChange: (view: 'scanner' | 'openbets' | 'history' | 'analysis' | 'bankroll') => void;
+  view: 'scanner' | 'openbets' | 'history' | 'accas' | 'analysis' | 'bankroll';
+  onViewChange: (view: 'scanner' | 'openbets' | 'history' | 'accas' | 'analysis' | 'bankroll') => void;
   onSettingsClick: () => void;
   scannerProps: {
     selectedLeagues: string[];
@@ -42,6 +43,7 @@ export const MobileChrome: React.FC<MobileChromeProps> = ({
     { id: 'scanner', label: 'Scanner', icon: Search },
     { id: 'openbets', label: 'Open', icon: PlusCircle },
     { id: 'history', label: 'History', icon: Clock },
+    { id: 'accas', label: 'Accas', icon: Layers },
     { id: 'analysis', label: 'Analysis', icon: BarChart3 },
     { id: 'bankroll', label: 'Bankroll', icon: Wallet },
   ] as const;
@@ -116,7 +118,7 @@ export const MobileChrome: React.FC<MobileChromeProps> = ({
 
       {/* Bottom Tab Bar */}
       <nav className="fixed bottom-0 left-0 right-0 h-20 bg-slate-950/95 backdrop-blur border-t border-slate-900 pb-3 pt-2 z-30">
-        <div className="grid grid-cols-5 h-full px-1">
+        <div className="grid grid-cols-6 h-full px-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = view === tab.id;
