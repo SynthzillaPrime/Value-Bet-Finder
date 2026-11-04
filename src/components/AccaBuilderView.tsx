@@ -445,10 +445,17 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-xs font-bold text-white leading-tight">
-                        {cand.homeTeam}
-                        <span className="block text-[10px] text-slate-500 font-medium">vs {cand.awayTeam}</span>
-                        <span className="block text-[9px] text-emerald-400/70 font-bold uppercase tracking-wide mt-0.5">{cand.sportTitle}</span>
+                      <div className="text-xs leading-tight">
+                        <span className={cand.selection === cand.homeTeam ? "font-bold text-emerald-400" : "text-slate-300"}>
+                          {cand.homeTeam}
+                        </span>
+                        <span className="text-slate-500"> v </span>
+                        <span className={cand.selection === cand.awayTeam ? "font-bold text-emerald-400" : "text-slate-300"}>
+                          {cand.awayTeam}
+                        </span>
+                        <span className="block text-[9px] text-slate-500 font-bold uppercase tracking-wide mt-0.5">
+                          {cand.sportTitle}
+                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -457,7 +464,7 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs font-black text-emerald-400 uppercase tracking-tight">
+                      <span className="text-xs font-black text-white uppercase tracking-tight">
                         {cand.selection}
                       </span>
                     </td>
