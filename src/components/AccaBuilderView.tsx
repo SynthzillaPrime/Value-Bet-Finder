@@ -445,7 +445,7 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Candidates Table */}
         <div className="lg:col-span-2 bg-slate-900/50 rounded-2xl border border-slate-800/50 overflow-hidden backdrop-blur-sm">
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="bg-slate-800/40 border-b border-slate-800/50">
@@ -577,6 +577,118 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div className="md:hidden">
+            {/* Mobile Sort Row */}
+            <div className="flex flex-wrap gap-2 p-3 border-b border-slate-800/50 bg-slate-800/20">
+              {(["kickoff", "fair", "refPrice", "value"] as const).map((field) => (
+                <button
+                  key={field}
+                  onClick={() => handleSort(field)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${
+                    sortField === field
+                      ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-400"
+                      : "bg-slate-800 border-slate-700 text-slate-500"
+                  }`}
+                >
+                  <div className="flex items-center gap-1">
+                    {field === "refPrice" ? "Ref Price" : field}
+                    {sortField === field && (
+                      <span>{sortDir === "asc" ? "▲" : "▼"}</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Mobile Card List */}
+            <div className="divide-y divide-slate-800/40">
+              {sortedCandidates.map((cand) => (
+                <div
+                  key={cand.id}
+                  onClick={() => toggleLeg(cand)}
+                  className={`p-3 min-h-[44px] transition-colors flex flex-col gap-2 ${
+                    selectedLegIds.has(cand.id)
+                      ? "bg-emerald-500/5 border-l-2 border-l-emerald-500"
+                      : "active:bg-slate-800/50"
+                  }`}
+                >
+                  {/* Top Row: Checkbox, Match & Sport */}
+                  <div className="flex items-start gap-3">
+                    <div className={`shrink-0 w-5 h-5 rounded border flex items-center justify-center mt-0.5 transition-all ${
+                      selectedLegIds.has(cand.id)
+                        ? "bg-emerald-500 border-emerald-500"
+                        : "border-slate-700"
+                    }`}>
+                      {selectedLegIds.has(cand.id) && <Check className="w-3.5 h-3.5 text-slate-950 stroke-[3]" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs leading-tight">
+                        <span className={cand.selection === cand.homeTeam ? "font-bold text-emerald-400" : "text-slate-300"}>
+                          {cand.homeTeam}
+                        </span>
+                        <span className="text-slate-500"> v </span>
+                        <span className={cand.selection === cand.awayTeam ? "font-bold text-emerald-400" : "text-slate-300"}>
+                          {cand.awayTeam}
+                        </span>
+                      </div>
+                      <span className="block text-[9px] text-slate-500 font-bold uppercase tracking-wide mt-1">
+                        {cand.sportTitle}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Middle Row: Selection & Kickoff */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-black text-white uppercase tracking-tight">
+                      {cand.selection}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-400">
+                      {cand.kickoff.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+
+                  {/* Bottom Row: Stats Grid */}
+                  <div className="grid grid-cols-3 gap-2 pt-1">
+                    <div>
+                      <p className="text-[8px] font-black text-slate-600 uppercase tracking-wider mb-0.5">Fair</p>
+                      <p className="text-[11px] font-mono font-bold text-slate-300">
+                        {cand.pinnacleFair.toFixed(2)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-black text-slate-600 uppercase tracking-wider mb-0.5">Ref</p>
+                      <div className="flex flex-col">
+                        <p className="text-[11px] font-mono font-black text-white leading-none">
+                          {cand.refPrice?.toFixed(2) || "-"}
+                        </p>
+                        <p className="text-[8px] text-slate-500 uppercase font-bold mt-0.5">
+                          {cand.refBookmaker || "N/A"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[8px] font-black text-slate-600 uppercase tracking-wider mb-0.5">Value</p>
+                      {cand.valueRatio !== null ? (
+                        <p className={`text-[11px] font-mono font-black ${
+                          cand.valueRatio > 1 ? "text-emerald-400" : "text-slate-500"
+                        }`}>
+                          {((cand.valueRatio - 1) * 100).toFixed(1)}%
+                        </p>
+                      ) : (
+                        <p className="text-[11px] font-mono font-bold text-slate-600">-</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {candidates.length === 0 && (
+                <div className="px-4 py-12 text-center text-slate-500 text-sm italic">
+                  No suitable legs found for this date.
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -796,7 +908,7 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
 
         {/* History Table */}
         <div className="bg-slate-900/50 rounded-2xl border border-slate-800/50 overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-slate-800/40 border-b border-slate-800/50 text-[10px] font-black text-slate-500 uppercase tracking-wider">
@@ -903,6 +1015,100 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div className="md:hidden divide-y divide-slate-800/40">
+            {history.map((acca) => (
+              <div key={acca.id} className="flex flex-col">
+                <div
+                  onClick={() => setExpandedAccaId(expandedAccaId === acca.id ? null : acca.id)}
+                  className="p-4 flex flex-col gap-3 active:bg-slate-800/20 cursor-pointer"
+                >
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {new Date(acca.createdAt).toLocaleDateString("en-GB")}
+                      </span>
+                      <span className="text-xs font-bold text-white">
+                        {acca.numLegs} legs {expandedAccaId === acca.id ? "▲" : "▼"}
+                      </span>
+                    </div>
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter ${
+                        acca.status === "open"
+                          ? "bg-blue-500/10 text-blue-400"
+                          : acca.status === "won"
+                            ? "bg-emerald-500/10 text-emerald-400"
+                            : acca.status === "refunded"
+                              ? "bg-slate-500/10 text-slate-400"
+                              : "bg-red-500/10 text-red-400"
+                      }`}
+                    >
+                      {acca.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-2">
+                    <div>
+                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-wider mb-0.5">Odds</p>
+                      <p className="text-[11px] font-mono font-bold text-slate-200">{acca.combinedOdds.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-wider mb-0.5">Stake</p>
+                      <p className="text-[11px] font-mono font-bold text-slate-200">£{acca.stake.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-wider mb-0.5">Est. EV</p>
+                      <p className="text-[11px] font-mono font-bold text-blue-400">
+                        {acca.estEv != null ? `${acca.estEv.toFixed(1)}%` : "-"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-wider mb-0.5">Net P/L</p>
+                      {acca.netPl !== null ? (
+                        <p className={`text-[11px] font-mono font-black ${acca.netPl >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                          {acca.netPl >= 0 ? "+" : ""}£{acca.netPl.toFixed(2)}
+                        </p>
+                      ) : (
+                        <p className="text-[11px] font-mono font-bold text-slate-600">-</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {expandedAccaId === acca.id && (
+                  <div className="bg-slate-950/40 p-4 border-t border-slate-800/50 space-y-3">
+                    {acca.legs.map((leg, i) => (
+                      <div key={i} className="flex justify-between gap-4">
+                        <div className="min-w-0 flex flex-col">
+                          <span className="text-xs font-bold text-white">{leg.selection}</span>
+                          <span className="text-[10px] text-slate-500 truncate">{leg.match}</span>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-[11px] font-mono text-slate-400">{Number(leg.odds).toFixed(2)}</span>
+                          <span
+                            className={`w-14 text-right text-[10px] font-black uppercase ${
+                              leg.result === "won"
+                                ? "text-emerald-400"
+                                : leg.result === "lost"
+                                  ? "text-red-400"
+                                  : "text-slate-500"
+                            }`}
+                          >
+                            {leg.result === "won" ? "Won" : leg.result === "lost" ? "Lost" : "Pending"}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            {history.length === 0 && (
+              <div className="px-6 py-12 text-center text-slate-500 italic text-sm">
+                No logged accumulators.
+              </div>
+            )}
           </div>
         </div>
       </div>
