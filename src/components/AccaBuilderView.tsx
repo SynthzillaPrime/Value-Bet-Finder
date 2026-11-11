@@ -264,20 +264,56 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
       });
 
       const scoresBySport: Record<string, MatchResponse[]> = {};
+      const failedSports: string[] = [];
+
       for (const sportKey of Array.from(sportKeys)) {
-        const scores = await fetchScoresBySport(apiKey, sportKey);
-        scoresBySport[sportKey] = scores;
+        try {
+          const scores = await fetchScoresBySport(apiKey, sportKey);
+          scoresBySport[sportKey] = scores;
+        } catch (err) {
+          console.error(`Failed to fetch scores for ${sportKey}:`, err);
+          failedSports.push(sportKey);
+          scoresBySport[sportKey] = [];
+        }
       }
 
+      let settledCount = 0;
+      let legsSavedCount = 0;
+      let noChangeCount = 0;
+
       for (const acca of openAccas) {
-        const { updatedAcca, changed } = settleAcca(acca, scoresBySport);
+        const { updatedAcca, changed, outcome } = settleAcca(acca, scoresBySport);
+
+        if (outcome === "settled") settledCount++;
+        else if (outcome === "legs_saved") legsSavedCount++;
+        else if (outcome === "no_change") noChangeCount++;
+
         if (changed) {
           await updatePaperAcca(updatedAcca.id, updatedAcca);
         }
       }
 
       await loadHistory();
-      setSettleStatus({ type: "success", message: "Accas settled successfully!" });
+
+      const summary = `${settledCount} settled, ${legsSavedCount} with new leg results, ${noChangeCount} still waiting`;
+      const hasChanges = settledCount > 0 || legsSavedCount > 0;
+
+      if (failedSports.length > 0) {
+        setSettleStatus({
+          type: "error",
+          message: `Failed to fetch: ${failedSports.join(", ")}. Summary: ${summary}`,
+        });
+      } else if (!hasChanges) {
+        setSettleStatus({
+          type: "success",
+          message: "No new results yet",
+        });
+      } else {
+        setSettleStatus({
+          type: "success",
+          message: summary,
+        });
+      }
     } catch (err) {
       console.error("Settlement failed", err);
       setSettleStatus({

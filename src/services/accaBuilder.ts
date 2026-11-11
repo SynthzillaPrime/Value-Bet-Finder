@@ -207,15 +207,12 @@ export const fetchScoresBySport = async (
   sportKey: string,
 ): Promise<MatchResponse[]> => {
   const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/scores/?apiKey=${apiKey}&daysFrom=3`;
-  try {
-    const response = await fetch(url);
-    if (!response.ok) return [];
-    const data = await response.json();
-    return data as MatchResponse[];
-  } catch (error) {
-    console.error(`Error fetching scores for ${sportKey}:`, error);
-    return [];
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch scores for ${sportKey}: HTTP ${response.status}`);
   }
+  const data = await response.json();
+  return data as MatchResponse[];
 };
 
 export const settleAcca = (
