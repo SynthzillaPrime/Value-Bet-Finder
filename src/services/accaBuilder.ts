@@ -221,8 +221,14 @@ export const fetchScoresBySport = async (
 export const settleAcca = (
   acca: PaperAcca,
   scoresBySport: Record<string, MatchResponse[]>,
-): { updatedAcca: PaperAcca; changed: boolean } => {
-  if (acca.status !== "open") return { updatedAcca: acca, changed: false };
+): {
+  updatedAcca: PaperAcca;
+  changed: boolean;
+  outcome: "settled" | "legs_saved" | "no_change";
+} => {
+  if (acca.status !== "open") {
+    return { updatedAcca: acca, changed: false, outcome: "no_change" };
+  }
 
   // Manual settlement check
   const hasIncompleteInfo = acca.legs.some(
@@ -230,89 +236,117 @@ export const settleAcca = (
   );
   if (hasIncompleteInfo) {
     // If it's old/manual, we don't settle automatically
-    return { updatedAcca: acca, changed: false };
+    return { updatedAcca: acca, changed: false, outcome: "no_change" };
   }
 
   const updatedLegs = [...acca.legs];
-  let allLegsFinished = true;
+  let changed = false;
 
   for (let i = 0; i < updatedLegs.length; i++) {
     const leg = updatedLegs[i];
+    if (leg.result) continue;
+
     const sportScores = scoresBySport[leg.sportKey] || [];
-    // The scores endpoint returns matches with a 'completed' boolean and 'scores' array
     const matchScore = sportScores.find(
       (m: any) => m.home_team === leg.homeTeam && m.away_team === leg.awayTeam,
     );
 
-    if (!matchScore || !(matchScore as any).completed) {
-      allLegsFinished = false;
-      break;
-    }
+    if (!matchScore || !(matchScore as any).completed) continue;
 
     const scores = (matchScore as any).scores;
-    if (!scores || scores.length < 2) {
-      allLegsFinished = false;
-      break;
-    }
+    if (!scores || scores.length < 2) continue;
 
     const homeScore = scores.find((s: any) => s.name === leg.homeTeam)?.score;
     const awayScore = scores.find((s: any) => s.name === leg.awayTeam)?.score;
 
-    if (homeScore === undefined || awayScore === undefined) {
-      allLegsFinished = false;
-      break;
-    }
+    if (homeScore === undefined || awayScore === undefined) continue;
 
     updatedLegs[i] = {
       ...leg,
-      result: legResult(leg.selection, leg.homeTeam, leg.awayTeam, Number(homeScore), Number(awayScore)),
+      result: legResult(
+        leg.selection,
+        leg.homeTeam,
+        leg.awayTeam,
+        Number(homeScore),
+        Number(awayScore),
+      ),
+    };
+    changed = true;
+  }
+
+  const lostLegs = updatedLegs.filter((l) => l.result === "lost").length;
+  const allLegsFinished = updatedLegs.every((l) => l.result != null);
+
+  // Early loss settlement: 2 or more legs lost
+  if (lostLegs >= 2) {
+    return {
+      updatedAcca: {
+        ...acca,
+        legs: updatedLegs,
+        status: "lost",
+        returns: 0,
+        netPl: -acca.stake,
+        notes: acca.notes ? `${acca.notes} (Settled: lost, early, 2 legs lost)` : "Settled: lost (early, 2 legs lost)",
+      },
+      changed: true,
+      outcome: "settled",
     };
   }
 
-  if (!allLegsFinished) {
-    return { updatedAcca: acca, changed: false };
-  }
+  if (allLegsFinished) {
+    // All legs finished, determine outcome
+    let returns = 0;
+    let resultLabel: "won" | "lost" | "refunded" = "lost";
 
-  // All legs finished, determine outcome
-  const lostLegs = updatedLegs.filter((l) => l.result === "lost").length;
-  let returns = 0;
-  let resultLabel: "won" | "lost" | "refunded" = "lost";
-
-  if (lostLegs === 0) {
-    resultLabel = "won";
-    // payout = stake * combinedOdds
-    const payout = acca.stake * acca.combinedOdds;
-    // We need to re-derive bonusRate
-    let bonusRate = 0;
-    const legCount = acca.numLegs;
-    if (legCount >= BETFRED_ACCA_FLEX.minLegs) {
-      const legKeys = Object.keys(BETFRED_ACCA_FLEX.bonusByLegs).map(Number).sort((a, b) => b - a);
-      const maxLegsInTable = legKeys[0];
-      if (legCount >= maxLegsInTable) {
-        bonusRate = BETFRED_ACCA_FLEX.bonusByLegs[maxLegsInTable];
-      } else {
-        bonusRate = BETFRED_ACCA_FLEX.bonusByLegs[legCount] || 0;
+    if (lostLegs === 0) {
+      resultLabel = "won";
+      const payout = acca.stake * acca.combinedOdds;
+      let bonusRate = 0;
+      const legCount = acca.numLegs;
+      if (legCount >= BETFRED_ACCA_FLEX.minLegs) {
+        const legKeys = Object.keys(BETFRED_ACCA_FLEX.bonusByLegs)
+          .map(Number)
+          .sort((a, b) => b - a);
+        const maxLegsInTable = legKeys[0];
+        if (legCount >= maxLegsInTable) {
+          bonusRate = BETFRED_ACCA_FLEX.bonusByLegs[maxLegsInTable];
+        } else {
+          bonusRate = BETFRED_ACCA_FLEX.bonusByLegs[legCount] || 0;
+        }
       }
+      const bonus = bonusRate * (payout - acca.stake);
+      returns = payout + bonus;
+    } else if (lostLegs === 1) {
+      resultLabel = "refunded";
+      returns = Math.min(acca.stake, acca.refundCap);
+    } else {
+      resultLabel = "lost";
+      returns = 0;
     }
-    const bonus = bonusRate * (payout - acca.stake);
-    returns = payout + bonus;
-  } else if (lostLegs === 1) {
-    resultLabel = "refunded";
-    returns = Math.min(acca.stake, acca.refundCap);
-  } else {
-    resultLabel = "lost";
-    returns = 0;
+
+    return {
+      updatedAcca: {
+        ...acca,
+        legs: updatedLegs,
+        status: resultLabel,
+        returns,
+        netPl: returns - acca.stake,
+        notes: acca.notes
+          ? `${acca.notes} (Settled: ${resultLabel})`
+          : `Settled: ${resultLabel}`,
+      },
+      changed: true,
+      outcome: "settled",
+    };
   }
 
+  // Not settled yet
   return {
     updatedAcca: {
       ...acca,
       legs: updatedLegs,
-      status: resultLabel as "won" | "lost" | "refunded",
-      returns,
-      netPl: returns - acca.stake,
-      notes: acca.notes ? `${acca.notes} (Settled: ${resultLabel})` : `Settled: ${resultLabel}`,
     },
-    changed: true,
+    changed,
+    outcome: changed ? "legs_saved" : "no_change",
   };
 };
