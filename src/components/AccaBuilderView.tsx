@@ -8,6 +8,7 @@ import {
   fetchScoresBySport,
   settleAcca,
 } from "../services/accaBuilder";
+import { getRegulationOutcome, needsRegulationCheck, RegulationOutcome } from "../services/regulationResult";
 import {
   fetchPaperAccas,
   insertPaperAcca,
@@ -277,12 +278,47 @@ const AccaBuilderView: React.FC<AccaBuilderViewProps> = ({
         }
       }
 
+      // Build regulation record
+      const regulation: Record<string, RegulationOutcome> = {};
+      const regKeysChecked = new Set<string>();
+
+      for (const acca of openAccas) {
+        for (const leg of acca.legs) {
+          if (leg.result) continue;
+          if (!leg.sportKey || !needsRegulationCheck(leg.sportKey)) continue;
+
+          const regKey = `${leg.sportKey}|${leg.homeTeam}|${leg.awayTeam}`;
+          if (regKeysChecked.has(regKey)) continue;
+
+          // Check if match is completed in scoresBySport
+          const sportScores = scoresBySport[leg.sportKey] || [];
+          const matchScore = sportScores.find(
+            (m: any) => m.home_team === leg.homeTeam && m.away_team === leg.awayTeam,
+          );
+
+          if (matchScore && (matchScore as any).completed) {
+            try {
+              const outcome = await getRegulationOutcome({
+                sportKey: leg.sportKey,
+                homeTeam: leg.homeTeam,
+                awayTeam: leg.awayTeam,
+                kickoff: leg.kickoff,
+              });
+              regulation[regKey] = outcome;
+              regKeysChecked.add(regKey);
+            } catch (err) {
+              console.error(`Failed to fetch regulation outcome for ${regKey}:`, err);
+            }
+          }
+        }
+      }
+
       let settledCount = 0;
       let legsSavedCount = 0;
       let noChangeCount = 0;
 
       for (const acca of openAccas) {
-        const { updatedAcca, changed, outcome } = settleAcca(acca, scoresBySport);
+        const { updatedAcca, changed, outcome } = settleAcca(acca, scoresBySport, regulation);
 
         if (outcome === "settled") settledCount++;
         else if (outcome === "legs_saved") legsSavedCount++;

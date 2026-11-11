@@ -11,6 +11,7 @@ import {
   ACCA_REFERENCE_BOOKMAKERS,
 } from "../constants";
 import { stripVig } from "./edgeFinder";
+import { needsRegulationCheck, RegulationOutcome } from "./regulationResult";
 
 export const buildLegCandidates = (
   matches: MatchResponse[],
@@ -218,6 +219,7 @@ export const fetchScoresBySport = async (
 export const settleAcca = (
   acca: PaperAcca,
   scoresBySport: Record<string, MatchResponse[]>,
+  regulation?: Record<string, RegulationOutcome>,
 ): {
   updatedAcca: PaperAcca;
   changed: boolean;
@@ -258,14 +260,31 @@ export const settleAcca = (
 
     if (homeScore === undefined || awayScore === undefined) continue;
 
+    let homeForResult = Number(homeScore);
+    let awayForResult = Number(awayScore);
+
+    if (needsRegulationCheck(leg.sportKey)) {
+      const regKey = `${leg.sportKey}|${leg.homeTeam}|${leg.awayTeam}`;
+      const outcome = regulation?.[regKey];
+
+      if (outcome === undefined || outcome === "unknown") {
+        continue; // Treat as not yet finished
+      }
+
+      if (outcome === "beyond_90") {
+        homeForResult = 0;
+        awayForResult = 0;
+      }
+    }
+
     updatedLegs[i] = {
       ...leg,
       result: legResult(
         leg.selection,
         leg.homeTeam,
         leg.awayTeam,
-        Number(homeScore),
-        Number(awayScore),
+        homeForResult,
+        awayForResult,
       ),
     };
     changed = true;
