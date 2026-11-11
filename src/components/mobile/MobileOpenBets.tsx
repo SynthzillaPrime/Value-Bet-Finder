@@ -6,12 +6,13 @@ interface MobileOpenBetsProps {
   onSettleBet: (
     betId: string,
     forceResult?: "won" | "lost" | "void",
-  ) => Promise<"settled" | "skipped" | "failed">;
+  ) => Promise<"settled" | "skipped" | "failed" | "needs_check">;
   onSettleAll: () => Promise<{
     settled: number;
     skipped: number;
     failed: number;
     stale: number;
+    needsCheck: number;
   } | undefined>;
   isSettlingAll: boolean;
   settleAllProgress: { current: number; total: number } | null;
@@ -20,6 +21,7 @@ interface MobileOpenBetsProps {
     skipped: number;
     failed: number;
     stale: number;
+    needsCheck: number;
   } | null;
   clearLastSettleAllResult: () => void;
 }
@@ -96,9 +98,9 @@ export const MobileOpenBets: React.FC<MobileOpenBetsProps> = ({
 
   useEffect(() => {
     if (lastSettleAllResult) {
-      const { settled, skipped, failed, stale } = lastSettleAllResult;
+      const { settled, skipped, failed, stale, needsCheck } = lastSettleAllResult;
       alert(
-        `Settlement Complete:\nSettled: ${settled}\nSkipped: ${skipped}\nStale: ${stale}\nFailed: ${failed}`,
+        `Settlement Complete:\nSettled: ${settled}\nSkipped: ${skipped}\nStale: ${stale}\nFailed: ${failed}${needsCheck > 0 ? `\nNeeds check: ${needsCheck}` : ""}`,
       );
       clearLastSettleAllResult();
     }

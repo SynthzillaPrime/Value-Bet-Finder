@@ -17,12 +17,13 @@ interface Props {
   onSettleBet: (
     betId: string,
     forceResult?: "won" | "lost" | "void",
-  ) => Promise<"settled" | "skipped" | "failed">;
+  ) => Promise<"settled" | "skipped" | "failed" | "needs_check">;
   onSettleAll: () => Promise<{
     settled: number;
     skipped: number;
     failed: number;
     stale: number;
+    needsCheck: number;
   } | undefined>;
   isSettlingAll: boolean;
   settleAllProgress: { current: number; total: number } | null;
@@ -31,6 +32,7 @@ interface Props {
     skipped: number;
     failed: number;
     stale: number;
+    needsCheck: number;
   } | null;
   clearLastSettleAllResult: () => void;
 }
@@ -112,10 +114,11 @@ export const OpenBetsView: React.FC<Props> = ({
 
   useEffect(() => {
     if (lastSettleAllResult) {
-      const { settled, skipped, failed, stale } = lastSettleAllResult;
+      const { settled, skipped, failed, stale, needsCheck } = lastSettleAllResult;
       let message = `Settlement Complete:\nSettled: ${settled}, Skipped: ${skipped}`;
       if (stale > 0) message += `, Stale: ${stale}`;
       if (failed > 0) message += `, Failed: ${failed}`;
+      if (needsCheck > 0) message += `, Needs check: ${needsCheck}`;
       alert(message);
       clearLastSettleAllResult();
     }

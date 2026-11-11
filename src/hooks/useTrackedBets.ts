@@ -14,6 +14,7 @@ import {
   calculatePL,
 } from "../services/betSettlement";
 import { fetchClosingLine, fetchMatchResult } from "../services/edgeFinder";
+import { needsRegulationCheck, getRegulationOutcome } from "../services/regulationResult";
 
 export const useTrackedBets = (
   bankroll: number,
@@ -37,6 +38,7 @@ export const useTrackedBets = (
     skipped: number;
     failed: number;
     stale: number;
+    needsCheck: number;
   } | null>(null);
 
   const clearLastSettleAllResult = useCallback(() => {
@@ -201,13 +203,14 @@ export const useTrackedBets = (
   const settleBet = async (
     betId: string,
     forceResult?: "won" | "lost" | "void",
-  ): Promise<"settled" | "skipped" | "failed"> => {
+  ): Promise<"settled" | "skipped" | "failed" | "needs_check"> => {
     const bet = trackedBets.find((b) => b.id === betId);
     if (!bet) return "failed";
 
     let result: "won" | "lost" | "void" | undefined = forceResult;
     let homeScore = bet.homeScore;
     let awayScore = bet.awayScore;
+    let notes = bet.notes;
 
     // Fetch match result first
     if (!result) {
@@ -219,7 +222,27 @@ export const useTrackedBets = (
       awayScore = scoreResult.awayScore;
       if (homeScore === undefined || awayScore === undefined) return "failed";
 
-      result = determineBetResult(bet, homeScore, awayScore);
+      let settleHome = homeScore;
+      let settleAway = awayScore;
+
+      if (needsRegulationCheck(bet.sportKey)) {
+        const outcome = await getRegulationOutcome({
+          sportKey: bet.sportKey,
+          homeTeam: bet.homeTeam,
+          awayTeam: bet.awayTeam,
+          kickoff: bet.kickoff,
+        });
+        if (outcome === "unknown") return "needs_check";
+        if (outcome === "beyond_90") {
+          settleHome = 0;
+          settleAway = 0;
+          if (!notes) {
+            notes = "Settled on 90 min (match went to extra time or penalties)";
+          }
+        }
+      }
+
+      result = determineBetResult(bet, settleHome, settleAway);
     }
 
     if (!result) return "failed";
@@ -253,6 +276,7 @@ export const useTrackedBets = (
         kellyPL,
         homeScore,
         awayScore,
+        notes,
         ...clvData,
         status: "closed",
       });
@@ -268,11 +292,12 @@ export const useTrackedBets = (
     skipped: number;
     failed: number;
     stale: number;
+    needsCheck: number;
   } | undefined> => {
     if (isSettlingAll) return;
 
     const betsToSettle = trackedBets.filter((b) => !b.result);
-    if (betsToSettle.length === 0) return { settled: 0, skipped: 0, failed: 0, stale: 0 };
+    if (betsToSettle.length === 0) return { settled: 0, skipped: 0, failed: 0, stale: 0, needsCheck: 0 };
 
     setIsSettlingAll(true);
     setSettleAllProgress({ current: 0, total: betsToSettle.length });
@@ -282,6 +307,7 @@ export const useTrackedBets = (
     let skipped = 0;
     let failed = 0;
     let stale = 0;
+    let needsCheck = 0;
 
     const now = Date.now();
     const STALE_THRESHOLD_MS = 72 * 60 * 60 * 1000;
@@ -298,6 +324,8 @@ export const useTrackedBets = (
             settled++;
           } else if (status === "skipped") {
             skipped++;
+          } else if (status === "needs_check") {
+            needsCheck++;
           } else {
             failed++;
           }
@@ -310,7 +338,7 @@ export const useTrackedBets = (
           await new Promise((r) => setTimeout(r, 500));
         }
       }
-      const result = { settled, skipped, failed, stale };
+      const result = { settled, skipped, failed, stale, needsCheck };
       setLastSettleAllResult(result);
       return result;
     } finally {
